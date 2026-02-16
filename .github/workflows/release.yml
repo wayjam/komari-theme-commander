@@ -47,7 +47,17 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          npx commit-and-tag-version --release-as ${{ github.event.inputs.version_bump }} --tag-prefix v
+          npx commit-and-tag-version --release-as ${{ github.event.inputs.version_bump }} --tag-prefix v --skip.changelog
+          node -e "
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const config = JSON.parse(fs.readFileSync('komari-theme.json', 'utf8'));
+          config.version = pkg.version;
+          fs.writeFileSync('komari-theme.json', JSON.stringify(config, null, 4) + '\n');
+          "
+          git add komari-theme.json
+          git commit --amend --no-edit
+          git tag -f "v$(node -p "require('./package.json').version")"
           git push --follow-tags
 
       - name: Extract version
@@ -64,16 +74,27 @@ jobs:
             echo "tag=${TAG}" >> $GITHUB_OUTPUT
           fi
 
+      - name: Sync version to theme config
+        if: github.event_name != 'workflow_dispatch'
+        run: |
+          node -e "
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const config = JSON.parse(fs.readFileSync('komari-theme.json', 'utf8'));
+          config.version = pkg.version;
+          fs.writeFileSync('komari-theme.json', JSON.stringify(config, null, 4) + '\n');
+          "
+
       - name: Build project
         run: pnpm run build
 
       - name: Create distribution package
         run: |
-          zip -r komari-theme-commander.zip dist/ komari-theme.json preview.png
+          zip -r komari-theme-commander@${{ steps.version.outputs.version }}.zip dist/ komari-theme.json preview.png
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: Release ${{ steps.version.outputs.tag }}
-          files: komari-theme-commander.zip
+          files: komari-theme-commander@${{ steps.version.outputs.version }}.zip

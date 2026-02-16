@@ -70,18 +70,23 @@ build_project() {
 update_theme_config() {
     print_status "Updating theme configuration..."
 
-    # Get current date in YY.MM.DD format
-    VERSION_DATE=$(date +"%y.%m.%d")
-    # Get commit hash (short)
-    if git rev-parse --short HEAD &> /dev/null; then
-        COMMIT_HASH=$(git rev-parse --short HEAD)
-    else
-        COMMIT_HASH="dev"
-        print_warning "Not a git repository, using 'dev' as commit hash"
+    # Read version from package.json
+    VERSION=$(node -p "require('./package.json').version")
+
+    if [ -z "$VERSION" ]; then
+        print_error "Failed to read version from package.json"
+        exit 1
     fi
 
-    echo "Version: $VERSION_DATE"
-    echo "Commit: $COMMIT_HASH"
+    # Update version in komari-theme.json
+    node -e "
+const fs = require('fs');
+const config = JSON.parse(fs.readFileSync('komari-theme.json', 'utf8'));
+config.version = '${VERSION}';
+fs.writeFileSync('komari-theme.json', JSON.stringify(config, null, 4) + '\n');
+"
+
+    print_success "Updated komari-theme.json version to ${VERSION}"
 }
 
 # Verify required files exist
@@ -117,13 +122,8 @@ verify_files() {
 create_package() {
     print_status "Creating theme package..."
 
-    # Get version info
-    VERSION_DATE=$(date +"%y.%m.%d")
-    if git rev-parse --short HEAD &> /dev/null; then
-        COMMIT_HASH=$(git rev-parse --short HEAD)
-    else
-        COMMIT_HASH="dev"
-    fi
+    # Read version from package.json
+    VERSION=$(node -p "require('./package.json').version")
 
     # Create a temporary directory for the package
     rm -rf theme-package
@@ -134,8 +134,8 @@ create_package() {
     cp komari-theme.json theme-package/
     cp -r dist/ theme-package/
 
-    # Create zip file with version and commit hash
-    ZIP_NAME="komari-theme-commander-v${VERSION_DATE}-${COMMIT_HASH}.zip"
+    # Create zip file with version
+    ZIP_NAME="komari-theme-commander@${VERSION}.zip"
 
     cd theme-package
     zip -r "../dist/${ZIP_NAME}" .
