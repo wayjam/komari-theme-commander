@@ -120,7 +120,7 @@ export function GlobeView({ nodes, onViewCharts }: GlobeViewProps) {
               ref={feedRef}
               className="absolute bottom-4 left-4 h-40 w-64 overflow-hidden pointer-events-none hidden xl:flex flex-col-reverse z-20"
             >
-              <div className="flex flex-col gap-1 text-[8px] font-mono leading-tight">
+              <div className="flex flex-col gap-1 text-xxs font-mono leading-tight">
                 {logLines.map(line => (
                   <div
                     key={line.id}
@@ -152,7 +152,7 @@ export function GlobeView({ nodes, onViewCharts }: GlobeViewProps) {
               ref={feedRef}
               className="absolute bottom-4 left-4 h-36 w-60 overflow-hidden pointer-events-none hidden xl:flex flex-col-reverse z-20"
             >
-              <div className="flex flex-col gap-1 text-[8px] font-mono leading-tight">
+              <div className="flex flex-col gap-1 text-xxs font-mono leading-tight">
                 {logLines.map(line => (
                   <div
                     key={line.id}
@@ -212,7 +212,7 @@ export function GlobeView({ nodes, onViewCharts }: GlobeViewProps) {
                 (n.stats?.cpu.usage ?? 0) > 90 || 
                 (n.stats ? (n.stats.ram.used / n.stats.ram.total) > 0.95 : false)
               )).slice(0, 3).map(node => (
-                <div key={node.uuid} className="text-[9px] font-mono text-red-400/50 flex gap-2 items-center">
+                <div key={node.uuid} className="text-xxs font-mono text-red-400/50 flex gap-2 items-center">
                   <span className="bg-red-500/10 px-1 border border-red-500/20">{node.name.substring(0, 10)}</span>
                   <span className="animate-pulse">{" >> "}CRITICAL LOAD</span>
                 </div>

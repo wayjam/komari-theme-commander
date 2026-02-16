@@ -89,7 +89,7 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
       {/* Row 1: Name + Status + System Info */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
         <div className="flex items-center gap-2 min-w-0">
-          <span className={cn('w-2.5 h-2.5 rounded-full flex-shrink-0', isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500')} />
+          <span className={cn('w-2.5 h-2.5 rounded-full shrink-0', isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500')} />
           <h2 className="text-base font-display font-bold truncate">{node.name}</h2>
           <span className={cn('text-xxs font-mono font-bold px-1.5 py-0.5 rounded', isOnline ? 'bg-green-500/15 text-green-500' : 'bg-red-500/15 text-red-500')}>
             {isOnline ? t('status.online') : t('status.offline')}

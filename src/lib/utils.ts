@@ -1,10 +1,18 @@
 import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { extendTailwindMerge } from "tailwind-merge"
 import prettyBytes from "pretty-bytes"
 import dayjs from "dayjs"
 import duration from "dayjs/plugin/duration"
 
 dayjs.extend(duration)
+
+const twMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      'font-size': [{ text: ['xxs'] }],
+    },
+  },
+})
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))

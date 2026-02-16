@@ -293,7 +293,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
       <span className="corner-bottom" />
       
       {/* Console Header Decoration */}
-      <div className="flex items-center justify-between px-3 py-1 border-b border-border/30 bg-muted/10 text-[9px] font-mono text-muted-foreground/40 uppercase tracking-[0.2em] relative z-10">
+      <div className="flex items-center justify-between px-3 py-1 border-b border-border/30 bg-muted/10 text-xxs font-mono text-muted-foreground/40 uppercase tracking-[0.2em] relative z-10">
         <div className="flex items-center gap-2">
           <div className="w-1.5 h-1.5 rounded-full bg-primary/30" />
           <span>Table View Mode :: Data Stream Alpha-4</span>

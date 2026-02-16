@@ -120,16 +120,6 @@ export function NodeCard({ node }: NodeCardProps) {
         <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-primary/40" />
         <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-primary/40" />
         <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-primary/40" />
-
-        {/* Real data readouts */}
-        <div className="absolute top-2 left-8 text-[8px] font-mono text-primary/40 uppercase tracking-tighter">
-          {node.uuid.slice(0, 8)}
-        </div>
-        {node.arch && (
-          <div className="absolute bottom-2 right-8 text-[8px] font-mono text-primary/40 uppercase tracking-tighter text-right">
-            {node.virtualization && `${node.virtualization} · `}{node.arch}
-          </div>
-        )}
       </div>
 
       {/* Top neon accent line */}
@@ -156,6 +146,23 @@ export function NodeCard({ node }: NodeCardProps) {
               onClick={() => navigate(`/node/${node.uuid}`)}
             >{node.name}</h3>
             
+            {isLoggedIn && node.price !== -1 && (() => {
+              const expiryStatus = getExpiryStatus(node.expired_at);
+              if (!expiryStatus) return null;
+              return (
+                <span className={cn(
+                  'text-xxs leading-none font-mono px-1.5 py-0.5 rounded-sm flex-shrink-0 border',
+                  expiryStatus === 'expired'
+                    ? 'text-red-500 bg-red-500/10 border-red-500/20'
+                    : expiryStatus === 'warning'
+                      ? 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20'
+                      : 'text-muted-foreground/60 bg-muted/20 border-border/20',
+                )}>
+                  {formatExpiry(node.expired_at)}
+                </span>
+              );
+            })()}
+
             {(cpuStatus === 'critical' || ramStatus === 'critical') && (
               <div className="flex items-center gap-1 text-xs font-mono text-red-500 font-bold animate-pulse ml-auto">
                 <AlertTriangle className="h-3 w-3" />
@@ -181,9 +188,9 @@ export function NodeCard({ node }: NodeCardProps) {
             )}
           </div>
           {/* System info row */}
-          {node.os && (
+          {(node.os || node.arch) && (
             <div className="text-xs font-mono text-muted-foreground/50 truncate ml-4">
-              {node.os}
+              {node.os}{node.os && node.arch && ' · '}{node.virtualization && `${node.virtualization}/`}{node.arch}
             </div>
           )}
           {node.public_remark && (
@@ -204,6 +211,17 @@ export function NodeCard({ node }: NodeCardProps) {
               <HudGauge label={t('label.ram')} value={ramUsage} status={ramStatus} total={formatBytes(stats.ram.total)} />
               <HudGauge label={t('label.disk')} value={diskUsage} status={diskStatus} total={formatBytes(stats.disk.total)} />
             </div>
+
+            {/* Traffic limit bar */}
+            {!!(node.traffic_limit && node.traffic_limit > 0 && node.traffic_limit_type && node.traffic_limit_type !== 'no_limit') && (
+              <TrafficBar
+                totalUp={stats.network.totalUp}
+                totalDown={stats.network.totalDown}
+                limit={node.traffic_limit}
+                type={node.traffic_limit_type as TrafficLimitType}
+                label={t('label.traffic')}
+              />
+            )}
 
             {/* CPU Sparkline (login required) */}
             {isLoggedIn && cpuSparkline && (
@@ -238,35 +256,9 @@ export function NodeCard({ node }: NodeCardProps) {
             {/* Bottom info strip - only show for logged in users */}
             {isLoggedIn && (
               <div className="flex items-center justify-between text-xxs font-mono text-muted-foreground/70 pt-0.5">
-                <span>{node.cpu_cores}C · {formatBytes(stats.ram.total)} · {formatBytes(stats.disk.total)}</span>
                 <span>TCP:{stats.connections.tcp} {t('label.proc')}:{stats.process}</span>
               </div>
             )}
-
-            {/* Traffic limit bar */}
-            {!!(node.traffic_limit && node.traffic_limit > 0 && node.traffic_limit_type && node.traffic_limit_type !== 'no_limit') && (
-              <TrafficBar
-                totalUp={stats.network.totalUp}
-                totalDown={stats.network.totalDown}
-                limit={node.traffic_limit}
-                type={node.traffic_limit_type as TrafficLimitType}
-                label={t('label.traffic')}
-              />
-            )}
-
-            {/* Expiry warning - login required, skip for free nodes (price=-1) */}
-            {isLoggedIn && node.price !== -1 && (() => {
-              const expiryStatus = getExpiryStatus(node.expired_at);
-              if (!expiryStatus) return null;
-              return (
-                <div className={cn(
-                  'text-xxs font-mono pt-0.5',
-                  expiryStatus === 'expired' ? 'text-red-500' : expiryStatus === 'warning' ? 'text-yellow-500' : 'text-muted-foreground/60',
-                )}>
-                  {formatExpiry(node.expired_at)}
-                </div>
-              );
-            })()}
           </div>
         ) : (
           <div className="flex items-center justify-center h-20 text-muted-foreground text-xs font-mono">
