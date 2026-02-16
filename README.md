@@ -2,6 +2,8 @@
 
 [![license](https://img.shields.io/github/license/wayjam/komari-theme-commander)](https://github.com/wayjam/komari-theme-commander/blob/main/LICENSE)
 
+![screenshot](https://raw.githubusercontent.com/wayjam/komari-theme-commander/main/preview.png)
+
 
 一个基于 React、TypeScript 和 Tailwind CSS 构建的现代化 Komari 服务器监控主题。
 
