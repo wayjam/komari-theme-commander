@@ -1,0 +1,157 @@
+{
+  "status": {
+    "online": "ONLINE",
+    "offline": "OFFLINE",
+    "on": "ON",
+    "off": "OFF"
+  },
+  "label": {
+    "cpu": "CPU",
+    "ram": "RAM",
+    "swap": "SWAP",
+    "disk": "DISK",
+    "network": "NETWORK",
+    "load": "LOAD",
+    "uptime": "UPTIME",
+    "traffic": "TRAFFIC",
+    "system": "SYSTEM",
+    "arch": "ARCH",
+    "gpu": "GPU",
+    "cpu1m": "CPU 1m",
+    "netUp": "NET↑",
+    "netDown": "NET↓",
+    "up": "UP",
+    "tcp": "TCP",
+    "udp": "UDP",
+    "proc": "PROC",
+    "in": "IN",
+    "out": "OUT",
+    "cores": "Cores",
+    "os": "OS",
+    "virt": "Virt",
+    "region": "Region",
+    "kernel": "Kernel",
+    "load1m": "LOAD 1m",
+    "load5m": "LOAD 5m",
+    "load15m": "LOAD 15m",
+    "upload": "↑ UPLOAD",
+    "download": "↓ DOWNLOAD",
+    "totalUp": "TOTAL ↑",
+    "totalDown": "TOTAL ↓",
+    "na": "N/A",
+    "tcpUdp": "TCP/UDP",
+    "avg": "AVG",
+    "nodes": "nodes"
+  },
+  "action": {
+    "back": "BACK",
+    "admin": "ADMIN",
+    "clear": "CLEAR",
+    "retry": "RETRY",
+    "charts": "CHARTS",
+    "detail": "DETAIL",
+    "refresh": "Refresh"
+  },
+  "view": {
+    "globe": "GLOBE",
+    "grid": "GRID",
+    "table": "TABLE",
+    "uptime": "UPTIME"
+  },
+  "filter": {
+    "all": "ALL",
+    "group": "GROUP",
+    "tag": "TAG",
+    "status": "STATUS",
+    "matched": "matched",
+    "sortByActivity": "Sort by Activity"
+  },
+  "placeholder": {
+    "searchNodes": "search nodes...",
+    "filterNodes": "filter nodes..."
+  },
+  "node": {
+    "hidden": "HIDDEN",
+    "noNodesAvailable": "NO NODES AVAILABLE",
+    "addFromAdmin": "Add nodes from admin panel"
+  },
+  "telemetry": {
+    "waiting": "WAITING FOR TELEMETRY...",
+    "nodeOffline": "NODE OFFLINE — NO TELEMETRY DATA",
+    "nodeOfflineShort": "NODE OFFLINE — NO TELEMETRY",
+    "noData": "NO TELEMETRY DATA"
+  },
+  "chart": {
+    "cpuUsage": "CPU USAGE",
+    "systemLoad": "SYSTEM LOAD",
+    "memory": "MEMORY",
+    "diskUsage": "DISK USAGE",
+    "connections": "CONNECTIONS",
+    "networkTraffic": "NETWORK TRAFFIC",
+    "pingLatency": "PING LATENCY",
+    "smooth": "SMOOTH",
+    "raw": "RAW",
+    "load": "LOAD",
+    "cpu": "CPU",
+    "ram": "RAM",
+    "disk": "DISK",
+    "net": "NET",
+    "conn": "CONN",
+    "traffic": "TRAFFIC",
+    "ping": "PING",
+    "noPingData": "NO PING DATA",
+    "noData": "NO DATA",
+    "nodeMonitor": "NODE MONITOR",
+    "ewmaTooltip": "EWMA Smoothing: When enabled, curves are processed with Exponential Weighted Moving Average, showing smoothed trend lines instead of raw data points."
+  },
+  "theme": {
+    "lumina": "LUMINA",
+    "deepspace": "DEEPSPACE",
+    "clean": "CLEAN",
+    "currentSwitch": "Current: {{label}}. Click to switch.",
+    "select": "Select theme",
+    "title": "THEME"
+  },
+  "ws": {
+    "connecting": "CONNECTING",
+    "live": "LIVE",
+    "offline": "OFFLINE"
+  },
+  "fleet": {
+    "title": "FLEET",
+    "status": "FLEET STATUS"
+  },
+  "table": {
+    "status": "STS",
+    "node": "NODE"
+  },
+  "info": {
+    "system": "SYSTEM INFO"
+  },
+  "legend": {
+    "online": "online",
+    "offline": "offline"
+  },
+  "time": {
+    "now": "Now"
+  },
+  "uptime": {
+    "noData": "NO DATA",
+    "monitor": "UPTIME MONITOR",
+    "loading": "LOADING UPTIME DATA...",
+    "allSystemsOperational": "ALL SYSTEMS OPERATIONAL",
+    "averageDesc": "Average uptime {{value}} over the past {{period}}",
+    "degradedPerformance": "DEGRADED PERFORMANCE",
+    "noDataAvailable": "NO UPTIME DATA AVAILABLE"
+  },
+  "footer": {
+    "poweredBy": "Powered by",
+    "theme": "Theme"
+  },
+  "site": {
+    "name": "Komari Monitor"
+  },
+  "lang": {
+    "title": "LANGUAGE"
+  }
+}

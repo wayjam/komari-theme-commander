@@ -1,0 +1,157 @@
+{
+  "status": {
+    "online": "上線",
+    "offline": "離線",
+    "on": "上線",
+    "off": "離線"
+  },
+  "label": {
+    "cpu": "CPU",
+    "ram": "記憶體",
+    "swap": "交換",
+    "disk": "磁碟",
+    "network": "網路",
+    "load": "負載",
+    "uptime": "運行時間",
+    "traffic": "流量",
+    "system": "系統",
+    "arch": "架構",
+    "gpu": "GPU",
+    "cpu1m": "CPU 1分鐘",
+    "netUp": "網路↑",
+    "netDown": "網路↓",
+    "up": "運行",
+    "tcp": "TCP",
+    "udp": "UDP",
+    "proc": "處理程序",
+    "in": "入站",
+    "out": "出站",
+    "cores": "核心",
+    "os": "系統",
+    "virt": "虛擬化",
+    "region": "區域",
+    "kernel": "核心",
+    "load1m": "負載 1分鐘",
+    "load5m": "負載 5分鐘",
+    "load15m": "負載 15分鐘",
+    "upload": "↑ 上傳",
+    "download": "↓ 下載",
+    "totalUp": "總上傳 ↑",
+    "totalDown": "總下載 ↓",
+    "na": "無",
+    "tcpUdp": "TCP/UDP",
+    "avg": "平均",
+    "nodes": "個節點"
+  },
+  "action": {
+    "back": "返回",
+    "admin": "管理",
+    "clear": "清除",
+    "retry": "重試",
+    "charts": "圖表",
+    "detail": "詳情",
+    "refresh": "重新整理"
+  },
+  "view": {
+    "globe": "地球",
+    "grid": "卡片",
+    "table": "表格",
+    "uptime": "可用性"
+  },
+  "filter": {
+    "all": "全部",
+    "group": "群組",
+    "tag": "標籤",
+    "status": "狀態",
+    "matched": "匹配",
+    "sortByActivity": "按活躍度排序"
+  },
+  "placeholder": {
+    "searchNodes": "搜尋節點...",
+    "filterNodes": "篩選節點..."
+  },
+  "node": {
+    "hidden": "隱藏",
+    "noNodesAvailable": "暫無節點",
+    "addFromAdmin": "從管理面板新增節點"
+  },
+  "telemetry": {
+    "waiting": "等待遙測資料...",
+    "nodeOffline": "節點離線 — 無遙測資料",
+    "nodeOfflineShort": "節點離線 — 無遙測",
+    "noData": "無遙測資料"
+  },
+  "chart": {
+    "cpuUsage": "CPU 使用率",
+    "systemLoad": "系統負載",
+    "memory": "記憶體",
+    "diskUsage": "磁碟使用率",
+    "connections": "連線數",
+    "networkTraffic": "網路流量",
+    "pingLatency": "Ping 延遲",
+    "smooth": "平滑",
+    "raw": "原始",
+    "load": "負載",
+    "cpu": "CPU",
+    "ram": "記憶體",
+    "disk": "磁碟",
+    "net": "網路",
+    "conn": "連線",
+    "traffic": "流量",
+    "ping": "Ping",
+    "noPingData": "無 Ping 資料",
+    "noData": "無資料",
+    "nodeMonitor": "節點監控",
+    "ewmaTooltip": "EWMA 平滑：開啟後曲線經過指數加權移動平均處理，展示的是平滑趨勢線而非原始資料點。"
+  },
+  "theme": {
+    "lumina": "光明",
+    "deepspace": "深空",
+    "clean": "簡潔",
+    "currentSwitch": "目前：{{label}}。點擊切換。",
+    "select": "選擇主題",
+    "title": "主題"
+  },
+  "ws": {
+    "connecting": "連線中",
+    "live": "已連線",
+    "offline": "離線"
+  },
+  "fleet": {
+    "title": "節點群",
+    "status": "節點群狀態"
+  },
+  "table": {
+    "status": "狀態",
+    "node": "節點"
+  },
+  "info": {
+    "system": "系統資訊"
+  },
+  "legend": {
+    "online": "上線",
+    "offline": "離線"
+  },
+  "time": {
+    "now": "現在"
+  },
+  "uptime": {
+    "noData": "無資料",
+    "monitor": "可用性監控",
+    "loading": "載入可用性資料...",
+    "allSystemsOperational": "所有系統運行正常",
+    "averageDesc": "過去 {{period}} 平均可用性 {{value}}",
+    "degradedPerformance": "效能下降",
+    "noDataAvailable": "無可用性資料"
+  },
+  "footer": {
+    "poweredBy": "由",
+    "theme": "主題"
+  },
+  "site": {
+    "name": "Komari 監控"
+  },
+  "lang": {
+    "title": "語言"
+  }
+}

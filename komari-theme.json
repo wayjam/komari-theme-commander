@@ -1,0 +1,9 @@
+{
+    "name": "Komari Theme Commander",
+    "short": "Commander",
+    "description": "A cyberpunk command terminal theme for Komari Monitor. Features an interactive 3D globe, dual themes (Lumina / DeepSpace / Clean), terminal HUD-style node cards, and optional visual effects (scanlines, pulse, glow).",
+    "version": "1.0.0",
+    "author": "WayJam",
+    "url": "https://github.com/wayjam/komari-theme-commander",
+    "preview": "preview.png"
+}
