@@ -108,7 +108,8 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
   selectedNodeIdRef.current = selectedNodeId;
 
   // Stable onRender — uses refs so globe doesn't need to be recreated
-  const onRender = useCallback((state: Record<string, number>) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const onRender = useCallback((state: Record<string, any>) => {
     if (pointerInteracting.current !== null) {
       // User is dragging
     } else if (targetPhiRef.current !== null && targetThetaRef.current !== null) {
