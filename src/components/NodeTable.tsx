@@ -18,6 +18,7 @@ import type { NodeWithStatus } from '@/services/api';
 import { useRecentStats } from '@/hooks/useRecentStats';
 import { formatSpeed, formatUptime, formatBytes, getUsageStatus, calcTrafficUsage, formatTrafficType, getExpiryStatus, formatExpiry, cn } from '@/lib/utils';
 import type { TrafficLimitType } from '@/lib/utils';
+import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 
 interface NodeTableProps {
   nodes: NodeWithStatus[];
@@ -137,9 +138,16 @@ export function NodeTable({ nodes }: NodeTableProps) {
             </div>
             {/* System info row */}
             {node.stats && (
-              <div className="text-xs font-mono text-muted-foreground/50 truncate">
-                {node.os} · {node.cpu_cores}C · {formatBytes(node.stats.ram.total)}
-              </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="text-xs font-mono text-muted-foreground/50 truncate cursor-default">
+                    {node.os} · {node.cpu_cores}C · {formatBytes(node.stats.ram.total)}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs text-xs font-mono whitespace-pre-line">
+                  {[node.cpu_name && `CPU: ${node.cpu_name} (${node.cpu_cores}C)`, node.os && `OS: ${node.os}`, node.arch && `Arch: ${node.arch}`, node.virtualization && `Virt: ${node.virtualization}`, `RAM: ${formatBytes(node.stats.ram.total)}`].filter(Boolean).join('\n')}
+                </TooltipContent>
+              </Tooltip>
             )}
             {/* Traffic & expiry row */}
             <div className="flex items-center gap-3">

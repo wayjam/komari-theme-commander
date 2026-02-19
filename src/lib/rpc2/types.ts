@@ -159,7 +159,10 @@ export interface RPC2NodeData {
   os: string;
   kernel_version: string;
   gpu_name: string;
+  ipv4: string;
+  ipv6: string;
   region: string;
+  remark: string;
   mem_total: number;
   swap_total: number;
   disk_total: number;
@@ -246,6 +249,25 @@ export interface RPC2PingRecord {
   time: string;
   value: number;
   client: string;
+}
+
+/**
+ * Task info returned by common:getRecords(type=ping)
+ */
+export interface RPC2PingTask {
+  id: number;
+  name: string;
+  interval: number;
+  loss: number;
+  type?: string;
+  avg?: number;
+  latest?: number;
+  max?: number;
+  min?: number;
+  p50?: number;
+  p99?: number;
+  p99_p50_ratio?: number;
+  total?: number;
 }
 
 /**

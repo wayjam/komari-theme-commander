@@ -35,6 +35,17 @@ export function extractRegionEmoji(region: string): string {
   return '';
 }
 
+/**
+ * Extract text portion from the region field (everything after the flag emoji).
+ * Region format: "🇸🇬 Singapore" → "Singapore", "🇯🇵" → ""
+ */
+export function extractRegionText(region: string): string {
+  if (!region) return '';
+  const emoji = extractRegionEmoji(region);
+  if (!emoji) return region.trim();
+  return region.slice(emoji.length).trim();
+}
+
 /** Format network speed */
 export function formatSpeed(bytesPerSecond: number): string {
   if (bytesPerSecond === 0) return '0 B/s';
@@ -46,18 +57,41 @@ export function formatBytes(bytes: number): string {
   return prettyBytes(bytes);
 }
 
-/** Format uptime */
-export function formatUptime(seconds: number): string {
+export type UptimePrecision = 'year' | 'month' | 'day' | 'hour' | 'minute';
+
+/**
+ * Format uptime with configurable precision.
+ * Shows all units from the largest non-zero unit down to the specified precision.
+ * @param seconds - uptime in seconds
+ * @param precision - smallest unit to display, default 'hour'
+ */
+export function formatUptime(seconds: number, precision: UptimePrecision = 'hour'): string {
   const d = dayjs.duration(seconds, 'seconds');
   const years = Math.floor(d.asYears());
   const months = Math.floor(d.asMonths()) % 12;
   const days = Math.floor(d.asDays()) % 30;
   const hours = d.hours();
+  const minutes = d.minutes();
 
-  if (years > 0) return `${years}y${months}m`;
-  if (months > 0) return `${months}m${days}d`;
-  if (days > 0) return `${days}d${hours}h`;
-  return `${hours}h`;
+  const units: { value: number; label: string; key: UptimePrecision }[] = [
+    { value: years, label: 'y', key: 'year' },
+    { value: months, label: 'mo', key: 'month' },
+    { value: days, label: 'd', key: 'day' },
+    { value: hours, label: 'h', key: 'hour' },
+    { value: minutes, label: 'min', key: 'minute' },
+  ];
+
+  const precisionIndex = units.findIndex(u => u.key === precision);
+  const visibleUnits = units.slice(0, precisionIndex + 1);
+
+  // Find first non-zero unit
+  const firstNonZero = visibleUnits.findIndex(u => u.value > 0);
+  if (firstNonZero === -1) return `0${visibleUnits[visibleUnits.length - 1].label}`;
+
+  return visibleUnits
+    .slice(firstNonZero)
+    .map(u => `${u.value}${u.label}`)
+    .join(' ');
 }
 
 /** Get resource usage status */

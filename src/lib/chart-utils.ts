@@ -43,6 +43,16 @@ export interface TaskInfo {
   id: number;
   name: string;
   interval: number;
+  type?: string;
+  loss?: number;
+  avg?: number;
+  latest?: number;
+  max?: number;
+  min?: number;
+  p50?: number;
+  p99?: number;
+  p99_p50_ratio?: number;
+  total?: number;
 }
 
 export interface ChartDataPoint {

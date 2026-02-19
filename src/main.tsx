@@ -5,6 +5,7 @@ import './i18n'
 import './index.css'
 import { ThemeProvider } from './hooks/useTheme'
 import { AppConfigProvider } from './hooks/useAppConfig'
+import { TooltipProvider } from './components/ui/tooltip'
 import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(
@@ -12,7 +13,9 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <ThemeProvider>
         <AppConfigProvider>
-          <App />
+          <TooltipProvider>
+            <App />
+          </TooltipProvider>
         </AppConfigProvider>
       </ThemeProvider>
     </BrowserRouter>

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { Link } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { Cpu, Network, MemoryStick, HardDrive, Activity, Loader2 } from 'lucide-react';
+import { Cpu, MemoryStick, HardDrive, Activity, Loader2, Clock, Signal, ArrowUpDown, ExternalLink, Unplug, ChevronDown } from 'lucide-react';
 import { apiService } from '../services/api';
 import { useAppConfig } from '@/hooks/useAppConfig';
 import {
@@ -32,7 +32,6 @@ import {
   transformLoadRecords,
   processPingRecords,
   interpolatePingNulls,
-  ewmaSmooth,
   type LoadRecord,
   type PingRecord,
   type TaskInfo,
@@ -55,7 +54,7 @@ const useIsMobile = () => {
   return isMobile;
 };
 
-export function NodeCharts({ nodeUuid, nodeName }: NodeChartsProps) {
+export function NodeCharts({ nodeUuid }: NodeChartsProps) {
   const { t } = useTranslation();
   const [loadData, setLoadData] = useState<LoadRecord[] | null>(null);
   const [pingData, setPingData] = useState<PingRecord[] | null>(null);
@@ -63,8 +62,7 @@ export function NodeCharts({ nodeUuid, nodeName }: NodeChartsProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState(1);
-  const [hiddenLines, setHiddenLines] = useState<Record<string, boolean>>({});
-  const [smooth, setSmooth] = useState(false);
+  const [latencyCollapsed, setLatencyCollapsed] = useState(false);
   const isMobile = useIsMobile();
   const { recordPreserveTime, isLoggedIn } = useAppConfig();
 
@@ -98,26 +96,32 @@ export function NodeCharts({ nodeUuid, nodeName }: NodeChartsProps) {
     minTickGap: isMobile ? 50 : 30
   }), [isMobile]);
 
-  const fetchData = useCallback(() => {
+  // Fetch ping data independently (not tied to timeRange)
+  const fetchPingData = useCallback(() => {
     if (!nodeUuid) return;
-    setLoading(true);
-    setError(null);
-
-    Promise.all([
-      apiService.getLoadHistory(nodeUuid, timeRange),
-      apiService.getPingHistory(nodeUuid, timeRange)
-    ])
-      .then(([loadHistory, pingHistory]) => {
-        if (loadHistory?.records) {
-          const records = (loadHistory.records || []) as LoadRecord[];
-          records.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
-          setLoadData(records);
-        }
+    apiService.getPingHistory(nodeUuid, 1)
+      .then((pingHistory) => {
         if (pingHistory?.records) {
           const records = (pingHistory.records || []) as PingRecord[];
           records.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
           setPingData(records);
           setTasks(pingHistory.tasks || []);
+        }
+      })
+      .catch(() => {});
+  }, [nodeUuid]);
+
+  // Fetch load data (tied to timeRange)
+  const fetchLoadData = useCallback(() => {
+    if (!nodeUuid) return;
+    setLoading(true);
+    setError(null);
+    apiService.getLoadHistory(nodeUuid, timeRange)
+      .then((loadHistory) => {
+        if (loadHistory?.records) {
+          const records = (loadHistory.records || []) as LoadRecord[];
+          records.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+          setLoadData(records);
         }
         setLoading(false);
       })
@@ -127,24 +131,51 @@ export function NodeCharts({ nodeUuid, nodeName }: NodeChartsProps) {
       });
   }, [nodeUuid, timeRange]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  const fetchData = useCallback(() => {
+    fetchLoadData();
+    fetchPingData();
+  }, [fetchLoadData, fetchPingData]);
+
+  // Ping data: fetch once on mount
+  useEffect(() => { fetchPingData(); }, [fetchPingData]);
+  // Load data: fetch when timeRange changes
+  useEffect(() => { fetchLoadData(); }, [fetchLoadData]);
 
   const chartData: ChartDataPoint[] = useMemo(() => {
     if (!loadData?.length) return [];
     return transformLoadRecords(loadData);
   }, [loadData]);
 
-  const pingChartData = useMemo(() => {
-    const data = pingData || [];
-    if (!data.length) return [];
+  // Compute latency summary — independent of timeRange (uses raw ping data)
+  const latencySummary = useMemo(() => {
+    if (!pingData?.length || !tasks.length) return [];
     const taskKeys = tasks.map(t => String(t.id));
-    let processed = processPingRecords(data, tasks, timeRange);
-    processed = interpolatePingNulls(processed, taskKeys);
-    if (smooth) {
-      processed = ewmaSmooth(processed, taskKeys, 0.3);
-    }
-    return processed;
-  }, [pingData, tasks, timeRange, smooth]);
+    const processed = processPingRecords(pingData, tasks, 1);
+    const interpolated = interpolatePingNulls(processed, taskKeys);
+
+    return tasks.map(task => {
+      const key = String(task.id);
+      const values = interpolated
+        .map(d => d[key])
+        .filter((v): v is number => v !== null && v !== undefined);
+
+      const lastVal = values.length > 0 ? values[values.length - 1] : null;
+      const avgVal = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : null;
+
+      const taskRecords = pingData.filter(r => r.task_id === task.id);
+      const totalRecords = taskRecords.length;
+      const lostRecords = taskRecords.filter(r => r.value < 0).length;
+      const lossRate = totalRecords > 0 ? (lostRecords / totalRecords) * 100 : 0;
+
+      return {
+        id: task.id,
+        name: task.name,
+        current: lastVal,
+        avg: avgVal,
+        loss: lossRate,
+      };
+    });
+  }, [pingData, tasks]);
 
   const timeFormatter = useCallback((value: any, index: number) => {
     if (!chartData.length) return "";
@@ -161,10 +192,6 @@ export function NodeCharts({ nodeUuid, nodeName }: NodeChartsProps) {
     return "";
   }, [chartData.length, isMobile]);
 
-  const handleLegendClick = useCallback((e: any) => {
-    setHiddenLines((prev) => ({ ...prev, [e.dataKey]: !prev[e.dataKey] }));
-  }, []);
-
   // Chart configs
   const cpuConfig = { cpu: { label: t('label.cpu'), color: chartColors[0] } };
   const loadConfig = { load: { label: t('label.load'), color: chartColors[1] } };
@@ -172,11 +199,6 @@ export function NodeCharts({ nodeUuid, nodeName }: NodeChartsProps) {
   const diskConfig = { disk: { label: t('label.disk'), color: chartColors[3] } };
   const connConfig = { connections: { label: t('label.tcp'), color: chartColors[4] }, connections_udp: { label: t('label.udp'), color: chartColors[5] } };
   const netConfig = { network_in: { label: t('label.in'), color: chartColors[6] }, network_out: { label: t('label.out'), color: chartColors[7] } };
-  const pingConfig = useMemo(() => {
-    const c: Record<string, any> = {};
-    tasks.forEach((t, i) => { c[t.id] = { label: t.name, color: chartColors[i % chartColors.length] }; });
-    return c;
-  }, [tasks]);
 
   if (loading) {
     return (
@@ -232,32 +254,98 @@ export function NodeCharts({ nodeUuid, nodeName }: NodeChartsProps) {
 
   return (
     <div className="space-y-4 w-full overflow-hidden">
-      {/* Time range selector */}
-      <div className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl">
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold font-bold">{nodeName}</span>
-          <Link
-            to={`/node/${nodeUuid}/network`}
-            className="text-xs font-mono text-primary hover:underline"
+      {/* Latency overview table — collapsible with max-height scroll */}
+      {latencySummary.length > 0 && (
+        <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl overflow-hidden">
+          <button
+            onClick={() => setLatencyCollapsed(c => !c)}
+            className="w-full flex items-center justify-between px-4 py-3 border-b border-border/30 hover:bg-muted/10 transition-colors cursor-pointer"
           >
-            {t('label.network')} →
-          </Link>
+            <div className="flex items-center gap-2">
+              <Signal className="h-3.5 w-3.5 text-primary" />
+              <span className="text-xs font-display font-bold text-muted-foreground uppercase tracking-wider">{t('chart.latencyOverview')}</span>
+              <span className="text-xxs font-mono text-muted-foreground/50">({latencySummary.length})</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link
+                to={`/node/${nodeUuid}/network`}
+                className="flex items-center gap-1 text-xxs font-mono text-primary hover:underline"
+                onClick={e => e.stopPropagation()}
+              >
+                {t('label.viewPingLatency')}
+                <ExternalLink className="h-2.5 w-2.5" />
+              </Link>
+              <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${latencyCollapsed ? '-rotate-90' : ''}`} />
+            </div>
+          </button>
+          {!latencyCollapsed && (
+            <div className="overflow-x-auto max-h-64 overflow-y-auto">
+              <table className="w-full">
+                <thead className="sticky top-0 bg-card/95 backdrop-blur-sm z-10">
+                  <tr className="border-b border-border/20">
+                    <th className="text-left text-xxs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.taskName')}</th>
+                    <th className="text-right text-xxs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.current')}</th>
+                    <th className="text-right text-xxs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.average')}</th>
+                    <th className="text-right text-xxs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.loss')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {latencySummary.map(item => (
+                    <tr key={item.id} className="border-b border-border/10 last:border-0 hover:bg-muted/10 transition-colors">
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: chartColors[tasks.findIndex(t => t.id === item.id) % chartColors.length] }} />
+                          <span className="text-xs font-mono font-medium">{item.name}</span>
+                        </div>
+                      </td>
+                      <td className="text-right px-4 py-2">
+                        <span className="text-xs font-mono font-bold tabular-nums">
+                          {item.current !== null ? `${Math.round(item.current)} ms` : '—'}
+                        </span>
+                      </td>
+                      <td className="text-right px-4 py-2">
+                        <span className="text-xs font-mono tabular-nums text-muted-foreground">
+                          {item.avg !== null ? `${Math.round(item.avg)} ms` : '—'}
+                        </span>
+                      </td>
+                      <td className="text-right px-4 py-2">
+                        <span className={`text-xs font-mono font-bold tabular-nums ${item.loss > 5 ? 'text-red-500' : item.loss > 0 ? 'text-yellow-500' : 'text-green-500'}`}>
+                          {item.loss.toFixed(1)}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
-        <div className="flex items-center gap-1">
-          {timeRanges.map(tr => (
-            <Button
-              key={tr.value}
-              variant={timeRange === tr.value ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setTimeRange(tr.value)}
-              className="h-7 px-2.5 text-xs font-mono"
-            >
-              {tr.label}
+      )}
+
+      {/* Time range selector panel */}
+      <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-2">
+            <Clock className="h-3.5 w-3.5 text-primary" />
+            <span className="text-xs font-display font-bold text-muted-foreground uppercase tracking-wider">{t('chart.timeRange')}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            {timeRanges.map(tr => (
+              <Button
+                key={tr.value}
+                variant={timeRange === tr.value ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setTimeRange(tr.value)}
+                className="h-7 px-3 text-xs font-mono"
+              >
+                {tr.label}
+              </Button>
+            ))}
+            <div className="w-px h-5 bg-border/30 mx-1" />
+            <Button variant="ghost" size="sm" onClick={fetchData} className="h-7 px-2 text-xs font-mono hover:bg-primary/15 hover:text-primary">
+              ↻
             </Button>
-          ))}
-          <Button variant="ghost" size="sm" onClick={fetchData} className="h-7 px-2 text-xs font-mono hover:bg-primary/15 hover:text-primary">
-            ↻
-          </Button>
+          </div>
         </div>
       </div>
 
@@ -375,7 +463,7 @@ export function NodeCharts({ nodeUuid, nodeName }: NodeChartsProps) {
         <Card className={chartCardClass}>
           <CardHeader className="pb-2 px-4 pt-3">
             <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <Network className="h-4 w-4 text-primary" />
+              <Unplug className="h-4 w-4 text-primary" />
               {t('chart.connections')}
             </CardTitle>
           </CardHeader>
@@ -401,9 +489,18 @@ export function NodeCharts({ nodeUuid, nodeName }: NodeChartsProps) {
         {/* Network Traffic */}
         <Card className={chartCardClass}>
           <CardHeader className="pb-2 px-4 pt-3">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <Network className="h-4 w-4 text-primary" />
-              {t('chart.networkTraffic')}
+            <CardTitle className="flex items-center justify-between text-sm font-semibold">
+              <div className="flex items-center gap-2">
+                <ArrowUpDown className="h-4 w-4 text-primary" />
+                {t('chart.networkTraffic')}
+              </div>
+              <Link
+                to={`/node/${nodeUuid}/network`}
+                className="flex items-center gap-1 text-xxs font-mono font-normal text-primary hover:underline"
+              >
+                {t('label.viewNetworkTraffic')}
+                <ExternalLink className="h-2.5 w-2.5" />
+              </Link>
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
@@ -432,68 +529,6 @@ export function NodeCharts({ nodeUuid, nodeName }: NodeChartsProps) {
             </ChartContainer>
           </CardContent>
         </Card>
-
-        {/* Ping Latency */}
-        {pingChartData.length > 0 && (
-          <Card className={chartCardClass}>
-            <CardHeader className="pb-2 px-4 pt-3">
-              <CardTitle className="flex items-center justify-between text-sm font-semibold">
-                <span className="flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-primary" />
-                  {t('chart.pingLatency')}
-                </span>
-                <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                  <span className="text-xxs font-mono text-muted-foreground">{smooth ? t('chart.smooth') : t('chart.raw')}</span>
-                  <button
-                    onClick={() => setSmooth(s => !s)}
-                    className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${smooth ? 'bg-primary' : 'bg-muted-foreground/30'}`}
-                    title={t('chart.ewmaTooltip')}
-                  >
-                    <span className={`inline-block h-3 w-3 rounded-full bg-white transition-transform ${smooth ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
-                  </button>
-                </label>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-3">
-              <ChartContainer config={pingConfig} className={chartContainerClass}>
-                <LineChart data={pingChartData} margin={chartMargin}>
-                  <CartesianGrid vertical={false} stroke={gridStrokeColor} strokeOpacity={0.3} />
-                  <XAxis {...xAxisProps} />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    unit="ms"
-                    allowDecimals={false}
-                    orientation="left"
-                    type="number"
-                    tick={yAxisConfig.tick}
-                    width={isMobile ? 45 : 50}
-                  />
-                  <ChartTooltip
-                    cursor={false}
-                    formatter={(v: any) => `${Math.round(v)} ms`}
-                    content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />}
-                  />
-                  <ChartLegend content={<ChartLegendContent />} onClick={handleLegendClick} />
-                  {tasks.map((task, idx) => (
-                    <Line
-                      key={task.id}
-                      dataKey={String(task.id)}
-                      name={task.name}
-                      stroke={chartColors[idx % chartColors.length]}
-                      dot={false}
-                      isAnimationActive={false}
-                      strokeWidth={2}
-                      connectNulls={false}
-                      type={smooth ? "basis" : "linear"}
-                      hide={!!hiddenLines[task.id]}
-                    />
-                  ))}
-                </LineChart>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
   );

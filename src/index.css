@@ -109,7 +109,7 @@
   --accent: oklch(0.7 0.22 330);
   --accent-foreground: oklch(0.95 0.01 330);
   --destructive: oklch(0.65 0.25 15);
-  --border: oklch(0.25 0.04 270 / 50%);
+  --border: oklch(0.32 0.04 270 / 60%);
   --input: oklch(0.2 0.025 270);
   --ring: oklch(0.75 0.18 195);
   --chart-1: oklch(0.75 0.18 195);
@@ -123,7 +123,7 @@
   --sidebar-primary-foreground: oklch(0.08 0.02 265);
   --sidebar-accent: oklch(0.18 0.025 275);
   --sidebar-accent-foreground: oklch(0.85 0.01 220);
-  --sidebar-border: oklch(0.25 0.04 270 / 50%);
+  --sidebar-border: oklch(0.32 0.04 270 / 60%);
   --sidebar-ring: oklch(0.75 0.18 195);
 }
 
@@ -751,6 +751,44 @@
   }
 
   /* ════════════════════════════════════════════════════════════
+     Network Stats Panel — Theme-aware design
+     ════════════════════════════════════════════════════════════ */
+
+  /* Lumina: frosted glass lab instrument feel */
+  .network-stats-panel {
+    position: relative;
+  }
+
+  .network-stat-glow {
+    background: radial-gradient(ellipse at center, var(--primary) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  :root .network-stat-glow {
+    background: radial-gradient(ellipse at center, oklch(0.65 0.15 195 / 6%) 0%, transparent 70%);
+  }
+
+  /* DeepSpace: holographic panel with cyan edge glow */
+  [data-theme="deepspace"] .network-stats-panel {
+    border-color: oklch(0.75 0.18 195 / 20%);
+    box-shadow: inset 0 1px 0 oklch(0.75 0.18 195 / 10%), 0 0 30px oklch(0.08 0.02 265 / 50%);
+  }
+
+  [data-theme="deepspace"] .network-stat-glow {
+    background: radial-gradient(ellipse at center, oklch(0.75 0.18 195 / 8%) 0%, transparent 70%);
+  }
+
+  [data-theme="deepspace"] .network-stats-panel .divide-border\/20 > * {
+    border-color: oklch(0.35 0.05 270 / 30%);
+  }
+
+  /* Clean: minimal dividers only */
+  [data-theme="clean"] .network-stat-glow {
+    display: none;
+  }
+
+  /* ════════════════════════════════════════════════════════════
      DeepSpace Theme — Nebula Background (stars via Canvas)
      ════════════════════════════════════════════════════════════ */
 
@@ -774,11 +812,20 @@
     border-top-color: oklch(0.75 0.18 195 / 15%) !important;
   }
 
-  /* Deepspace card style — subtle cyan edge glow */
+  /* Deepspace card style — cyan edge glow */
   [data-theme="deepspace"] .bg-card\/80,
   [data-theme="deepspace"] .bg-card\/60 {
-    border-color: oklch(0.75 0.18 195 / 12%);
-    box-shadow: inset 0 1px 0 oklch(0.75 0.18 195 / 8%), 0 0 20px oklch(0.08 0.02 265 / 40%);
+    border-color: oklch(0.4 0.06 270 / 40%);
+    box-shadow: inset 0 1px 0 oklch(0.75 0.18 195 / 10%), 0 0 20px oklch(0.08 0.02 265 / 40%);
+  }
+
+  /* Deepspace chart cards — stronger border for readability */
+  [data-theme="deepspace"] [data-slot="chart"] {
+    border-color: oklch(0.75 0.18 195 / 25%);
+  }
+
+  [data-theme="deepspace"] .border-border\/50 {
+    border-color: oklch(0.4 0.06 270 / 50%);
   }
 
   /* Deepspace tooltip glow */

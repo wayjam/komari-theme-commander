@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { cn, extractRegionEmoji, formatSpeed, formatBytes, formatUptime, getUsageStatus, calcTrafficUsage, formatTrafficType, getExpiryStatus, formatExpiry } from '@/lib/utils';
 import type { TrafficLimitType } from '@/lib/utils';
 import { useAppConfig } from '@/hooks/useAppConfig';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import prettyBytes from 'pretty-bytes';
 
 interface SidebarProps {
@@ -245,7 +246,14 @@ function NodeListView({
                     )}
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="text-base font-display font-bold truncate">{node.name}</div>
+                    <div className="flex items-baseline gap-2 min-w-0">
+                      <span className="text-base font-display font-bold truncate shrink-0 max-w-[65%]">{node.name}</span>
+                      {(node.os || node.arch) && (
+                        <span className="text-xxs font-mono text-muted-foreground/70 truncate min-w-0">
+                          {[node.os?.split(/[\s/]/)[0], node.arch, node.virtualization].filter(Boolean).join(' · ')}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   {emoji && (
                     <span className="text-sm flex-shrink-0">{emoji}</span>
@@ -364,9 +372,22 @@ function NodeDetailView({
               'w-1.5 h-1.5 rounded-full',
               isOnline ? 'bg-green-500' : 'bg-red-500'
             )} />
-            <span className="text-xs font-mono text-muted-foreground">
-              {isOnline ? t('status.online') : t('status.offline')}
-            </span>
+            {isOnline && stats?.updated_at ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-xs font-mono text-muted-foreground cursor-default">
+                    {t('status.online')}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs font-mono">
+                  {t('label.lastReport')}: {new Date(stats.updated_at).toLocaleString()}
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <span className="text-xs font-mono text-muted-foreground">
+                {isOnline ? t('status.online') : t('status.offline')}
+              </span>
+            )}
             {node.group && (
               <>
                 <span className="text-xs text-muted-foreground/40">|</span>
@@ -374,6 +395,19 @@ function NodeDetailView({
               </>
             )}
           </div>
+          {/* Tags */}
+          {node.tags && (() => {
+            const tagList = node.tags.split(/[,;]/).map(t => t.trim()).filter(Boolean);
+            return tagList.length > 0 ? (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {tagList.map((tag, i) => (
+                  <span key={i} className="text-xxs font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded-sm">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            ) : null;
+          })()}
         </div>
       </div>
 
@@ -393,13 +427,23 @@ function NodeDetailView({
               </div>
               <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs font-mono">
                 <span className="text-muted-foreground">{t('label.cpu')}</span>
-                <span className="truncate" title={node.cpu_name}>{node.cpu_name || '-'}</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="truncate cursor-default">{node.cpu_name || '-'}</span>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="max-w-xs text-xs font-mono">{node.cpu_name || '-'}</TooltipContent>
+                </Tooltip>
                 <span className="text-muted-foreground">{t('label.cores')}</span>
                 <span>{node.cpu_cores}C</span>
                 <span className="text-muted-foreground">{t('label.arch')}</span>
                 <span>{node.arch || '-'}</span>
                 <span className="text-muted-foreground">{t('label.os')}</span>
-                <span className="truncate" title={node.os}>{node.os || '-'}</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="truncate cursor-default">{node.os || '-'}</span>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="max-w-xs text-xs font-mono">{node.os || '-'}</TooltipContent>
+                </Tooltip>
                 <span className="text-muted-foreground">{t('label.virt')}</span>
                 <span>{node.virtualization || '-'}</span>
                 <span className="text-muted-foreground">{t('label.region')}</span>
@@ -407,7 +451,12 @@ function NodeDetailView({
                 {node.kernel_version && (
                   <>
                     <span className="text-muted-foreground">{t('label.kernel')}</span>
-                    <span className="truncate" title={node.kernel_version}>{node.kernel_version}</span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="truncate cursor-default">{node.kernel_version}</span>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-xs text-xs font-mono">{node.kernel_version}</TooltipContent>
+                    </Tooltip>
                   </>
                 )}
               </div>
@@ -492,19 +541,25 @@ function NodeDetailView({
               </div>
             </div>
 
-            {/* Load & Process */}
-            <div className="grid grid-cols-3 gap-1.5">
-              <div className="p-2 rounded-md bg-muted/20 border border-border/30 text-center">
-                <div className="text-xs font-mono text-muted-foreground">{t('label.load1m')}</div>
-                <div className="text-sm font-mono font-bold">{stats.load.load1.toFixed(2)}</div>
+            {/* Load */}
+            <div className="p-2.5 rounded-md bg-muted/20 border border-border/30 space-y-2">
+              <div className="flex items-center gap-1.5">
+                <Activity className="h-3.5 w-3.5 text-primary" />
+                <span className="text-xs font-display font-bold text-muted-foreground uppercase">{t('label.load')}</span>
               </div>
-              <div className="p-2 rounded-md bg-muted/20 border border-border/30 text-center">
-                <div className="text-xs font-mono text-muted-foreground">{t('label.load5m')}</div>
-                <div className="text-sm font-mono font-bold">{stats.load.load5.toFixed(2)}</div>
-              </div>
-              <div className="p-2 rounded-md bg-muted/20 border border-border/30 text-center">
-                <div className="text-xs font-mono text-muted-foreground">{t('label.load15m')}</div>
-                <div className="text-sm font-mono font-bold">{stats.load.load15.toFixed(2)}</div>
+              <div className="grid grid-cols-3 gap-1.5">
+                <div className="text-center">
+                  <div className="text-xxs font-mono text-muted-foreground">{t('label.load1m')}</div>
+                  <div className="text-sm font-mono font-bold">{stats.load.load1.toFixed(2)}</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xxs font-mono text-muted-foreground">{t('label.load5m')}</div>
+                  <div className="text-sm font-mono font-bold">{stats.load.load5.toFixed(2)}</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xxs font-mono text-muted-foreground">{t('label.load15m')}</div>
+                  <div className="text-sm font-mono font-bold">{stats.load.load15.toFixed(2)}</div>
+                </div>
               </div>
             </div>
 
@@ -535,22 +590,28 @@ function NodeDetailView({
                     {stats.network.totalDown ? formatBytes(stats.network.totalDown) : t('label.na')}
                   </div>
                 </div>
+                {isLoggedIn && (
+                  <>
+                    <div>
+                      <div className="text-xs font-mono text-muted-foreground">{t('label.tcp')}</div>
+                      <div className="text-sm font-mono font-bold">{stats.connections.tcp}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-mono text-muted-foreground">{t('label.udp')}</div>
+                      <div className="text-sm font-mono font-bold">{stats.connections.udp}</div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
-            {/* Bottom row: connections + process + uptime */}
-            <div className={cn('grid gap-1.5', isLoggedIn ? 'grid-cols-3' : 'grid-cols-1')}>
+            {/* Bottom row: process + uptime */}
+            <div className={cn('grid gap-1.5', isLoggedIn ? 'grid-cols-2' : 'grid-cols-1')}>
               {isLoggedIn && (
-                <>
-                  <div className="p-2 rounded-md bg-muted/20 border border-border/30 text-center">
-                    <div className="text-xs font-mono text-muted-foreground">{t('label.tcpUdp')}</div>
-                    <div className="text-sm font-mono font-bold">{stats.connections.tcp}/{stats.connections.udp}</div>
-                  </div>
-                  <div className="p-2 rounded-md bg-muted/20 border border-border/30 text-center">
-                    <div className="text-xs font-mono text-muted-foreground">{t('label.proc')}</div>
-                    <div className="text-sm font-mono font-bold">{stats.process}</div>
-                  </div>
-                </>
+                <div className="p-2 rounded-md bg-muted/20 border border-border/30 text-center">
+                  <div className="text-xs font-mono text-muted-foreground">{t('label.proc')}</div>
+                  <div className="text-sm font-mono font-bold">{stats.process}</div>
+                </div>
               )}
               <div className="p-2 rounded-md bg-muted/20 border border-border/30 text-center">
                 <div className="text-xs font-mono text-muted-foreground">{t('label.uptime')}</div>
@@ -585,9 +646,8 @@ function NodeDetailView({
               </div>
             )}
 
-            {/* Expiry & remark - login required */}
-            {(() => {
-              if (!isLoggedIn || node.price === -1) return null;
+            {/* Expiry */}
+            {isLoggedIn && node.expired_at && (() => {
               const expiryStatus = getExpiryStatus(node.expired_at);
               return expiryStatus ? (
                 <div className={cn(
@@ -598,6 +658,8 @@ function NodeDetailView({
                 </div>
               ) : null;
             })()}
+
+            {/* Remark */}
             {node.public_remark && (
               <div className="text-xxs font-mono text-muted-foreground/60 px-2.5 border-l-2 border-primary/20">
                 {node.public_remark}
@@ -640,6 +702,13 @@ export function Sidebar({ nodes, selectedNodeId, onSelectNode, onViewCharts, cla
     [nodes, selectedNodeId]
   );
 
+  // Sync view state: if selectedNodeId is cleared externally, go back to list
+  useEffect(() => {
+    if (!selectedNodeId) {
+      setView('list');
+    }
+  }, [selectedNodeId]);
+
   const handleSelectNode = (uuid: string) => {
     onSelectNode(uuid);
     setView('detail');
@@ -658,7 +727,7 @@ export function Sidebar({ nodes, selectedNodeId, onSelectNode, onViewCharts, cla
     )}>
       <span className="corner-bottom" />
       <AnimatePresence mode="wait" initial={false}>
-        {view === 'list' || !selectedNode ? (
+        {view === 'list' ? (
           <motion.div
             key="list"
             initial={{ x: -20, opacity: 0 }}
@@ -682,11 +751,19 @@ export function Sidebar({ nodes, selectedNodeId, onSelectNode, onViewCharts, cla
             transition={{ duration: 0.2 }}
             className="flex-1 overflow-hidden flex flex-col"
           >
-            <NodeDetailView
-              node={selectedNode}
-              onBack={handleBack}
-              onViewCharts={onViewCharts}
-            />
+            {selectedNode ? (
+              <NodeDetailView
+                node={selectedNode}
+                onBack={handleBack}
+                onViewCharts={onViewCharts}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-xs font-mono text-muted-foreground">
+                <button onClick={handleBack} className="hover:text-primary cursor-pointer">
+                  <ArrowLeft className="h-4 w-4" />
+                </button>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

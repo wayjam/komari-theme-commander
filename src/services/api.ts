@@ -7,6 +7,7 @@ import type {
   RPC2StatusRecord,
   RPC2PingRecord,
   RPC2BasicInfo,
+  RPC2PingTask,
 } from '@/lib/rpc2';
 
 export interface NodeData {
@@ -38,6 +39,9 @@ export interface NodeData {
   traffic_limit?: number;
   traffic_limit_type?: string;
   public_remark?: string;
+  ipv4?: string;
+  ipv6?: string;
+  remark?: string;
 }
 
 export interface UserInfo {
@@ -123,6 +127,9 @@ function adaptNodeData(uuid: string, client: RPC2NodeData): NodeData {
     traffic_limit: client.traffic_limit,
     traffic_limit_type: client.traffic_limit_type,
     public_remark: client.public_remark,
+    ipv4: client.ipv4,
+    ipv6: client.ipv6,
+    remark: client.remark,
   };
 }
 
@@ -253,7 +260,7 @@ class ApiService {
       try {
         const result = await rpc2Client.call<
           { type: string; uuid: string; hours: number },
-          { count: number; records: RPC2PingRecord[]; basic_info: RPC2BasicInfo[]; from: string; to: string }
+          { count: number; records: RPC2PingRecord[]; basic_info: RPC2BasicInfo[]; tasks?: RPC2PingTask[]; from: string; to: string }
         >(
           'common:getRecords',
           { type: 'ping', uuid, hours }
@@ -268,19 +275,40 @@ class ApiService {
             ? Object.values(rawRecords) as RPC2PingRecord[]
             : [];
 
-        // Extract unique task_id set from records to build a compatible tasks array
-        const taskIds = new Set<number>();
-        for (const rec of recordsArray) {
-          if (rec.task_id !== undefined) {
-            taskIds.add(rec.task_id);
+        // Use tasks from backend response if available; otherwise fallback to building from records
+        let tasks: { id: number; name: string; interval: number; loss: number; type?: string; avg?: number; latest?: number; max?: number; min?: number; p50?: number; p99?: number; p99_p50_ratio?: number; total?: number }[];
+        const rawTasks = result.tasks;
+        if (Array.isArray(rawTasks) && rawTasks.length > 0) {
+          tasks = rawTasks.map(t => ({
+            id: t.id,
+            name: t.name,
+            interval: t.interval,
+            loss: t.loss ?? 0,
+            type: t.type,
+            avg: t.avg,
+            latest: t.latest,
+            max: t.max,
+            min: t.min,
+            p50: t.p50,
+            p99: t.p99,
+            p99_p50_ratio: t.p99_p50_ratio,
+            total: t.total,
+          }));
+        } else {
+          // Fallback: extract unique task_id set from records
+          const taskIds = new Set<number>();
+          for (const rec of recordsArray) {
+            if (rec.task_id !== undefined) {
+              taskIds.add(rec.task_id);
+            }
           }
+          tasks = Array.from(taskIds).map(id => ({
+            id,
+            name: `Ping #${id}`,
+            interval: 30,
+            loss: 0,
+          }));
         }
-        const tasks = Array.from(taskIds).map(id => ({
-          id,
-          name: `Ping #${id}`,
-          interval: 30, // default interval
-          loss: 0,
-        }));
 
         return {
           count: result.count,

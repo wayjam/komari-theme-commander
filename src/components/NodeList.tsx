@@ -218,7 +218,7 @@ export function NodeList({ nodes = [], loading = false, onRefresh, onViewCharts,
   return (
     <div className="space-y-3">
       {/* Terminal-style command bar */}
-      <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl overflow-visible commander-corners">
+      <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl overflow-visible commander-corners relative z-40">
         <span className="corner-bottom" />
         {/* Top status line */}
         <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/30 bg-muted/15 relative overflow-hidden">
@@ -257,7 +257,7 @@ export function NodeList({ nodes = [], loading = false, onRefresh, onViewCharts,
         </div>
 
         {/* Filter row */}
-        <div className="flex items-center gap-2 px-3 py-2 flex-wrap overflow-visible">
+        <div className="flex items-center gap-2 px-3 py-2 flex-wrap overflow-visible relative z-50">
           {/* Search input */}
           <div className="relative flex-1 min-w-[160px] max-w-[280px]">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/50" />

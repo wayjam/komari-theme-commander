@@ -104,6 +104,10 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
   const markersRef = useRef(markers);
   markersRef.current = markers;
 
+  const selectedNodeIdRef = useRef(selectedNodeId);
+  selectedNodeIdRef.current = selectedNodeId;
+
+  // Stable onRender — uses refs so globe doesn't need to be recreated
   const onRender = useCallback((state: Record<string, number>) => {
     if (pointerInteracting.current !== null) {
       // User is dragging
@@ -117,7 +121,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
         targetPhiRef.current = null;
         targetThetaRef.current = null;
       }
-    } else if (!selectedNodeId) {
+    } else if (!selectedNodeIdRef.current) {
       // Auto-rotate only when no node is selected
       phiRef.current += 0.003;
     }
@@ -126,7 +130,8 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
     state.theta = thetaRef.current;
     state.width = widthRef.current * 2;
     state.height = widthRef.current * 2;
-  }, [selectedNodeId]);
+    state.markers = markersRef.current;
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -177,7 +182,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
       globeRef.current = null;
       resizeObserver.disconnect();
     };
-  }, [theme, markers, onRender]);
+  }, [theme, onRender]);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     pointerInteracting.current = e.clientX;

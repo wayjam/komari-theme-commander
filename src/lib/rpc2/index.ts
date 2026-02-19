@@ -17,6 +17,7 @@ export type {
   RPC2NodeStatus,
   RPC2StatusRecord,
   RPC2PingRecord,
+  RPC2PingTask,
   RPC2BasicInfo,
 } from "./types";
 

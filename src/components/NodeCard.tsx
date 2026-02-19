@@ -8,6 +8,7 @@ import { useRecentStats } from '@/hooks/useRecentStats';
 import { formatBytes, formatSpeed, formatUptime, getUsageStatus, calcTrafficUsage, formatTrafficType, getExpiryStatus, formatExpiry, cn } from '@/lib/utils';
 import type { TrafficLimitType } from '@/lib/utils';
 import { useAppConfig } from '@/hooks/useAppConfig';
+import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 
 interface NodeCardProps {
   node: NodeWithStatus;
@@ -189,9 +190,16 @@ export function NodeCard({ node }: NodeCardProps) {
           </div>
           {/* System info row */}
           {(node.os || node.arch) && (
-            <div className="text-xs font-mono text-muted-foreground/50 truncate ml-4">
-              {node.os}{node.os && node.arch && ' · '}{node.virtualization && `${node.virtualization}/`}{node.arch}
-            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="text-xs font-mono text-muted-foreground/50 truncate ml-4 cursor-default">
+                  {node.os}{node.os && node.arch && ' · '}{node.virtualization && `${node.virtualization}/`}{node.arch}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs text-xs font-mono whitespace-pre-line">
+                {[node.cpu_name && `CPU: ${node.cpu_name} (${node.cpu_cores}C)`, node.os && `OS: ${node.os}`, node.arch && `Arch: ${node.arch}`, node.virtualization && `Virt: ${node.virtualization}`, node.kernel_version && `Kernel: ${node.kernel_version}`].filter(Boolean).join('\n')}
+              </TooltipContent>
+            </Tooltip>
           )}
           {node.public_remark && (
             <p className="text-xs font-mono text-muted-foreground/70 ml-4 line-clamp-1">
