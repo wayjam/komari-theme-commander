@@ -6,17 +6,17 @@ import { supportedLanguages, type SupportedLanguage } from '../i18n';
 
 const languageLabels: Record<SupportedLanguage, string> = {
   en: 'EN',
-  'zh-CN': '简',
-  'zh-TW': '繁',
+  'zh-Hans': '简',
+  'zh-Hant': '繁',
 };
 
 function resolveLanguage(lang: string): SupportedLanguage {
   const codes = supportedLanguages.map(l => l.code);
   if (codes.includes(lang as SupportedLanguage)) return lang as SupportedLanguage;
-  // e.g. "zh-TW" from navigator might come as "zh-Hant-TW", "zh" → fallback to zh-CN
+  // e.g. "zh-TW" from navigator might come as "zh-Hant-TW", "zh" → fallback to zh-Hans
   if (lang.startsWith('zh')) {
-    if (lang.includes('TW') || lang.includes('HK') || lang.includes('Hant')) return 'zh-TW';
-    return 'zh-CN';
+    if (lang.includes('TW') || lang.includes('HK') || lang.includes('Hant')) return 'zh-Hant';
+    return 'zh-Hans';
   }
   return 'en';
 }
