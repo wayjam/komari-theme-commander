@@ -140,7 +140,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
             {node.stats && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="text-xs font-mono text-muted-foreground/50 truncate cursor-default">
+                  <div className="text-xs font-mono text-muted-foreground/60 truncate cursor-default">
                     {node.os} · {node.cpu_cores}C · {formatBytes(node.stats.ram.total)}
                   </div>
                 </TooltipTrigger>
@@ -234,7 +234,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
           return (
             <div className="text-xs font-mono tabular-nums leading-tight">
               <div><span className="text-green-500/70">↑</span>{formatSpeed(stats.network.up)}</div>
-              <div><span className="text-blue-400/70">↓</span>{formatSpeed(stats.network.down)}</div>
+              <div><span className="text-primary/70">↓</span>{formatSpeed(stats.network.down)}</div>
             </div>
           );
         },
@@ -301,14 +301,14 @@ export function NodeTable({ nodes }: NodeTableProps) {
       <span className="corner-bottom" />
       
       {/* Console Header Decoration */}
-      <div className="flex items-center justify-between px-3 py-1 border-b border-border/30 bg-muted/10 text-xxs font-mono text-muted-foreground/40 uppercase tracking-[0.2em] relative z-10">
+      <div className="console-header-decoration flex items-center justify-between px-3 py-1 border-b border-border/30 bg-muted/10 text-xxs font-mono text-muted-foreground/40 uppercase tracking-[0.2em] relative z-10">
         <div className="flex items-center gap-2">
           <div className="w-1.5 h-1.5 rounded-full bg-primary/30" />
-          <span>Table View Mode :: Data Stream Alpha-4</span>
+          <span>{t('hud.tableMode')}</span>
         </div>
         <div className="flex items-center gap-4">
-          <span>PARITY: OK</span>
-          <span>BWIDTH: NOMINAL</span>
+          <span>{t('hud.parityOk')}</span>
+          <span>{t('hud.bwidthNominal')}</span>
         </div>
       </div>
 
@@ -437,7 +437,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
                   <span className={textColor[getUsageStatus(ramUsage, { warning: 70, critical: 85 })]}>{t('label.ram')} {ramUsage.toFixed(0)}%</span>
                   <span className={textColor[getUsageStatus(diskUsage, { warning: 75, critical: 90 })]}>{t('label.disk')} {diskUsage.toFixed(0)}%</span>
                   <span><span className="text-green-500/70">↑</span>{formatSpeed(stats.network.up)}</span>
-                  <span><span className="text-blue-400/70">↓</span>{formatSpeed(stats.network.down)}</span>
+                    <span><span className="text-primary/70">↓</span>{formatSpeed(stats.network.down)}</span>
                   <span>{formatUptime(stats.uptime)}</span>
                 </div>
               )}

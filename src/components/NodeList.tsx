@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import { NodeCard } from './NodeCard';
 import { NodeTable } from './NodeTable';
-import { Button } from './ui/button';
+import { HudSpinner } from './HudSpinner';
 import { RefreshCw, Search, X, ChevronDown } from 'lucide-react';
 import type { NodeWithStatus } from '@/services/api';
 import { cn } from '@/lib/utils';
@@ -151,6 +151,14 @@ export function NodeList({ nodes = [], loading = false, onRefresh, onViewCharts,
   const [tagFilter, setTagFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(() => {
+    if (!onRefresh || isRefreshing) return;
+    setIsRefreshing(true);
+    onRefresh();
+    setTimeout(() => setIsRefreshing(false), 800);
+  }, [onRefresh, isRefreshing]);
 
   const groups = Array.from(new Set(nodes.map(n => n.group).filter(Boolean)));
 
@@ -209,8 +217,77 @@ export function NodeList({ nodes = [], loading = false, onRefresh, onViewCharts,
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+      <div className="space-y-3">
+        {/* Skeleton command bar */}
+        <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl overflow-hidden commander-corners relative">
+          <span className="corner-bottom" />
+          <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/30 bg-muted/15 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-primary/30 to-transparent animate-pulse" />
+            <div className="flex items-center gap-3 text-xs font-mono">
+              <span className="text-muted-foreground/60">$</span>
+              <span className="font-display font-bold text-xs tracking-wider">{t('fleet.title')}</span>
+              <span className="text-muted-foreground/50">|</span>
+              <div className="h-3 w-12 rounded bg-muted/30 animate-pulse" />
+            </div>
+          </div>
+        </div>
+
+        {/* Skeleton card grid */}
+        <div className="relative">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="rounded-xl border border-border/50 bg-card/80 backdrop-blur-xl overflow-hidden commander-corners relative"
+                style={{ animationDelay: `${i * 120}ms` }}
+              >
+                {/* Skeleton header */}
+                <div className="flex items-center gap-2.5 px-3 py-2 border-b border-border/30 bg-muted/10">
+                  <div className="w-2 h-2 rounded-full bg-muted/40 animate-pulse" />
+                  <div className="h-3.5 rounded bg-muted/25 animate-pulse" style={{ width: `${50 + Math.random() * 30}%` }} />
+                </div>
+                {/* Skeleton content */}
+                <div className="px-3 py-3 space-y-2.5">
+                  {/* Gauge bars */}
+                  {[0.7, 0.5, 0.6].map((w, j) => (
+                    <div key={j} className="space-y-1">
+                      <div className="flex justify-between">
+                        <div className="h-2.5 w-8 rounded bg-muted/20 animate-pulse" />
+                        <div className="h-2.5 w-10 rounded bg-muted/20 animate-pulse" />
+                      </div>
+                      <div className="h-1.5 rounded-full bg-muted/15 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-primary/15 animate-pulse hud-skeleton-bar"
+                          style={{ width: `${w * 100}%`, animationDelay: `${(i * 3 + j) * 150}ms` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  {/* Data cells */}
+                  <div className="grid grid-cols-4 gap-1 pt-1">
+                    {[0, 1, 2, 3].map(j => (
+                      <div key={j} className="text-center p-1.5 rounded bg-muted/10 border border-border/15">
+                        <div className="h-2 w-6 mx-auto rounded bg-muted/20 animate-pulse mb-1" />
+                        <div className="h-3 w-10 mx-auto rounded bg-muted/15 animate-pulse" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* Scanning overlay */}
+                <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                  <div className="hud-skeleton-scan absolute w-full h-8 bg-gradient-to-b from-transparent via-primary/[0.04] to-transparent" />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Center spinner overlay */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="bg-background/60 backdrop-blur-sm rounded-2xl p-6">
+              <HudSpinner size="lg" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -249,9 +326,20 @@ export function NodeList({ nodes = [], loading = false, onRefresh, onViewCharts,
               </button>
             )}
             {onRefresh && (
-              <Button variant="ghost" size="sm" onClick={onRefresh} className="h-6 w-6 p-0 hover:bg-primary/15 hover:text-primary">
-                <RefreshCw className="h-3 w-3" />
-              </Button>
+              <button
+                onClick={handleRefresh}
+                className={cn(
+                  'fleet-refresh-btn group relative flex items-center gap-1.5 h-6 px-2 rounded text-xs font-mono border transition-all duration-200 cursor-pointer overflow-hidden',
+                  isRefreshing
+                    ? 'border-primary/40 text-primary bg-primary/10'
+                    : 'border-border/30 text-muted-foreground/70 hover:border-primary/50 hover:text-primary hover:bg-primary/5'
+                )}
+                title={t('action.refresh')}
+              >
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5" />
+                <RefreshCw className={cn('h-3 w-3 relative z-10 transition-transform', isRefreshing && 'animate-spin')} />
+                <span className="relative z-10 uppercase tracking-wider text-xxs font-bold hidden sm:inline">{t('action.refresh')}</span>
+              </button>
             )}
           </div>
         </div>
@@ -294,9 +382,9 @@ export function NodeList({ nodes = [], loading = false, onRefresh, onViewCharts,
             <div className="w-32 h-32 rounded-full border border-primary/10 animate-ping" style={{ animationDuration: '3s' }} />
           </div>
           <div className="relative z-10 flex flex-col items-center gap-1.5">
-            <span className="text-sm font-display font-bold text-muted-foreground/60 uppercase tracking-widest no-signal-pulse">NO SIGNAL</span>
+            <span className="text-sm font-display font-bold text-muted-foreground/60 uppercase tracking-widest no-signal-pulse">{t('hud.noSignal')}</span>
             <div className="text-xs font-mono text-muted-foreground">{t('node.noNodesAvailable')}</div>
-            <div className="text-xxs font-mono text-muted-foreground/60 mt-1">{t('node.addFromAdmin')}</div>
+            <div className="text-xs font-mono text-muted-foreground/60 mt-1">{t('node.addFromAdmin')}</div>
           </div>
         </div>
       ) : defaultView === 'grid' ? (

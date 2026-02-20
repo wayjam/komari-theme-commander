@@ -91,6 +91,7 @@
     "addFromAdmin": "从管理面板添加节点"
   },
   "telemetry": {
+    "acquiring": "信号捕获中...",
     "waiting": "等待遥测数据...",
     "nodeOffline": "节点离线 — 无遥测数据",
     "nodeOfflineShort": "节点离线 — 无遥测",
@@ -184,5 +185,16 @@
   },
   "lang": {
     "title": "语言"
+  },
+  "hud": {
+    "labMonitor": "实验室监控",
+    "orbitalMonitoring": "轨道监控",
+    "globalTelemetry": "全球遥测",
+    "activeThreats": "发现活跃威胁",
+    "criticalLoad": "负载严重",
+    "noSignal": "无信号",
+    "tableMode": "表格模式 :: 数据流 Alpha-4",
+    "parityOk": "校验：正常",
+    "bwidthNominal": "带宽：正常"
   }
 }

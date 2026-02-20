@@ -91,6 +91,7 @@
     "addFromAdmin": "從管理面板新增節點"
   },
   "telemetry": {
+    "acquiring": "訊號擷取中...",
     "waiting": "等待遙測資料...",
     "nodeOffline": "節點離線 — 無遙測資料",
     "nodeOfflineShort": "節點離線 — 無遙測",
@@ -184,5 +185,16 @@
   },
   "lang": {
     "title": "語言"
+  },
+  "hud": {
+    "labMonitor": "實驗室監控",
+    "orbitalMonitoring": "軌道監控",
+    "globalTelemetry": "全球遙測",
+    "activeThreats": "發現活躍威脅",
+    "criticalLoad": "負載嚴重",
+    "noSignal": "無訊號",
+    "tableMode": "表格模式 :: 資料流 Alpha-4",
+    "parityOk": "校驗：正常",
+    "bwidthNominal": "頻寬：正常"
   }
 }

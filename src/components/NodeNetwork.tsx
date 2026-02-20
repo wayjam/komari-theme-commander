@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState, useCallback, Fragment } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { ArrowLeft, Network, Loader2, Signal, ArrowUpDown, Unplug, ChevronDown, ChevronRight, Info } from 'lucide-react';
+import { ArrowLeft, Network, Signal, ArrowUpDown, Unplug, ChevronDown, ChevronRight, Info } from 'lucide-react';
+import { HudSpinner } from './HudSpinner';
 import { apiService } from '../services/api';
 import { useAppConfig } from '@/hooks/useAppConfig';
 import { formatSpeed, formatBytes } from '@/lib/utils';
@@ -330,7 +331,7 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <HudSpinner size="lg" />
       </div>
     );
   }
@@ -396,7 +397,7 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
               <div className="relative">
                 <div className="flex items-center gap-1.5 mb-2">
                   <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-primary/10 text-primary text-xs">↑</span>
-                  <span className="text-xxs font-display font-bold text-muted-foreground/60 uppercase tracking-wider">{t('label.upload')}</span>
+                  <span className="text-xs font-display font-bold text-muted-foreground/60 uppercase tracking-wider">{t('label.upload')}</span>
                 </div>
                 <div className="text-lg font-mono font-bold tabular-nums">{formatSpeed(stats.network.up)}</div>
               </div>
@@ -406,7 +407,7 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
               <div className="relative">
                 <div className="flex items-center gap-1.5 mb-2">
                   <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-accent/10 text-accent text-xs">↓</span>
-                  <span className="text-xxs font-display font-bold text-muted-foreground/60 uppercase tracking-wider">{t('label.download')}</span>
+                  <span className="text-xs font-display font-bold text-muted-foreground/60 uppercase tracking-wider">{t('label.download')}</span>
                 </div>
                 <div className="text-lg font-mono font-bold tabular-nums">{formatSpeed(stats.network.down)}</div>
               </div>
@@ -420,7 +421,7 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
                   <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-muted/30">
                     <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                   </span>
-                  <span className="text-xxs font-display font-bold text-muted-foreground/60 uppercase tracking-wider">{t('label.totalUp')}</span>
+                  <span className="text-xs font-display font-bold text-muted-foreground/60 uppercase tracking-wider">{t('label.totalUp')}</span>
                 </div>
                 <div className="text-sm font-mono font-bold tabular-nums">
                   {stats.network.totalUp ? formatBytes(stats.network.totalUp) : t('label.na')}
@@ -434,7 +435,7 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
                   <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-muted/30">
                     <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                   </span>
-                  <span className="text-xxs font-display font-bold text-muted-foreground/60 uppercase tracking-wider">{t('label.totalDown')}</span>
+                  <span className="text-xs font-display font-bold text-muted-foreground/60 uppercase tracking-wider">{t('label.totalDown')}</span>
                 </div>
                 <div className="text-sm font-mono font-bold tabular-nums">
                   {stats.network.totalDown ? formatBytes(stats.network.totalDown) : t('label.na')}
@@ -451,16 +452,16 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
                     <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-muted/30">
                       <Unplug className="h-3 w-3 text-muted-foreground" />
                     </span>
-                    <span className="text-xxs font-display font-bold text-muted-foreground/60 uppercase tracking-wider">{t('label.tcpUdp')}</span>
+                    <span className="text-xs font-display font-bold text-muted-foreground/60 uppercase tracking-wider">{t('label.tcpUdp')}</span>
                   </div>
                   <div className="flex items-baseline gap-4">
                     <div>
-                      <span className="text-xxs font-mono text-muted-foreground/50">TCP</span>
+                      <span className="text-xs font-mono text-muted-foreground/60">TCP</span>
                       <span className="text-sm font-mono font-bold tabular-nums ml-1.5">{stats.connections.tcp}</span>
                     </div>
                     <div className="w-px h-4 bg-border/30" />
                     <div>
-                      <span className="text-xxs font-mono text-muted-foreground/50">UDP</span>
+                      <span className="text-xs font-mono text-muted-foreground/60">UDP</span>
                       <span className="text-sm font-mono font-bold tabular-nums ml-1.5">{stats.connections.udp}</span>
                     </div>
                   </div>
@@ -481,7 +482,7 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
             <div className="flex items-center gap-2">
               <Signal className="h-3.5 w-3.5 text-primary" />
               <span className="text-xs font-display font-bold text-muted-foreground uppercase tracking-wider">{t('chart.latencyOverview')}</span>
-              <span className="text-xxs font-mono text-muted-foreground/50">({latencySummary.length})</span>
+              <span className="text-xxs font-mono text-muted-foreground/60">({latencySummary.length})</span>
             </div>
             <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${latencyCollapsed ? '-rotate-90' : ''}`} />
           </button>
@@ -489,18 +490,18 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
             <>
               <div className="px-4 py-2 border-b border-border/10 flex items-start gap-1.5 bg-muted/5">
                 <Info className="h-3 w-3 text-muted-foreground/40 mt-0.5 shrink-0" />
-                <span className="text-xxs font-mono text-muted-foreground/50 leading-relaxed">{t('chart.lossDisclaimer')}</span>
+                <span className="text-xs font-mono text-muted-foreground/60 leading-relaxed">{t('chart.lossDisclaimer')}</span>
               </div>
               <div className="overflow-x-auto max-h-128 overflow-y-auto">
                 <table className="w-full">
                   <thead className="sticky top-0 bg-card/95 backdrop-blur-sm z-10">
                     <tr className="border-b border-border/20">
-                      <th className="text-left text-xxs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2 w-8"></th>
-                      <th className="text-left text-xxs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.taskName')}</th>
-                      <th className="text-right text-xxs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.current')}</th>
-                      <th className="text-right text-xxs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.average')}</th>
-                      <th className="text-right text-xxs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.loss')}</th>
-                      <th className="text-right text-xxs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.jitter')}</th>
+                      <th className="text-left text-xs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2 w-8"></th>
+                      <th className="text-left text-xs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.taskName')}</th>
+                      <th className="text-right text-xs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.current')}</th>
+                      <th className="text-right text-xs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.average')}</th>
+                      <th className="text-right text-xs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.loss')}</th>
+                      <th className="text-right text-xs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.jitter')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -555,49 +556,49 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
                               <td colSpan={6} className="px-4 py-3 bg-muted/5">
                                 <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-2">
                                   <div>
-                                    <div className="text-xxs font-mono text-muted-foreground/50 uppercase">{t('chart.min')}</div>
+                                    <div className="text-xs font-mono text-muted-foreground/60 uppercase">{t('chart.min')}</div>
                                     <div className="text-xs font-mono font-bold tabular-nums">{item.min !== null ? `${Math.round(item.min)} ms` : '—'}</div>
                                   </div>
                                   <div>
-                                    <div className="text-xxs font-mono text-muted-foreground/50 uppercase">{t('chart.max')}</div>
+                                    <div className="text-xs font-mono text-muted-foreground/60 uppercase">{t('chart.max')}</div>
                                     <div className="text-xs font-mono font-bold tabular-nums">{item.max !== null ? `${Math.round(item.max)} ms` : '—'}</div>
                                   </div>
                                   <div>
-                                    <div className="text-xxs font-mono text-muted-foreground/50 uppercase">{t('chart.average')}</div>
+                                    <div className="text-xs font-mono text-muted-foreground/60 uppercase">{t('chart.average')}</div>
                                     <div className="text-xs font-mono font-bold tabular-nums">{item.avg !== null ? `${Math.round(item.avg)} ms` : '—'}</div>
                                   </div>
                                   <div>
-                                    <div className="text-xxs font-mono text-muted-foreground/50 uppercase">{t('chart.current')}</div>
+                                    <div className="text-xs font-mono text-muted-foreground/60 uppercase">{t('chart.current')}</div>
                                     <div className="text-xs font-mono font-bold tabular-nums">{item.current !== null ? `${Math.round(item.current)} ms` : '—'}</div>
                                   </div>
                                   <div>
-                                    <div className="text-xxs font-mono text-muted-foreground/50 uppercase">{t('chart.jitter')}</div>
+                                    <div className="text-xs font-mono text-muted-foreground/60 uppercase">{t('chart.jitter')}</div>
                                     <div className="text-xs font-mono font-bold tabular-nums">{item.jitter !== null ? item.jitter.toFixed(2) : '—'}</div>
                                   </div>
                                   <div>
-                                    <div className="text-xxs font-mono text-muted-foreground/50 uppercase">P50</div>
+                                    <div className="text-xs font-mono text-muted-foreground/60 uppercase">P50</div>
                                     <div className="text-xs font-mono font-bold tabular-nums">{item.p50 !== null ? `${Math.round(item.p50)} ms` : '—'}</div>
                                   </div>
                                   <div>
-                                    <div className="text-xxs font-mono text-muted-foreground/50 uppercase">P99</div>
+                                    <div className="text-xs font-mono text-muted-foreground/60 uppercase">P99</div>
                                     <div className="text-xs font-mono font-bold tabular-nums">{item.p99 !== null ? `${Math.round(item.p99)} ms` : '—'}</div>
                                   </div>
                                   <div>
-                                    <div className="text-xxs font-mono text-muted-foreground/50 uppercase">{t('chart.loss')}</div>
+                                    <div className="text-xs font-mono text-muted-foreground/60 uppercase">{t('chart.loss')}</div>
                                     <div className={`text-xs font-mono font-bold tabular-nums ${item.loss > 5 ? 'text-red-500' : item.loss > 0 ? 'text-yellow-500' : 'text-green-500'}`}>
                                       {item.loss.toFixed(1)}%
                                     </div>
                                   </div>
                                   <div>
-                                    <div className="text-xxs font-mono text-muted-foreground/50 uppercase">{t('chart.checkInterval')}</div>
+                                    <div className="text-xs font-mono text-muted-foreground/60 uppercase">{t('chart.checkInterval')}</div>
                                     <div className="text-xs font-mono font-bold tabular-nums">{item.interval}s</div>
                                   </div>
                                   <div>
-                                    <div className="text-xxs font-mono text-muted-foreground/50 uppercase">{t('chart.checkType')}</div>
+                                    <div className="text-xs font-mono text-muted-foreground/60 uppercase">{t('chart.checkType')}</div>
                                     <div className="text-xs font-mono font-bold tabular-nums uppercase">{item.type || '—'}</div>
                                   </div>
                                   <div>
-                                    <div className="text-xxs font-mono text-muted-foreground/50 uppercase">{t('chart.sampleCount')}</div>
+                                    <div className="text-xs font-mono text-muted-foreground/60 uppercase">{t('chart.sampleCount')}</div>
                                     <div className="text-xs font-mono font-bold tabular-nums">{item.total !== null ? item.total : '—'}</div>
                                   </div>
                                 </div>

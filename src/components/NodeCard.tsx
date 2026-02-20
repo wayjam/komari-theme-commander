@@ -26,7 +26,7 @@ function HudGauge({ label, value, unit = '%', status, total }: { label: string; 
           <span className={cn('text-xs font-mono font-bold tabular-nums', textColor)}>
             {value.toFixed(1)}{unit}
           </span>
-          {total && <span className="text-xxs font-mono text-muted-foreground/50">{total}</span>}
+          {total && <span className="text-xxs font-mono text-muted-foreground/60">{total}</span>}
         </span>
       </div>
       <div className="h-[3px] w-full bg-muted/40 rounded-full overflow-hidden relative">
@@ -192,7 +192,7 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
           {(node.os || node.arch) && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="text-xs font-mono text-muted-foreground/50 truncate ml-4 cursor-default">
+                <div className="text-xs font-mono text-muted-foreground/60 truncate ml-4 cursor-default">
                   {node.os}{node.os && node.arch && ' · '}{node.virtualization && `${node.virtualization}/`}{node.arch}
                 </div>
               </TooltipTrigger>
@@ -248,12 +248,12 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
               <div className="text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
                 <div className="text-xs font-mono text-muted-foreground">{t('label.netUp')}</div>
                 <div className="text-xs font-mono font-bold tabular-nums">{formatSpeed(stats.network.up).replace('/s','')}</div>
-                <div className="text-xxs font-mono text-muted-foreground/50">{formatBytes(stats.network.totalUp)}</div>
+                <div className="text-xxs font-mono text-muted-foreground/60">{formatBytes(stats.network.totalUp)}</div>
               </div>
               <div className="text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
                 <div className="text-xs font-mono text-muted-foreground">{t('label.netDown')}</div>
                 <div className="text-xs font-mono font-bold tabular-nums">{formatSpeed(stats.network.down).replace('/s','')}</div>
-                <div className="text-xxs font-mono text-muted-foreground/50">{formatBytes(stats.network.totalDown)}</div>
+                <div className="text-xxs font-mono text-muted-foreground/60">{formatBytes(stats.network.totalDown)}</div>
               </div>
               <div className="text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
                 <div className="text-xs font-mono text-muted-foreground">{t('label.up')}</div>

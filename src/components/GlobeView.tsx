@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Globe } from '@/components/Globe';
 import { Sidebar } from '@/components/Sidebar';
+import { HudSpinner } from './HudSpinner';
 import { useTheme } from '@/hooks/useTheme';
 import type { NodeWithStatus } from '@/services/api';
 
@@ -21,10 +23,12 @@ function fmtSpeed(b: number): string {
 
 interface GlobeViewProps {
   nodes: NodeWithStatus[];
+  loading?: boolean;
   onViewCharts: (uuid: string, name: string) => void;
 }
 
-export function GlobeView({ nodes, onViewCharts }: GlobeViewProps) {
+export function GlobeView({ nodes, loading = false, onViewCharts }: GlobeViewProps) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
@@ -180,7 +184,7 @@ export function GlobeView({ nodes, onViewCharts }: GlobeViewProps) {
         {/* HUD Decorations — Top Left */}
         <div className="absolute top-4 left-4 z-20 pointer-events-none">
           <div className="text-xs font-mono text-primary/40 uppercase tracking-[0.2em] mb-1">
-            {theme === 'lumina' ? 'Lab Monitor' : 'Orbital Monitoring'}
+            {theme === 'lumina' ? t('hud.labMonitor') : t('hud.orbitalMonitoring')}
           </div>
           <div className="flex gap-1">
             {[1, 2, 3, 4].map(i => (
@@ -191,7 +195,7 @@ export function GlobeView({ nodes, onViewCharts }: GlobeViewProps) {
 
         {/* HUD Decorations — Bottom Right */}
         <div className="absolute bottom-4 right-4 z-20 pointer-events-none text-right">
-          <div className="text-xs font-mono text-primary/40 uppercase tracking-[0.2em] mb-1">Global Telemetry</div>
+          <div className="text-xs font-mono text-primary/40 uppercase tracking-[0.2em] mb-1">{t('hud.globalTelemetry')}</div>
           <div className="flex gap-1 justify-end">
             <div className="w-16 h-0.5 bg-primary/20" />
           </div>
@@ -205,7 +209,7 @@ export function GlobeView({ nodes, onViewCharts }: GlobeViewProps) {
           <div className="absolute bottom-4 left-4 z-20 pointer-events-none">
             <div className="text-xs font-mono text-red-500/60 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              Active Threats Identified
+              {t('hud.activeThreats')}
             </div>
             <div className="space-y-1">
               {nodes.filter(n => n.status === 'online' && (
@@ -214,7 +218,7 @@ export function GlobeView({ nodes, onViewCharts }: GlobeViewProps) {
               )).slice(0, 3).map(node => (
                 <div key={node.uuid} className="text-xxs font-mono text-red-400/50 flex gap-2 items-center">
                   <span className="bg-red-500/10 px-1 border border-red-500/20">{node.name.substring(0, 10)}</span>
-                  <span className="animate-pulse">{" >> "}CRITICAL LOAD</span>
+                  <span className="animate-pulse">{" >> "}{t('hud.criticalLoad')}</span>
                 </div>
               ))}
             </div>
@@ -227,11 +231,22 @@ export function GlobeView({ nodes, onViewCharts }: GlobeViewProps) {
           selectedNodeId={selectedNodeId}
           className="w-full h-full"
         />
+
+        {/* Loading overlay */}
+        {loading && nodes.length === 0 && (
+          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-background/30 backdrop-blur-sm">
+            <HudSpinner size="lg" />
+            <div className="mt-4 text-xs font-mono text-primary/60 uppercase tracking-[0.15em]">
+              {t('telemetry.acquiring')}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Sidebar */}
       <Sidebar
         nodes={nodes}
+        loading={loading}
         selectedNodeId={selectedNodeId}
         onSelectNode={setSelectedNodeId}
         onViewCharts={onViewCharts}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Loader2 } from 'lucide-react';
+import { X } from 'lucide-react';
+import { HudSpinner } from './HudSpinner';
 import { motion } from 'motion/react';
 import { apiService } from '@/services/api';
 import {
@@ -159,7 +160,7 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
     if (loading) {
       return (
         <div className="flex items-center justify-center h-full">
-          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          <HudSpinner size="md" />
         </div>
       );
     }

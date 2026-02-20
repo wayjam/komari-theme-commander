@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Shield, ShieldCheck, ShieldX, RefreshCw, ChevronRight } from 'lucide-react';
+import { HudSpinner } from './HudSpinner';
 import { apiService } from '@/services/api';
 import type { NodeWithStatus } from '@/services/api';
 import { cn } from '@/lib/utils';
@@ -141,7 +142,7 @@ function NodeRow({ node, uptime, loading, onNavigate }: NodeRowProps) {
         )}
         <span className="ml-auto flex items-center gap-1.5">
           {loading ? (
-            <RefreshCw className="h-3 w-3 animate-spin text-muted-foreground" />
+            <HudSpinner size="sm" className="text-muted-foreground" />
           ) : pct !== null ? (
             <span className={cn('text-sm font-mono font-bold tabular-nums px-2 py-0.5 rounded bg-muted/20 border border-border/30', pctColor)}>
               {pct.toFixed(1)}%
@@ -468,7 +469,7 @@ export function UptimeView({ nodes }: UptimeViewProps) {
       <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl p-4 flex items-center gap-3">
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm font-mono text-muted-foreground">
-            <RefreshCw className="h-4 w-4 animate-spin" />
+            <HudSpinner size="md" />
             {t('uptime.loading')}
           </div>
         ) : avgUptime !== null && avgUptime >= 99 ? (

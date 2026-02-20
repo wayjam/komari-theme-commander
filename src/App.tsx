@@ -492,7 +492,7 @@ function Dashboard() {
   return (
     <>
       {viewMode === 'globe' ? (
-        <GlobeView nodes={nodes} onViewCharts={handleViewCharts} />
+        <GlobeView nodes={nodes} loading={loading} onViewCharts={handleViewCharts} />
       ) : viewMode === 'uptime' ? (
         <UptimeView nodes={nodes} />
       ) : (

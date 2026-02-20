@@ -143,8 +143,8 @@
   --secondary-foreground: oklch(0.25 0 0);
   --muted: oklch(0.96 0 0);
   --muted-foreground: oklch(0.45 0 0);
-  --accent: oklch(0.95 0 0);
-  --accent-foreground: oklch(0.2 0 0);
+  --accent: oklch(0.93 0.04 250);
+  --accent-foreground: oklch(0.2 0.02 250);
   --destructive: oklch(0.55 0.2 25);
   --border: oklch(0.9 0 0);
   --input: oklch(0.96 0 0);
@@ -158,8 +158,8 @@
   --sidebar-foreground: oklch(0.15 0 0);
   --sidebar-primary: oklch(0.45 0.12 250);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.95 0 0);
-  --sidebar-accent-foreground: oklch(0.25 0 0);
+  --sidebar-accent: oklch(0.93 0.04 250);
+  --sidebar-accent-foreground: oklch(0.2 0.02 250);
   --sidebar-border: oklch(0.9 0 0);
   --sidebar-ring: oklch(0.45 0.12 250);
 }
@@ -1148,5 +1148,176 @@
 
   [data-theme="clean"] .sidebar-node-scanline {
     display: none;
+  }
+
+  /* Clean: hide inline HUD decorative elements */
+  [data-theme="clean"] .console-header-decoration {
+    display: none;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     Fleet refresh button — HUD styled
+     ════════════════════════════════════════════════════════════ */
+
+  .fleet-refresh-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, var(--color-primary) / 0.08, transparent);
+    transition: left 0.4s ease;
+    pointer-events: none;
+  }
+
+  .fleet-refresh-btn:hover::before {
+    left: 100%;
+  }
+
+  [data-theme="deepspace"] .fleet-refresh-btn:hover {
+    box-shadow: 0 0 8px oklch(0.7 0.15 200 / 15%), inset 0 0 12px oklch(0.7 0.15 200 / 5%);
+  }
+
+  [data-theme="clean"] .fleet-refresh-btn::before {
+    display: none;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     HUD Skeleton — Node list loading skeleton
+     ════════════════════════════════════════════════════════════ */
+
+  .hud-skeleton-scan {
+    animation: hud-skeleton-scan-sweep 2.5s ease-in-out infinite;
+  }
+
+  @keyframes hud-skeleton-scan-sweep {
+    0% { top: -2rem; opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { top: calc(100% + 2rem); opacity: 0; }
+  }
+
+  .hud-skeleton-bar {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hud-skeleton-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -50%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, var(--color-primary) / 0.15, transparent);
+    animation: hud-skeleton-shimmer 2s ease-in-out infinite;
+  }
+
+  @keyframes hud-skeleton-shimmer {
+    0% { left: -50%; }
+    100% { left: 150%; }
+  }
+
+  [data-theme="clean"] .hud-skeleton-scan {
+    display: none;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     HUD Spinner — Loading indicators
+     ════════════════════════════════════════════════════════════ */
+
+  /* Diamond rotation for md size */
+  .hud-spinner-diamond {
+    animation: hud-diamond-spin 2.5s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  }
+
+  @keyframes hud-diamond-spin {
+    0% { transform: rotate(45deg) scale(1); opacity: 0.4; }
+    50% { transform: rotate(225deg) scale(0.85); opacity: 1; }
+    100% { transform: rotate(405deg) scale(1); opacity: 0.4; }
+  }
+
+  /* Radar sweep for lg size */
+  .hud-radar-sweep {
+    animation: hud-radar-rotate 2s linear infinite;
+  }
+
+  .hud-radar-sweep::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 50%;
+    height: 2px;
+    transform-origin: left center;
+    background: linear-gradient(to right, var(--color-primary), transparent);
+    opacity: 0.7;
+  }
+
+  .hud-radar-sweep::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      color-mix(in oklch, var(--color-primary) 12%, transparent) 0deg,
+      transparent 60deg
+    );
+  }
+
+  @keyframes hud-radar-rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* Deepspace: enhanced glow */
+  [data-theme="deepspace"] .hud-spinner-lg .hud-radar-sweep::before {
+    opacity: 1;
+    filter: drop-shadow(0 0 3px var(--color-primary));
+  }
+
+  [data-theme="deepspace"] .hud-spinner-md .hud-spinner-diamond {
+    filter: drop-shadow(0 0 2px var(--color-primary));
+  }
+
+  /* Clean: simplified — no radar/diamond, just standard spin */
+  [data-theme="clean"] .hud-spinner-diamond {
+    animation: hud-clean-spin 1s linear infinite;
+    border-radius: 50%;
+    border-width: 2px;
+    border-top-color: transparent;
+    border-right-color: transparent;
+    transform: rotate(0deg);
+  }
+
+  [data-theme="clean"] .hud-radar-sweep::before,
+  [data-theme="clean"] .hud-radar-sweep::after {
+    display: none;
+  }
+
+  [data-theme="clean"] .hud-radar-sweep {
+    border: 2px solid transparent;
+    border-top-color: var(--color-primary);
+    border-right-color: var(--color-primary);
+    border-radius: 50%;
+    animation: hud-clean-spin 1s linear infinite;
+  }
+
+  [data-theme="clean"] .hud-spinner-lg > div:first-child,
+  [data-theme="clean"] .hud-spinner-lg > div:nth-child(2),
+  [data-theme="clean"] .hud-spinner-lg > div:nth-child(4),
+  [data-theme="clean"] .hud-spinner-lg > div:nth-child(5) {
+    display: none;
+  }
+
+  @keyframes hud-clean-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
 }

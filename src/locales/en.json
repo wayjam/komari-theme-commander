@@ -65,7 +65,7 @@
     "retry": "RETRY",
     "charts": "CHARTS",
     "detail": "DETAIL",
-    "refresh": "Refresh"
+    "refresh": "REFRESH"
   },
   "view": {
     "globe": "GLOBE",
@@ -91,6 +91,7 @@
     "addFromAdmin": "Add nodes from admin panel"
   },
   "telemetry": {
+    "acquiring": "ACQUIRING SIGNAL...",
     "waiting": "WAITING FOR TELEMETRY...",
     "nodeOffline": "NODE OFFLINE — NO TELEMETRY DATA",
     "nodeOfflineShort": "NODE OFFLINE — NO TELEMETRY",
@@ -184,5 +185,16 @@
   },
   "lang": {
     "title": "LANGUAGE"
+  },
+  "hud": {
+    "labMonitor": "Lab Monitor",
+    "orbitalMonitoring": "Orbital Monitoring",
+    "globalTelemetry": "Global Telemetry",
+    "activeThreats": "Active Threats Identified",
+    "criticalLoad": "CRITICAL LOAD",
+    "noSignal": "NO SIGNAL",
+    "tableMode": "Table View Mode :: Data Stream Alpha-4",
+    "parityOk": "PARITY: OK",
+    "bwidthNominal": "BWIDTH: NOMINAL"
   }
 }

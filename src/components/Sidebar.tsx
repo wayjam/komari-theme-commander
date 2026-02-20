@@ -15,6 +15,7 @@ import prettyBytes from 'pretty-bytes';
 
 interface SidebarProps {
   nodes: NodeWithStatus[];
+  loading?: boolean;
   selectedNodeId: string | null;
   onSelectNode: (uuid: string | null) => void;
   onViewCharts: (uuid: string, name: string) => void;
@@ -29,10 +30,12 @@ const statusColorMap: Record<'normal' | 'warning' | 'critical', string> = {
 
 function NodeListView({
   nodes,
+  loading,
   selectedNodeId,
   onSelectNode,
 }: {
   nodes: NodeWithStatus[];
+  loading?: boolean;
   selectedNodeId: string | null;
   onSelectNode: (uuid: string) => void;
 }) {
@@ -251,6 +254,41 @@ function NodeListView({
         className="flex-1 overflow-y-auto scrollbar-none"
         onScroll={checkScroll}
       >
+        {loading && nodes.length === 0 ? (
+          /* ── Skeleton loading ── */
+          <div className="relative">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={i}
+                className="px-3 py-2.5 border-b border-border/20 border-l-2 border-l-transparent"
+                style={{ animationDelay: `${i * 80}ms` }}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-muted/30 animate-pulse" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2">
+                      <div className="h-4 rounded bg-muted/25 animate-pulse" style={{ width: `${40 + Math.random() * 35}%` }} />
+                      <div className="h-3 rounded bg-muted/15 animate-pulse" style={{ width: `${15 + Math.random() * 20}%` }} />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 mt-1.5 ml-3.5">
+                  <div className="h-4 w-12 rounded-sm bg-primary/8 animate-pulse" />
+                  <div className="h-4 w-10 rounded-sm bg-muted/15 animate-pulse" />
+                </div>
+                <div className="flex items-center gap-2.5 mt-1.5 ml-3.5">
+                  <div className="h-3 w-14 rounded bg-muted/15 animate-pulse" />
+                  <div className="h-3 w-px bg-border/30" />
+                  <div className="h-3 w-14 rounded bg-muted/15 animate-pulse" />
+                </div>
+                {/* Scanning line */}
+                <div className="absolute inset-x-0 pointer-events-none overflow-hidden" style={{ top: 0, bottom: 0 }}>
+                  <div className="hud-skeleton-scan absolute w-full h-6 bg-gradient-to-b from-transparent via-primary/[0.03] to-transparent" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
         <div
           style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}
         >
@@ -295,7 +333,7 @@ function NodeListView({
                     <div className="flex items-baseline gap-2 min-w-0">
                       <span className="text-base font-display font-bold truncate shrink-0 max-w-[65%]">{node.name}</span>
                       {(node.os || node.arch) && (
-                        <span className="text-xxs font-mono text-muted-foreground/70 truncate min-w-0">
+                        <span className="text-xs font-mono text-muted-foreground/70 truncate min-w-0">
                           {[node.os?.split(/[\s/]/)[0], node.arch, node.virtualization].filter(Boolean).join(' · ')}
                         </span>
                       )}
@@ -349,6 +387,7 @@ function NodeListView({
             );
           })}
         </div>
+        )}
       </div>
 
       {/* Overflow Indicator */}
@@ -454,7 +493,7 @@ function NodeDetailView({
             return tagList.length > 0 ? (
               <div className="flex flex-wrap gap-1 mt-1">
                 {tagList.map((tag, i) => (
-                  <span key={i} className="text-xxs font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded-sm">
+                  <span key={i} className="text-xs font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded-sm">
                     {tag}
                   </span>
                 ))}
@@ -602,15 +641,15 @@ function NodeDetailView({
               </div>
               <div className="grid grid-cols-3 gap-1.5">
                 <div className="text-center">
-                  <div className="text-xxs font-mono text-muted-foreground">{t('label.load1m')}</div>
+                  <div className="text-xs font-mono text-muted-foreground">{t('label.load1m')}</div>
                   <div className="text-sm font-mono font-bold">{stats.load.load1.toFixed(2)}</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xxs font-mono text-muted-foreground">{t('label.load5m')}</div>
+                  <div className="text-xs font-mono text-muted-foreground">{t('label.load5m')}</div>
                   <div className="text-sm font-mono font-bold">{stats.load.load5.toFixed(2)}</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xxs font-mono text-muted-foreground">{t('label.load15m')}</div>
+                  <div className="text-xs font-mono text-muted-foreground">{t('label.load15m')}</div>
                   <div className="text-sm font-mono font-bold">{stats.load.load15.toFixed(2)}</div>
                 </div>
               </div>
@@ -704,7 +743,7 @@ function NodeDetailView({
               const expiryStatus = getExpiryStatus(node.expired_at);
               return expiryStatus ? (
                 <div className={cn(
-                  'text-xxs font-mono px-2.5',
+                  'text-xs font-mono px-2.5',
                   expiryStatus === 'expired' ? 'text-red-500' : expiryStatus === 'warning' ? 'text-yellow-500' : 'text-muted-foreground/60',
                 )}>
                   {formatExpiry(node.expired_at)}
@@ -714,7 +753,7 @@ function NodeDetailView({
 
             {/* Remark */}
             {node.public_remark && (
-              <div className="text-xxs font-mono text-muted-foreground/60 px-2.5 border-l-2 border-primary/20">
+              <div className="text-xs font-mono text-muted-foreground/60 px-2.5 border-l-2 border-primary/20">
                 {node.public_remark}
               </div>
             )}
@@ -747,7 +786,7 @@ function NodeDetailView({
   );
 }
 
-export function Sidebar({ nodes, selectedNodeId, onSelectNode, onViewCharts, className }: SidebarProps) {
+export function Sidebar({ nodes, loading, selectedNodeId, onSelectNode, onViewCharts, className }: SidebarProps) {
   const [view, setView] = useState<'list' | 'detail'>('list');
 
   const selectedNode = useMemo(
@@ -791,6 +830,7 @@ export function Sidebar({ nodes, selectedNodeId, onSelectNode, onViewCharts, cla
           >
             <NodeListView
               nodes={nodes}
+              loading={loading}
               selectedNodeId={selectedNodeId}
               onSelectNode={handleSelectNode}
             />

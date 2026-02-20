@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Cpu, MemoryStick, HardDrive, Activity, Loader2, Clock, Signal, ArrowUpDown, ExternalLink, Unplug, ChevronDown } from 'lucide-react';
+import { Cpu, MemoryStick, HardDrive, Activity, Clock, Signal, ArrowUpDown, ExternalLink, Unplug, ChevronDown } from 'lucide-react';
+import { HudSpinner } from './HudSpinner';
 import { apiService } from '../services/api';
 import { useAppConfig } from '@/hooks/useAppConfig';
 import {
@@ -202,7 +203,7 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <HudSpinner size="lg" />
       </div>
     );
   }
@@ -263,7 +264,7 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
             <div className="flex items-center gap-2">
               <Signal className="h-3.5 w-3.5 text-primary" />
               <span className="text-xs font-display font-bold text-muted-foreground uppercase tracking-wider">{t('chart.latencyOverview')}</span>
-              <span className="text-xxs font-mono text-muted-foreground/50">({latencySummary.length})</span>
+              <span className="text-xxs font-mono text-muted-foreground/60">({latencySummary.length})</span>
             </div>
             <div className="flex items-center gap-2">
               <Link
@@ -282,10 +283,10 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
               <table className="w-full">
                 <thead className="sticky top-0 bg-card/95 backdrop-blur-sm z-10">
                   <tr className="border-b border-border/20">
-                    <th className="text-left text-xxs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.taskName')}</th>
-                    <th className="text-right text-xxs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.current')}</th>
-                    <th className="text-right text-xxs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.average')}</th>
-                    <th className="text-right text-xxs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.loss')}</th>
+                    <th className="text-left text-xs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.taskName')}</th>
+                    <th className="text-right text-xs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.current')}</th>
+                    <th className="text-right text-xs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.average')}</th>
+                    <th className="text-right text-xs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.loss')}</th>
                   </tr>
                 </thead>
                 <tbody>

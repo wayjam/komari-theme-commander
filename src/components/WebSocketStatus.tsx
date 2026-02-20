@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { WifiOff, Loader2 } from 'lucide-react';
+import { WifiOff } from 'lucide-react';
+import { HudSpinner } from './HudSpinner';
 import { rpc2Client, RPC2ConnectionState } from '@/lib/rpc2';
 import { wsService } from '../services/api';
 
@@ -34,7 +35,7 @@ export function WebSocketStatus() {
   if (isConnecting) {
     return (
       <button className="flex items-center gap-1.5 text-yellow-500 font-mono text-xs cursor-pointer">
-        <Loader2 className="h-3 w-3 animate-spin" />
+        <HudSpinner size="sm" className="text-yellow-500" />
         <span>{t('ws.connecting')}</span>
       </button>
     );
