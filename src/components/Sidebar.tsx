@@ -65,12 +65,16 @@ function NodeListView({
     lastSortUpdate.current = Date.now();
   }, [sortByActive]);
 
+  // Keep a ref of latest nodes so the interval callback can access current data
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
+
   // Periodic slow re-sort if enabled (every 10s) to keep it fresh but not jumpy
   useEffect(() => {
     if (!sortByActive) return;
     
     const interval = setInterval(() => {
-      const newOrder = [...nodes]
+      const newOrder = [...nodesRef.current]
         .sort((a, b) => {
           const aActivity = (a.stats?.network.up ?? 0) + (a.stats?.network.down ?? 0);
           const bActivity = (b.stats?.network.up ?? 0) + (b.stats?.network.down ?? 0);
@@ -81,22 +85,25 @@ function NodeListView({
     }, 10000);
 
     return () => clearInterval(interval);
-  }, [sortByActive, nodes]);
+  }, [sortByActive]);
 
   const sortedAndFiltered = useMemo(() => {
-    // Map nodes to a map for quick lookup
     const nodeMap = new Map(nodes.map(n => [n.uuid, n]));
     
     // Use stable order first, then add any new nodes that might not be in stableOrder yet
-    let result: NodeWithStatus[] = [];
+    const result: NodeWithStatus[] = [];
+    const seen = new Set<string>();
     stableOrder.forEach(uuid => {
       const node = nodeMap.get(uuid);
-      if (node) result.push(node);
+      if (node) {
+        result.push(node);
+        seen.add(uuid);
+      }
     });
 
     // Add nodes not in stable order (newly joined)
     nodes.forEach(node => {
-      if (!result.find(r => r.uuid === node.uuid)) {
+      if (!seen.has(node.uuid)) {
         result.push(node);
       }
     });

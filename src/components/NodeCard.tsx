@@ -1,5 +1,5 @@
 import { Sparkline } from './Sparkline';
-import { useMemo } from 'react';
+import { useMemo, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
@@ -81,7 +81,7 @@ function TrafficBar({ totalUp, totalDown, limit, type, label }: { totalUp: numbe
   );
 }
 
-export function NodeCard({ node }: NodeCardProps) {
+export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
   const { t } = useTranslation();
   const isOnline = node.status === 'online';
   const stats = node.stats;
@@ -271,4 +271,4 @@ export function NodeCard({ node }: NodeCardProps) {
       </div>
     </div>
   );
-}
+});

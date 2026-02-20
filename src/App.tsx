@@ -16,7 +16,7 @@ import { useAppConfig } from './hooks/useAppConfig'
 import { RecentStatsProvider } from './hooks/useRecentStats'
 import { UptimeView } from './components/UptimeView'
 import { ArrowLeft, Settings, Globe, LayoutGrid, List, Shield, Cpu, MemoryStick, HardDrive, Activity, Network, Clock, User, Monitor, Box, Layers, AlertTriangle, ExternalLink } from 'lucide-react'
-import { useState, useEffect, useCallback, useMemo, createContext, useContext } from 'react'
+import { useState, useEffect, useCallback, useMemo, memo, createContext, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Routes, Route, useNavigate, useParams, useLocation, Link } from 'react-router-dom'
 import { apiService } from './services/api'
@@ -517,6 +517,23 @@ function Dashboard() {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   Clock — isolated to avoid re-rendering entire App every second
+   ══════════════════════════════════════════════════════════════ */
+const ClockDisplay = memo(function ClockDisplay() {
+  const [time, setTime] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  return (
+    <div className="flex items-center gap-2 px-1.5 py-0.5 rounded">
+      <Clock className="h-3 w-3" />
+      <span className="tabular-nums">{time.toLocaleTimeString()}</span>
+    </div>
+  );
+});
+
+/* ══════════════════════════════════════════════════════════════
    App Shell
    ══════════════════════════════════════════════════════════════ */
 function App() {
@@ -556,10 +573,10 @@ function App() {
     init();
   }, []);
 
-  const onlineCount = getOnlineCount();
-  const offlineCount = getOfflineCount();
+  const onlineCount = useMemo(() => getOnlineCount(), [nodes]);
+  const offlineCount = useMemo(() => getOfflineCount(), [nodes]);
 
-  const getTotalNetworkStats = () => {
+  const networkStats = useMemo(() => {
     let totalUp = 0;
     let totalDown = 0;
     nodes.forEach(node => {
@@ -569,18 +586,9 @@ function App() {
       }
     });
     return { totalUp, totalDown };
-  };
-
-  const networkStats = getTotalNetworkStats();
+  }, [nodes]);
 
   const isDashboard = location.pathname === '/';
-
-  const [currentTime, setCurrentTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   const onlineUuids = useMemo(
     () => nodes.filter(n => n.status === 'online').map(n => n.uuid),
@@ -594,12 +602,12 @@ function App() {
     });
   }, [nodes]);
 
-  const viewButtons: { mode: ViewMode; icon: typeof Globe; label: string }[] = [
+  const viewButtons = useMemo<{ mode: ViewMode; icon: typeof Globe; label: string }[]>(() => [
     { mode: 'globe', icon: Globe, label: t('view.globe') },
     { mode: 'grid', icon: LayoutGrid, label: t('view.grid') },
     { mode: 'table', icon: List, label: t('view.table') },
     { mode: 'uptime', icon: Shield, label: t('view.uptime') },
-  ];
+  ], [t]);
 
   return (
     <NodesContext.Provider value={{ nodes, loading, refreshNodes }}>
@@ -698,10 +706,7 @@ function App() {
               <div className="flex items-center gap-3">
                 <WebSocketStatus />
                 <span className="hidden sm:inline text-muted-foreground/30">|</span>
-                <div className="flex items-center gap-2 px-1.5 py-0.5 rounded">
-                  <Clock className="h-3 w-3" />
-                  <span className="tabular-nums">{currentTime.toLocaleTimeString()}</span>
-                </div>
+                <ClockDisplay />
                 <span className="hidden sm:inline text-muted-foreground/60">|</span>
                 <div className="hidden sm:flex items-center gap-2">
                   <span>↑ {formatSpeed(networkStats.totalUp)}</span>

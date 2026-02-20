@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, useMemo, useCallback, memo } from 'react';
 import { Area, AreaChart, ResponsiveContainer, YAxis } from 'recharts';
 
 interface SparklineProps {
@@ -19,7 +19,7 @@ function LastDot({ cx, cy, index, total, color }: { cx?: number; cy?: number; in
   );
 }
 
-export function Sparkline({
+export const Sparkline = memo(function Sparkline({
   data,
   width = 64,
   height = 20,
@@ -29,7 +29,21 @@ export function Sparkline({
   if (!data || data.length < 2) return null;
 
   const gradId = useId();
-  const chartData = data.map((v, i) => ({ i, v }));
+  const chartData = useMemo(() => data.map((v, i) => ({ i, v })), [data]);
+
+  const renderDot = useCallback(
+    (props: Record<string, unknown>) => (
+      <LastDot
+        key={props.index as number}
+        cx={props.cx as number}
+        cy={props.cy as number}
+        index={props.index as number}
+        total={chartData.length}
+        color={color}
+      />
+    ),
+    [chartData.length, color],
+  );
 
   return (
     <div className={`sparkline-container ${className ?? ''}`} style={{ width, height }}>
@@ -49,20 +63,11 @@ export function Sparkline({
             strokeWidth={1.5}
             fill={`url(#${gradId})`}
             isAnimationActive={false}
-            dot={(props: Record<string, unknown>) => (
-              <LastDot
-                key={props.index as number}
-                cx={props.cx as number}
-                cy={props.cy as number}
-                index={props.index as number}
-                total={chartData.length}
-                color={color}
-              />
-            )}
+            dot={renderDot}
             activeDot={false}
           />
         </AreaChart>
       </ResponsiveContainer>
     </div>
   );
-}
+});

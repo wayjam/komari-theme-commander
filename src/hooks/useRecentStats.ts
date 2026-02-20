@@ -18,13 +18,32 @@ export function useRecentStats() {
 const BATCH_SIZE = 4;
 const REFRESH_INTERVAL = 30_000; // 30 seconds
 
+/**
+ * Hook that stabilises an array of strings — only returns a new reference
+ * when the sorted contents actually change.
+ */
+function useStableUuids(uuids: string[]): string[] {
+  const ref = useRef<string[]>([]);
+  const sorted = useMemo(() => [...uuids].sort(), [uuids]);
+  const key = sorted.join(',');
+  const prevKey = useRef(key);
+
+  if (prevKey.current !== key) {
+    prevKey.current = key;
+    ref.current = sorted;
+  }
+
+  return ref.current;
+}
+
 export function RecentStatsProvider({
-  onlineUuids,
+  onlineUuids: rawOnlineUuids,
   children,
 }: {
   onlineUuids: string[];
   children: ReactNode;
 }) {
+  const onlineUuids = useStableUuids(rawOnlineUuids);
   const [sparklineMap, setSparklineMap] = useState<Map<string, number[]>>(new Map());
   const fetchingRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
