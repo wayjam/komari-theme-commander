@@ -28,6 +28,121 @@ const statusColorMap: Record<'normal' | 'warning' | 'critical', string> = {
   critical: 'bg-red-500',
 };
 
+// ── Threshold: switch to virtualizer when node count exceeds this ──
+const VIRTUALIZE_THRESHOLD = 200;
+
+// ── Extracted node row content (shared by both plain and virtualized modes) ──
+function NodeRowContent({
+  node,
+  isSelected,
+  onSelectNode,
+}: {
+  node: NodeWithStatus;
+  isSelected: boolean;
+  onSelectNode: (uuid: string) => void;
+}) {
+  const { t } = useTranslation();
+  const isOnline = node.status === 'online';
+  const stats = node.stats;
+  const cpuUsage = stats?.cpu?.usage ?? 0;
+  const ramUsage = stats ? (stats.ram.used / stats.ram.total) * 100 : 0;
+  const emoji = extractRegionEmoji(node.region);
+
+  const tagList = node.tags ? node.tags.split(/[,;]/).map(t => t.trim()).filter(Boolean) : [];
+  const maxVisibleTags = 5;
+  const visibleTags = tagList.slice(0, maxVisibleTags);
+  const hiddenTagCount = tagList.length - visibleTags.length;
+
+  return (
+    <button
+      onClick={() => onSelectNode(node.uuid)}
+      className={cn(
+        'w-full px-3 py-2.5 text-left transition-all duration-150 border-l-2',
+        'hover:bg-primary/5 cursor-pointer sidebar-node-item',
+        'border-b border-border/20',
+        isSelected
+          ? 'bg-primary/10 border-l-primary'
+          : 'border-l-transparent'
+      )}
+    >
+      <div className="flex items-center gap-2">
+        <span
+          className={cn(
+            'w-1.5 h-1.5 rounded-full flex-shrink-0',
+            isOnline ? 'bg-green-500' : 'bg-red-500',
+            isOnline && 'animate-pulse'
+          )}
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-2 min-w-0">
+            <span className="text-base font-display font-bold truncate shrink-0 max-w-[65%]">{node.name}</span>
+            {(node.os || node.arch) && (
+              <span className="text-xs font-mono text-muted-foreground/70 truncate min-w-0">
+                {[node.os?.split(/[\s/]/)[0], node.arch, node.virtualization].filter(Boolean).join(' · ')}
+              </span>
+            )}
+          </div>
+        </div>
+        {emoji && (
+          <span className="text-sm flex-shrink-0">{emoji}</span>
+        )}
+      </div>
+      {/* Tags row — show max 2 tags + overflow count */}
+      <div className="flex items-center gap-1.5 mt-1 ml-3.5 overflow-hidden">
+        {node.group && (
+          <span className="text-xs font-mono text-primary/80 bg-primary/15 px-1.5 py-0.5 rounded-sm flex-shrink-0">
+            {node.group}
+          </span>
+        )}
+        {visibleTags.map((tag, i) => (
+          <span key={i} className="text-xs font-mono text-muted-foreground/80 bg-muted/50 px-1.5 py-0.5 rounded-sm truncate max-w-[6rem] flex-shrink-0">
+            {tag}
+          </span>
+        ))}
+        {hiddenTagCount > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="text-xs font-mono text-muted-foreground/60 bg-muted/30 px-1.5 py-0.5 rounded-sm cursor-default flex-shrink-0">
+                +{hiddenTagCount}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs font-mono">
+              {tagList.slice(maxVisibleTags).join(', ')}
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {node.hidden && (
+          <span className="text-xs font-mono text-yellow-500/80 bg-yellow-500/15 px-1.5 py-0.5 rounded-sm flex-shrink-0">
+            {t('node.hidden')}
+          </span>
+        )}
+      </div>
+      {isOnline && stats && (
+        <div className="flex items-center gap-2.5 mt-1.5 ml-3.5 text-xs font-mono text-muted-foreground sidebar-node-stats">
+          <span className={cn(
+            'sidebar-stat-cell',
+            cpuUsage >= 80 ? 'text-red-500' : cpuUsage >= 60 ? 'text-yellow-500' : ''
+          )}>
+            {t('label.cpu')} {cpuUsage.toFixed(0)}%
+          </span>
+          <span className="text-border/60">│</span>
+          <span className={cn(
+            'sidebar-stat-cell',
+            ramUsage >= 85 ? 'text-red-500' : ramUsage >= 70 ? 'text-yellow-500' : ''
+          )}>
+            {t('label.ram')} {ramUsage.toFixed(0)}%
+          </span>
+          <span className="text-border/60">│</span>
+          <span className="sidebar-stat-cell">↑{formatSpeed(stats.network.up)}</span>
+          <span className="sidebar-stat-cell">↓{formatSpeed(stats.network.down)}</span>
+        </div>
+      )}
+      {/* HUD hover scan line */}
+      <div className="sidebar-node-scanline" />
+    </button>
+  );
+}
+
 function NodeListView({
   nodes,
   loading,
@@ -53,6 +168,12 @@ function NodeListView({
     });
   }, []);
   
+  // Determine if we need virtualization based on total node count
+  const useVirtual = nodes.length > VIRTUALIZE_THRESHOLD;
+
+  // Force-disable sort by activity when in virtualized mode (sort causes layout issues with virtualizer)
+  const effectiveSortByActive = useVirtual ? false : sortByActive;
+
   // Keep track of the stable order to prevent frequent jumping
   const [stableOrder, setStableOrder] = useState<string[]>([]);
   const lastSortUpdate = useRef(0);
@@ -61,7 +182,7 @@ function NodeListView({
   useEffect(() => {
     const getOrder = () => {
       const items = [...nodes];
-      if (sortByActive) {
+      if (effectiveSortByActive) {
         items.sort((a, b) => {
           const aActivity = (a.stats?.network.up ?? 0) + (a.stats?.network.down ?? 0);
           const bActivity = (b.stats?.network.up ?? 0) + (b.stats?.network.down ?? 0);
@@ -75,7 +196,7 @@ function NodeListView({
 
     setStableOrder(getOrder());
     lastSortUpdate.current = Date.now();
-  }, [sortByActive]);
+  }, [effectiveSortByActive]);
 
   // Keep a ref of latest nodes so the interval callback can access current data
   const nodesRef = useRef(nodes);
@@ -83,7 +204,7 @@ function NodeListView({
 
   // Periodic slow re-sort if enabled (every 10s) to keep it fresh but not jumpy
   useEffect(() => {
-    if (!sortByActive) return;
+    if (!effectiveSortByActive) return;
     
     const interval = setInterval(() => {
       const newOrder = [...nodesRef.current]
@@ -97,7 +218,7 @@ function NodeListView({
     }, 10000);
 
     return () => clearInterval(interval);
-  }, [sortByActive]);
+  }, [effectiveSortByActive]);
 
   const sortedAndFiltered = useMemo(() => {
     const nodeMap = new Map(nodes.map(n => [n.uuid, n]));
@@ -135,23 +256,23 @@ function NodeListView({
   const [showMoreIndicator, setShowMoreIndicator] = useState(false);
 
   const virtualizer = useVirtualizer({
-    count: sortedAndFiltered.length,
+    count: useVirtual ? sortedAndFiltered.length : 0,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 60,
-    overscan: 5,
+    estimateSize: () => 76,
+    overscan: 8,
+    enabled: useVirtual,
   });
 
   const checkScroll = () => {
     if (parentRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = parentRef.current;
-      // If scrollable and not at the very bottom
       setShowMoreIndicator(scrollHeight > clientHeight && scrollTop + clientHeight < scrollHeight - 5);
     }
   };
 
   useEffect(() => {
     checkScroll();
-  }, [sortedAndFiltered.length, virtualizer.getTotalSize()]);
+  }, [sortedAndFiltered.length]);
 
   return (
     <div className="flex flex-col h-full relative">
@@ -181,6 +302,7 @@ function NodeListView({
 
       {/* Search filter */}
       <div className="px-2 py-1.5 border-b border-border/30 space-y-2 flex-shrink-0">
+        {!useVirtual && (
         <button
           type="button"
           onClick={() => setSortByActive(!sortByActive)}
@@ -223,6 +345,7 @@ function NodeListView({
             <span>]</span>
           </div>
         </button>
+        )}
         <div className="relative">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/40" />
           <input
@@ -248,7 +371,7 @@ function NodeListView({
         )}
       </div>
 
-      {/* Virtualized list */}
+      {/* Node list */}
       <div 
         ref={parentRef} 
         className="flex-1 overflow-y-auto scrollbar-none"
@@ -288,105 +411,44 @@ function NodeListView({
               </div>
             ))}
           </div>
-        ) : (
-        <div
-          style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}
-        >
-          {virtualizer.getVirtualItems().map((virtualItem) => {
-            const node = sortedAndFiltered[virtualItem.index];
-            const isOnline = node.status === 'online';
-            const stats = node.stats;
-            const cpuUsage = stats?.cpu?.usage ?? 0;
-            const ramUsage = stats ? (stats.ram.used / stats.ram.total) * 100 : 0;
-            const isSelected = selectedNodeId === node.uuid;
-            const emoji = extractRegionEmoji(node.region);
-
-            const tagList = node.tags ? node.tags.split(/[,;]/).map(t => t.trim()).filter(Boolean) : [];
-
-            return (
-              <button
-                key={node.uuid}
-                ref={virtualizer.measureElement}
-                data-index={virtualItem.index}
-                onClick={() => onSelectNode(node.uuid)}
-                className={cn(
-                  'w-full px-3 py-2.5 text-left transition-all duration-150 border-l-2 absolute top-0 left-0',
-                  'hover:bg-primary/5 cursor-pointer sidebar-node-item',
-                  'border-b border-border/20',
-                  isSelected
-                    ? 'bg-primary/10 border-l-primary'
-                    : 'border-l-transparent'
-                )}
-                style={{
-                  transform: `translateY(${virtualItem.start}px)`,
-                }}
-              >
-                <div className="flex items-center gap-2">
-                  <span
-                    className={cn(
-                      'w-1.5 h-1.5 rounded-full flex-shrink-0',
-                      isOnline ? 'bg-green-500' : 'bg-red-500',
-                      isOnline && 'animate-pulse'
-                    )}
+        ) : useVirtual ? (
+          /* ── Virtualized mode (200+ nodes): fixed height rows ── */
+          <div
+            style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}
+          >
+            {virtualizer.getVirtualItems().map((virtualItem) => {
+              const node = sortedAndFiltered[virtualItem.index];
+              return (
+                <div
+                  key={node.uuid}
+                  ref={virtualizer.measureElement}
+                  data-index={virtualItem.index}
+                  className="absolute top-0 left-0 w-full"
+                  style={{
+                    transform: `translateY(${virtualItem.start}px)`,
+                  }}
+                >
+                  <NodeRowContent
+                    node={node}
+                    isSelected={selectedNodeId === node.uuid}
+                    onSelectNode={onSelectNode}
                   />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2 min-w-0">
-                      <span className="text-base font-display font-bold truncate shrink-0 max-w-[65%]">{node.name}</span>
-                      {(node.os || node.arch) && (
-                        <span className="text-xs font-mono text-muted-foreground/70 truncate min-w-0">
-                          {[node.os?.split(/[\s/]/)[0], node.arch, node.virtualization].filter(Boolean).join(' · ')}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {emoji && (
-                    <span className="text-sm flex-shrink-0">{emoji}</span>
-                  )}
                 </div>
-                {/* Tags row */}
-                <div className="flex items-center gap-1.5 mt-1 ml-3.5 flex-wrap">
-                  {node.group && (
-                    <span className="text-xs font-mono text-primary/80 bg-primary/15 px-1.5 py-0.5 rounded-sm">
-                      {node.group}
-                    </span>
-                  )}
-                  {tagList.map((tag, i) => (
-                    <span key={i} className="text-xs font-mono text-muted-foreground/80 bg-muted/50 px-1.5 py-0.5 rounded-sm">
-                      {tag}
-                    </span>
-                  ))}
-                  {node.hidden && (
-                    <span className="text-xs font-mono text-yellow-500/80 bg-yellow-500/15 px-1.5 py-0.5 rounded-sm">
-                      {t('node.hidden')}
-                    </span>
-                  )}
-                </div>
-                {isOnline && stats && (
-                  <div className="flex items-center gap-2.5 mt-1.5 ml-3.5 text-xs font-mono text-muted-foreground sidebar-node-stats">
-                    <span className={cn(
-                      'sidebar-stat-cell',
-                      cpuUsage >= 80 ? 'text-red-500' : cpuUsage >= 60 ? 'text-yellow-500' : ''
-                    )}>
-                      {t('label.cpu')} {cpuUsage.toFixed(0)}%
-                    </span>
-                    <span className="text-border/60">│</span>
-                    <span className={cn(
-                      'sidebar-stat-cell',
-                      ramUsage >= 85 ? 'text-red-500' : ramUsage >= 70 ? 'text-yellow-500' : ''
-                    )}>
-                      {t('label.ram')} {ramUsage.toFixed(0)}%
-                    </span>
-                    <span className="text-border/60">│</span>
-                    <span className="sidebar-stat-cell">↑{formatSpeed(stats.network.up)}</span>
-                    <span className="sidebar-stat-cell">↓{formatSpeed(stats.network.down)}</span>
-                  </div>
-                )}
-                {/* HUD hover scan line */}
-                <div className="sidebar-node-scanline" />
-              </button>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        ) : (
+          /* ── Plain mode (<= 200 nodes): direct rendering ── */
+          <div>
+            {sortedAndFiltered.map((node) => (
+              <NodeRowContent
+                key={node.uuid}
+                node={node}
+                isSelected={selectedNodeId === node.uuid}
+                onSelectNode={onSelectNode}
+              />
+            ))}
+          </div>
         )}
       </div>
 
