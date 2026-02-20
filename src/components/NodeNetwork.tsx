@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, useCallback, Fragment } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
 import { ArrowLeft, Network, Loader2, Signal, ArrowUpDown, Unplug, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { apiService } from '../services/api';
 import { useAppConfig } from '@/hooks/useAppConfig';
@@ -340,9 +339,9 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
     return (
       <div className="flex flex-col items-center justify-center h-64 rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl">
         <div className="text-sm font-mono text-red-500 mb-3">{error}</div>
-        <Button variant="outline" size="sm" onClick={fetchData} className="font-mono text-xs">
+        <button onClick={fetchData} className="px-3 py-1.5 text-xs font-mono rounded border border-primary/30 text-primary hover:bg-primary/15 transition-colors cursor-pointer">
           {t('action.retry')}
-        </Button>
+        </button>
       </div>
     );
   }
@@ -353,15 +352,13 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
       <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
+            <button
               onClick={() => navigate(-1)}
-              className="h-7 px-2 text-xs font-mono hover:bg-primary/15 hover:text-primary"
+              className="px-2 py-1 text-xs font-mono rounded hover:bg-primary/15 hover:text-primary transition-colors cursor-pointer flex items-center"
             >
               <ArrowLeft className="h-3.5 w-3.5 mr-1" />
               {t('action.back')}
-            </Button>
+            </button>
             <div className="w-px h-5 bg-border/30" />
             <Network className="h-4 w-4 text-primary" />
             <span className="text-sm font-display font-bold">{nodeName || nodeUuid}</span>
@@ -369,20 +366,22 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
           </div>
           <div className="flex items-center gap-1">
             {timeRanges.map(tr => (
-              <Button
+              <button
                 key={tr.value}
-                variant={timeRange === tr.value ? 'default' : 'ghost'}
-                size="sm"
                 onClick={() => setTimeRange(tr.value)}
-                className="h-7 px-3 text-xs font-mono"
+                className={`px-2.5 py-1 text-xs font-mono rounded transition-all duration-200 cursor-pointer ${
+                  timeRange === tr.value
+                    ? 'bg-primary/15 text-primary border border-primary/30'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
+                }`}
               >
                 {tr.label}
-              </Button>
+              </button>
             ))}
             <div className="w-px h-5 bg-border/30 mx-1" />
-            <Button variant="ghost" size="sm" onClick={fetchData} className="h-7 px-2 text-xs font-mono hover:bg-primary/15 hover:text-primary">
+            <button onClick={fetchData} className="px-2 py-1 text-xs font-mono rounded text-muted-foreground hover:bg-primary/15 hover:text-primary transition-colors cursor-pointer">
               ↻
-            </Button>
+            </button>
           </div>
         </div>
       </div>
@@ -687,16 +686,22 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
                   <Signal className="h-4 w-4 text-primary" />
                   {t('chart.pingLatency')}
                 </span>
-                <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                  <span className="text-xxs font-mono text-muted-foreground">{smooth ? t('chart.smooth') : t('chart.raw')}</span>
-                  <button
-                    onClick={() => setSmooth(s => !s)}
-                    className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${smooth ? 'bg-primary' : 'bg-muted-foreground/30'}`}
-                    title={t('chart.ewmaTooltip')}
-                  >
-                    <span className={`inline-block h-3 w-3 rounded-full bg-white transition-transform ${smooth ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
-                  </button>
-                </label>
+                <button
+                  onClick={() => setSmooth(s => !s)}
+                  title={t('chart.ewmaTooltip')}
+                  className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono tracking-widest transition-all duration-200 cursor-pointer ${
+                    smooth
+                      ? 'bg-primary/10 text-primary/80'
+                      : 'text-muted-foreground/40 hover:text-muted-foreground/60'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                    smooth
+                      ? 'bg-primary shadow-[0_0_4px_var(--color-primary)]'
+                      : 'bg-muted-foreground/20'
+                  }`} />
+                  <span>{smooth ? 'SMOOTH' : 'RAW'}</span>
+                </button>
               </CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-3">

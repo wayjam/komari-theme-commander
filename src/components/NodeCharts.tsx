@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
 import { Cpu, MemoryStick, HardDrive, Activity, Loader2, Clock, Signal, ArrowUpDown, ExternalLink, Unplug, ChevronDown } from 'lucide-react';
 import { apiService } from '../services/api';
 import { useAppConfig } from '@/hooks/useAppConfig';
@@ -212,9 +211,9 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
     return (
       <div className="flex flex-col items-center justify-center h-64 rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl">
         <div className="text-sm font-mono text-red-500 mb-3">{error}</div>
-        <Button variant="outline" size="sm" onClick={fetchData} className="font-mono text-xs">
+        <button onClick={fetchData} className="px-3 py-1.5 text-xs font-mono rounded border border-primary/30 text-primary hover:bg-primary/15 transition-colors cursor-pointer">
           {t('action.retry')}
-        </Button>
+        </button>
       </div>
     );
   }
@@ -331,20 +330,22 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
           </div>
           <div className="flex items-center gap-1">
             {timeRanges.map(tr => (
-              <Button
+              <button
                 key={tr.value}
-                variant={timeRange === tr.value ? 'default' : 'ghost'}
-                size="sm"
                 onClick={() => setTimeRange(tr.value)}
-                className="h-7 px-3 text-xs font-mono"
+                className={`px-2.5 py-1 text-xs font-mono rounded transition-all duration-200 cursor-pointer ${
+                  timeRange === tr.value
+                    ? 'bg-primary/15 text-primary border border-primary/30'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
+                }`}
               >
                 {tr.label}
-              </Button>
+              </button>
             ))}
             <div className="w-px h-5 bg-border/30 mx-1" />
-            <Button variant="ghost" size="sm" onClick={fetchData} className="h-7 px-2 text-xs font-mono hover:bg-primary/15 hover:text-primary">
+            <button onClick={fetchData} className="px-2 py-1 text-xs font-mono rounded text-muted-foreground hover:bg-primary/15 hover:text-primary transition-colors cursor-pointer">
               ↻
-            </Button>
+            </button>
           </div>
         </div>
       </div>

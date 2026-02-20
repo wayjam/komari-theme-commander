@@ -48,6 +48,7 @@ function useLazyVisible(rootMargin = '200px') {
    ══════════════════════════════════════════════════════════════ */
 function UptimeBar({ slots }: { slots: UptimeSlot[] }) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const { t } = useTranslation();
 
   const fmtDate = (ts: number) => {
     const d = new Date(ts);
@@ -55,9 +56,16 @@ function UptimeBar({ slots }: { slots: UptimeSlot[] }) {
       ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   };
 
+  const fmtShort = (ts: number) => {
+    const d = new Date(ts);
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${m}/${day}`;
+  };
+
   return (
     <div className="relative group">
-      <div className="flex gap-[1px] h-6 rounded overflow-hidden">
+      <div className="flex gap-[1px] h-6 rounded overflow-hidden relative">
         {slots.map((slot, i) => (
           <div
             key={i}
@@ -72,6 +80,13 @@ function UptimeBar({ slots }: { slots: UptimeSlot[] }) {
             onMouseLeave={() => setHoveredIdx(null)}
           />
         ))}
+        {/* Inline time labels */}
+        <span className="absolute left-1.5 inset-y-0 flex items-center text-xs font-mono pointer-events-none uptime-bar-label">
+          {slots.length > 0 && fmtShort(slots[0].start)}
+        </span>
+        <span className="absolute right-1.5 inset-y-0 flex items-center text-xs font-mono pointer-events-none uptime-bar-label">
+          {t('time.now')}
+        </span>
       </div>
 
       {/* Tooltip */}
@@ -107,13 +122,15 @@ function NodeRow({ node, uptime, loading, onNavigate }: NodeRowProps) {
 
   return (
     <div
-      className="group rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl p-3 sm:p-4 cursor-pointer hover:border-primary/30 transition-all commander-corners relative overflow-hidden"
-      onClick={() => onNavigate(node.uuid)}
+      className="group rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl px-3 py-2 sm:px-4 sm:py-2.5 hover:border-primary/30 transition-all commander-corners relative overflow-hidden"
     >
       <div className="commander-scanner-effect opacity-0 group-hover:opacity-100 transition-opacity" />
       <span className="corner-bottom" />
-      {/* Top: name + status + uptime % */}
-      <div className="flex items-center gap-2 mb-2.5 relative z-10">
+      {/* Top: name + status + uptime % — clickable */}
+      <div
+        className="flex items-center gap-2 mb-1.5 relative z-10 cursor-pointer"
+        onClick={() => onNavigate(node.uuid)}
+      >
         <span className={cn('w-2 h-2 rounded-full flex-shrink-0', isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500')} />
         <span className="text-sm font-display font-bold truncate group-hover:text-primary transition-colors">{node.name}</span>
         {node.region && (
@@ -148,22 +165,6 @@ function NodeRow({ node, uptime, loading, onNavigate }: NodeRowProps) {
           </div>
         )}
       </div>
-
-      {/* Bottom: legend line */}
-      {uptime && (
-        <div className="flex items-center justify-between mt-1.5 text-xs font-mono text-muted-foreground/50 relative z-10">
-          <span>{new Date(uptime.slots[0]?.start).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-          <span className="flex items-center gap-3">
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-sm bg-green-500/50" /> {t('legend.online')}
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-sm bg-red-500/50" /> {t('legend.offline')}
-            </span>
-          </span>
-          <span>{t('time.now')}</span>
-        </div>
-      )}
     </div>
   );
 }
@@ -499,7 +500,7 @@ export function UptimeView({ nodes }: UptimeViewProps) {
       </div>
 
       {/* ═══ Node rows ═══ */}
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {sortedNodes.map(node => (
           <LazyNodeRow
             key={node.uuid}

@@ -371,16 +371,22 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
             ))}
           </div>
           {activeChart === 'ping' && (
-            <label className="flex items-center gap-1.5 cursor-pointer select-none shrink-0">
-              <span className="text-xxs font-mono text-muted-foreground">{smooth ? t('chart.smooth') : t('chart.raw')}</span>
-              <button
-                onClick={() => setSmooth(s => !s)}
-                className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${smooth ? 'bg-primary' : 'bg-muted-foreground/30'}`}
-                title={t('chart.ewmaTooltip')}
-              >
-                <span className={`inline-block h-3 w-3 rounded-full bg-white transition-transform ${smooth ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
-              </button>
-            </label>
+            <button
+              onClick={() => setSmooth(s => !s)}
+              title={t('chart.ewmaTooltip')}
+              className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono tracking-widest transition-all duration-200 cursor-pointer ${
+                smooth
+                  ? 'bg-primary/10 text-primary/80'
+                  : 'text-muted-foreground/40 hover:text-muted-foreground/60'
+              }`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                smooth
+                  ? 'bg-primary shadow-[0_0_4px_var(--color-primary)]'
+                  : 'bg-muted-foreground/20'
+              }`} />
+              <span>{smooth ? 'SMOOTH' : 'RAW'}</span>
+            </button>
           )}
         </div>
 

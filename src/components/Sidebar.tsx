@@ -1,10 +1,9 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ArrowLeft, Cpu, HardDrive, MemoryStick, Network, BarChart3, ExternalLink, Server, Layers, Search, X, Activity } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
 import type { NodeWithStatus } from '@/services/api';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
@@ -39,7 +38,17 @@ function NodeListView({
 }) {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortByActive, setSortByActive] = useState(true);
+  const [sortByActive, _setSortByActive] = useState(() => {
+    const saved = localStorage.getItem('globeSortByActive');
+    return saved === null ? true : saved === 'true';
+  });
+  const setSortByActive = useCallback((val: boolean | ((prev: boolean) => boolean)) => {
+    _setSortByActive(prev => {
+      const next = typeof val === 'function' ? val(prev) : val;
+      localStorage.setItem('globeSortByActive', String(next));
+      return next;
+    });
+  }, []);
   
   // Keep track of the stable order to prevent frequent jumping
   const [stableOrder, setStableOrder] = useState<string[]>([]);
@@ -169,18 +178,48 @@ function NodeListView({
 
       {/* Search filter */}
       <div className="px-2 py-1.5 border-b border-border/30 space-y-2 flex-shrink-0">
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-1.5 cursor-pointer" onClick={() => setSortByActive(!sortByActive)}>
-            <Activity className={cn("h-3 w-3 transition-colors", sortByActive ? "text-primary" : "text-muted-foreground/40")} />
-            <span className="text-xs font-mono text-muted-foreground/60 uppercase tracking-tight">{t('filter.sortByActivity')}</span>
+        <button
+          type="button"
+          onClick={() => setSortByActive(!sortByActive)}
+          className={cn(
+            "flex items-center justify-between w-full px-1.5 py-1 rounded cursor-pointer transition-all duration-200 group/sort",
+            sortByActive
+              ? "bg-primary/8"
+              : "hover:bg-muted/20"
+          )}
+        >
+          <div className="flex items-center gap-1.5">
+            <div className={cn(
+              "relative flex items-center justify-center w-3.5 h-3.5 transition-colors duration-200",
+              sortByActive ? "text-primary" : "text-muted-foreground/30"
+            )}>
+              <Activity className="h-3 w-3" />
+              {sortByActive && (
+                <span className="absolute -top-0.5 -right-0.5 w-1 h-1 rounded-full bg-primary animate-pulse" />
+              )}
+            </div>
+            <span className={cn(
+              "text-xs font-mono uppercase tracking-wider transition-colors duration-200",
+              sortByActive ? "text-primary/80" : "text-muted-foreground/40"
+            )}>
+              {t('filter.sortByActivity')}
+            </span>
           </div>
-          <Switch 
-            checked={sortByActive} 
-            onCheckedChange={setSortByActive}
-            size="sm"
-            className="data-[state=checked]:bg-primary"
-          />
-        </div>
+          <div className={cn(
+            "flex items-center gap-1 text-xs font-mono tracking-widest transition-colors duration-200",
+            sortByActive ? "text-primary/60" : "text-muted-foreground/25"
+          )}>
+            <span>[</span>
+            <span className={cn(
+              "w-1.5 h-1.5 rounded-full transition-all duration-300",
+              sortByActive
+                ? "bg-primary shadow-[0_0_4px_var(--color-primary)]"
+                : "bg-muted-foreground/20"
+            )} />
+            <span>{sortByActive ? 'ON' : 'OFF'}</span>
+            <span>]</span>
+          </div>
+        </button>
         <div className="relative">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/40" />
           <input
