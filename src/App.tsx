@@ -8,6 +8,7 @@ import { WebSocketStatus } from './components/WebSocketStatus'
 import { EffectsOverlay } from './components/EffectsOverlay'
 import { Starfield } from './components/Starfield'
 import { ChartModal } from './components/ChartModal'
+import { CircularGauge } from './components/CircularGauge'
 import { Button } from './components/ui/button'
 import { useNodes } from './hooks/useNodes'
 import { useEffects } from './hooks/useEffects'
@@ -81,11 +82,6 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
   const expiryStatus = (isFree || !appConfig.isLoggedIn) ? null : getExpiryStatus(node.expired_at);
   const hasTraffic = !!(node.traffic_limit && node.traffic_limit > 0 && node.traffic_limit_type && node.traffic_limit_type !== 'no_limit');
 
-  const statusColor = (val: number, w: number, c: number) => {
-    const s = getUsageStatus(val, { warning: w, critical: c });
-    return s === 'critical' ? 'text-red-500' : s === 'warning' ? 'text-yellow-500' : 'text-primary';
-  };
-
   return (
     <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl p-4">
       {/* Row 1: Name + Status + System Info */}
@@ -93,6 +89,14 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
         <div className="flex items-center gap-2 min-w-0">
           <span className={cn('w-2.5 h-2.5 rounded-full shrink-0', isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500')} />
           <h2 className="text-base font-display font-bold truncate">{node.name}</h2>
+          {appConfig.isLoggedIn && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-xxs font-mono text-muted-foreground/40 cursor-default select-all">{node.uuid}</span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs font-mono">UUID: {node.uuid}</TooltipContent>
+            </Tooltip>
+          )}
           {isOnline && stats?.updated_at ? (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -111,14 +115,6 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
           )}
           {node.group && (
             <span className="text-xxs font-mono font-bold px-1.5 py-0.5 rounded bg-primary/15 text-primary">[{node.group}]</span>
-          )}
-          {appConfig.isLoggedIn && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="text-xxs font-mono text-muted-foreground/40 cursor-default select-all">{node.uuid}</span>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs font-mono">UUID: {node.uuid}</TooltipContent>
-            </Tooltip>
           )}
           {node.hidden && (
             <span className="text-xxs font-mono font-bold px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-500">
@@ -276,48 +272,36 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
         )}
       </div>
 
-      {/* Row 3: Live stats grid */}
+      {/* Row 3: Live stats — circular gauges + info cards */}
       {stats ? (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <div className="p-2.5 rounded bg-muted/15 border border-border/20">
-              <div className="flex items-center gap-1.5 mb-1">
-                <Cpu className="h-3 w-3 text-muted-foreground" />
-                <span className="text-xs font-mono text-muted-foreground">{t('label.cpu')}</span>
-              </div>
-              <div className={cn('text-lg font-mono font-bold tabular-nums', statusColor(cpuUsage, 60, 80))}>
-                {cpuUsage.toFixed(1)}%
-              </div>
-            </div>
-            <div className="p-2.5 rounded bg-muted/15 border border-border/20">
-              <div className="flex items-center gap-1.5 mb-1">
-                <MemoryStick className="h-3 w-3 text-muted-foreground" />
-                <span className="text-xs font-mono text-muted-foreground">{t('label.ram')}</span>
-              </div>
-              <div className={cn('text-lg font-mono font-bold tabular-nums', statusColor(ramUsage, 70, 85))}>
-                {ramUsage.toFixed(1)}%
-              </div>
-              <div className="text-xs font-mono text-muted-foreground mt-0.5">
-                {formatBytes(stats.ram.used)} / {formatBytes(stats.ram.total)}
-              </div>
-              {stats.swap.total > 0 && (
-                <div className="text-xs font-mono text-muted-foreground/60 mt-0.5">
-                  {t('label.swap')}: {formatBytes(stats.swap.used)} / {formatBytes(stats.swap.total)}
-                </div>
-              )}
-            </div>
-            <div className="p-2.5 rounded bg-muted/15 border border-border/20">
-              <div className="flex items-center gap-1.5 mb-1">
-                <HardDrive className="h-3 w-3 text-muted-foreground" />
-                <span className="text-xs font-mono text-muted-foreground">{t('label.disk')}</span>
-              </div>
-              <div className={cn('text-lg font-mono font-bold tabular-nums', statusColor(diskUsage, 75, 90))}>
-                {diskUsage.toFixed(1)}%
-              </div>
-              <div className="text-xs font-mono text-muted-foreground mt-0.5">
-                {formatBytes(stats.disk.used)} / {formatBytes(stats.disk.total)}
-              </div>
-            </div>
+          {/* Circular gauges row */}
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            <CircularGauge
+              label={t('label.cpu')}
+              value={cpuUsage}
+              icon={<Cpu className="h-3 w-3 text-muted-foreground" />}
+              status={getUsageStatus(cpuUsage, { warning: 60, critical: 80 })}
+            />
+            <CircularGauge
+              label={t('label.ram')}
+              value={ramUsage}
+              icon={<MemoryStick className="h-3 w-3 text-muted-foreground" />}
+              status={getUsageStatus(ramUsage, { warning: 70, critical: 85 })}
+              detail={`${formatBytes(stats.ram.used)} / ${formatBytes(stats.ram.total)}`}
+              subDetail={stats.swap.total > 0 ? `${t('label.swap')}: ${formatBytes(stats.swap.used)} / ${formatBytes(stats.swap.total)}` : undefined}
+            />
+            <CircularGauge
+              label={t('label.disk')}
+              value={diskUsage}
+              icon={<HardDrive className="h-3 w-3 text-muted-foreground" />}
+              status={getUsageStatus(diskUsage, { warning: 75, critical: 90 })}
+              detail={`${formatBytes(stats.disk.used)} / ${formatBytes(stats.disk.total)}`}
+            />
+          </div>
+
+          {/* Info cards row */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="p-2.5 rounded bg-muted/15 border border-border/20">
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-1.5">

@@ -261,12 +261,7 @@ export function NodeCard({ node }: NodeCardProps) {
               </div>
             </div>
 
-            {/* Bottom info strip - only show for logged in users */}
-            {isLoggedIn && (
-              <div className="flex items-center justify-between text-xxs font-mono text-muted-foreground/70 pt-0.5">
-                <span>TCP:{stats.connections.tcp} {t('label.proc')}:{stats.process}</span>
-              </div>
-            )}
+
           </div>
         ) : (
           <div className="flex items-center justify-center h-20 text-muted-foreground text-xs font-mono">

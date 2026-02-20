@@ -812,6 +812,45 @@
     border-top-color: oklch(0.75 0.18 195 / 15%) !important;
   }
 
+  /* ════════════════════════════════════════════════════════════
+     Circular Gauge — Theme-aware ring glow
+     ════════════════════════════════════════════════════════════ */
+
+  .circular-gauge {
+    transition: filter 0.3s ease;
+  }
+
+  /* DeepSpace: neon glow on the ring */
+  [data-theme="deepspace"] .circular-gauge-glow-normal {
+    filter: drop-shadow(0 0 6px oklch(0.75 0.18 195 / 40%));
+  }
+
+  [data-theme="deepspace"] .circular-gauge-glow-warning {
+    filter: drop-shadow(0 0 6px oklch(0.8 0.18 85 / 40%));
+  }
+
+  [data-theme="deepspace"] .circular-gauge-glow-critical {
+    filter: drop-shadow(0 0 6px oklch(0.65 0.25 25 / 40%));
+  }
+
+  /* Lumina: subtle glow */
+  :root .circular-gauge-glow-normal {
+    filter: drop-shadow(0 0 3px oklch(0.65 0.15 195 / 20%));
+  }
+
+  :root .circular-gauge-glow-warning {
+    filter: drop-shadow(0 0 3px oklch(0.7 0.15 85 / 20%));
+  }
+
+  :root .circular-gauge-glow-critical {
+    filter: drop-shadow(0 0 3px oklch(0.6 0.2 25 / 20%));
+  }
+
+  /* Clean: no glow */
+  [data-theme="clean"] .circular-gauge {
+    filter: none;
+  }
+
   /* Deepspace card style — cyan edge glow */
   [data-theme="deepspace"] .bg-card\/80,
   [data-theme="deepspace"] .bg-card\/60 {
