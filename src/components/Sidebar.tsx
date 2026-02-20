@@ -227,7 +227,7 @@ function NodeListView({
                 onClick={() => onSelectNode(node.uuid)}
                 className={cn(
                   'w-full px-3 py-2.5 text-left transition-all duration-150 border-l-2 absolute top-0 left-0',
-                  'hover:bg-muted/50 cursor-pointer',
+                  'hover:bg-primary/5 cursor-pointer sidebar-node-item',
                   'border-b border-border/20',
                   isSelected
                     ? 'bg-primary/10 border-l-primary'
@@ -278,20 +278,27 @@ function NodeListView({
                   )}
                 </div>
                 {isOnline && stats && (
-                  <div className="flex items-center gap-3 mt-1 ml-3.5 text-xs font-mono text-muted-foreground">
+                  <div className="flex items-center gap-2.5 mt-1.5 ml-3.5 text-xs font-mono text-muted-foreground sidebar-node-stats">
                     <span className={cn(
+                      'sidebar-stat-cell',
                       cpuUsage >= 80 ? 'text-red-500' : cpuUsage >= 60 ? 'text-yellow-500' : ''
                     )}>
                       {t('label.cpu')} {cpuUsage.toFixed(0)}%
                     </span>
+                    <span className="text-border/60">│</span>
                     <span className={cn(
+                      'sidebar-stat-cell',
                       ramUsage >= 85 ? 'text-red-500' : ramUsage >= 70 ? 'text-yellow-500' : ''
                     )}>
                       {t('label.ram')} {ramUsage.toFixed(0)}%
                     </span>
-                    <span>↑{formatSpeed(stats.network.up)}</span>
+                    <span className="text-border/60">│</span>
+                    <span className="sidebar-stat-cell">↑{formatSpeed(stats.network.up)}</span>
+                    <span className="sidebar-stat-cell">↓{formatSpeed(stats.network.down)}</span>
                   </div>
                 )}
+                {/* HUD hover scan line */}
+                <div className="sidebar-node-scanline" />
               </button>
             );
           })}

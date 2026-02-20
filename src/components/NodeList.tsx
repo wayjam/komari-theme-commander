@@ -49,7 +49,7 @@ function FilterDropdown({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute top-full left-0 mt-1 z-50 min-w-[140px] py-1 rounded-md border border-border/50 bg-popover/95 backdrop-blur-xl shadow-lg">
+          <div className="absolute top-full left-0 mt-1 z-50 min-w-[140px] py-1 rounded-md border border-border/50 bg-popover backdrop-blur-none shadow-lg commander-dropdown">
             {options.map(opt => (
               <button
                 key={opt.value}
@@ -289,9 +289,15 @@ export function NodeList({ nodes = [], loading = false, onRefresh, onViewCharts,
 
       {/* Node list content */}
       {nodes.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-64 rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl">
-          <div className="text-sm font-mono text-muted-foreground">{t('node.noNodesAvailable')}</div>
-          <div className="text-xs font-mono text-muted-foreground mt-1">{t('node.addFromAdmin')}</div>
+        <div className="flex flex-col items-center justify-center h-64 rounded-lg border border-dashed border-border/50 bg-card/80 backdrop-blur-xl relative overflow-hidden">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-32 h-32 rounded-full border border-primary/10 animate-ping" style={{ animationDuration: '3s' }} />
+          </div>
+          <div className="relative z-10 flex flex-col items-center gap-1.5">
+            <span className="text-sm font-display font-bold text-muted-foreground/60 uppercase tracking-widest no-signal-pulse">NO SIGNAL</span>
+            <div className="text-xs font-mono text-muted-foreground">{t('node.noNodesAvailable')}</div>
+            <div className="text-xxs font-mono text-muted-foreground/60 mt-1">{t('node.addFromAdmin')}</div>
+          </div>
         </div>
       ) : defaultView === 'grid' ? (
         <VirtualGrid nodes={sortedNodes} onViewCharts={onViewCharts} />

@@ -22,7 +22,7 @@ function resolveLanguage(lang: string): SupportedLanguage {
 }
 
 export function LanguageSwitcher() {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -54,10 +54,10 @@ export function LanguageSwitcher() {
       </Button>
 
       {dropdownOpen && (
-        <div className="absolute right-0 top-full mt-1 w-40 rounded-lg border border-border/50 bg-card/95 backdrop-blur-xl shadow-xl z-50 overflow-hidden">
+        <div className="absolute right-0 top-full mt-1 w-40 rounded-lg border border-border/50 bg-popover backdrop-blur-none shadow-xl z-50 overflow-hidden commander-dropdown">
           <div className="px-3 py-1.5 border-b border-border/50">
             <span className="text-xxs font-mono font-bold uppercase tracking-wider text-muted-foreground">
-              LANGUAGE
+              {t('lang.title')}
             </span>
           </div>
           <div className="p-1">

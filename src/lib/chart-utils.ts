@@ -98,7 +98,7 @@ export function labelFormatter(value: any): string {
 }
 
 /** Shared chart card CSS class */
-export const chartCardClass = "border border-border/50 bg-card/80 backdrop-blur-xl";
+export const chartCardClass = "border border-border/50 bg-card/80 backdrop-blur-xl chart-card-commander commander-corners";
 
 /** Shared chart container CSS class */
 export const chartContainerClass = "h-[200px] sm:h-[250px] md:h-[280px] w-full !aspect-auto overflow-hidden chart-mobile-optimized";

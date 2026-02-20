@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Loader2 } from 'lucide-react';
+import { motion } from 'motion/react';
 import { apiService } from '@/services/api';
 import {
   ChartContainer,
@@ -310,10 +311,18 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-background/60 backdrop-blur-sm" />
-      <div
+      <motion.div
+        className="absolute inset-0 bg-background/60 backdrop-blur-sm"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2 }}
+      />
+      <motion.div
         className="relative w-[90vw] max-w-3xl bg-card/95 backdrop-blur-xl border border-border/50 rounded-lg shadow-2xl overflow-hidden commander-corners"
         onClick={(e) => e.stopPropagation()}
+        initial={{ opacity: 0, scale: 0.92, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
       >
         <span className="corner-bottom" />
         {/* Header */}
@@ -379,7 +388,7 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
         <div className="h-[300px] sm:h-[360px] p-3">
           {renderChart()}
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

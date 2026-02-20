@@ -83,7 +83,9 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
   const hasTraffic = !!(node.traffic_limit && node.traffic_limit > 0 && node.traffic_limit_type && node.traffic_limit_type !== 'no_limit');
 
   return (
-    <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl p-4">
+    <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl p-4 commander-corners relative overflow-hidden">
+      <div className="commander-scanner-effect" />
+      <span className="corner-bottom" />
       {/* Row 1: Name + Status + System Info */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
         <div className="flex items-center gap-2 min-w-0">
@@ -605,8 +607,9 @@ function App() {
       <ViewModeContext.Provider value={{ viewMode, setViewMode: handleSetViewMode }}>
         <div className="min-h-screen flex flex-col bg-background text-foreground">
           {/* ═══ Header ═══ */}
-          <header className="sticky top-0 z-50 border-b border-border/50 bg-background/85 backdrop-blur-xl">
+          <header className="sticky top-0 z-50 border-b border-border/50 bg-background/85 backdrop-blur-xl relative">
             <div className="commander-scanner-effect" />
+            <div className="header-neon-line" />
             <div className="container mx-auto px-3 sm:px-4 h-12 flex items-center justify-between gap-2 relative z-10">
               <div className="flex items-center gap-3 min-w-0">
                 <button
@@ -629,9 +632,9 @@ function App() {
                 </div>
 
                 {hasCriticalNode && (
-                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-xs font-mono text-red-500 animate-pulse">
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-xs font-mono text-red-500 animate-pulse threat-badge">
                     <AlertTriangle className="h-3 w-3" />
-                    <span className="hidden lg:inline uppercase tracking-widest">System Threat Detected</span>
+                    <span className="hidden lg:inline uppercase tracking-widest glitch-text">System Threat Detected</span>
                     <span className="lg:hidden uppercase">Threat</span>
                   </div>
                 )}
@@ -689,7 +692,8 @@ function App() {
           </main>
 
           {/* ═══ Footer ═══ */}
-          <footer className="sticky bottom-0 z-40 border-t border-border/50 bg-background/85 backdrop-blur-xl">
+          <footer className="sticky bottom-0 z-40 border-t border-border/50 bg-background/85 backdrop-blur-xl relative">
+            <div className="footer-neon-line" />
             <div className="container mx-auto px-3 sm:px-4 h-9 flex items-center justify-between text-xs font-mono text-muted-foreground">
               <div className="flex items-center gap-3">
                 <WebSocketStatus />

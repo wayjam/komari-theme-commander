@@ -40,8 +40,7 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
         ]);
 
         setConfig({
-          // isLoggedIn: !!userInfo?.logged_in,
-           isLoggedIn:true,
+          isLoggedIn: !!userInfo?.logged_in,
           username: userInfo?.username || '',
           recordPreserveTime: publicSettings?.record_preserve_time || 720,
           pingRecordPreserveTime: publicSettings?.ping_record_preserve_time || 48,

@@ -107,7 +107,7 @@ export function NodeCard({ node }: NodeCardProps) {
     <div className={cn(
       'group relative overflow-hidden rounded-lg border bg-card/80 backdrop-blur-xl transition-all duration-300',
       'hover:shadow-lg hover:shadow-primary/5 commander-corners',
-      isOnline ? 'border-border/50' : 'border-border/30 opacity-70'
+      isOnline ? 'border-border/50' : 'border-border/30 opacity-70 offline-card'
     )}>
       <div className="commander-scanner-effect" />
       <span className="corner-bottom" />
@@ -241,21 +241,21 @@ export function NodeCard({ node }: NodeCardProps) {
 
             {/* Data grid — 4 columns HUD */}
             <div className="grid grid-cols-4 gap-1 pt-1">
-              <div className="text-center p-1.5 rounded bg-muted/20 border border-border/20">
+              <div className="text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
                 <div className="text-xs font-mono text-muted-foreground">{t('label.load')}</div>
                 <div className="text-xs font-mono font-bold tabular-nums">{stats.load.load1.toFixed(2)}</div>
               </div>
-              <div className="text-center p-1.5 rounded bg-muted/20 border border-border/20">
+              <div className="text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
                 <div className="text-xs font-mono text-muted-foreground">{t('label.netUp')}</div>
                 <div className="text-xs font-mono font-bold tabular-nums">{formatSpeed(stats.network.up).replace('/s','')}</div>
                 <div className="text-xxs font-mono text-muted-foreground/50">{formatBytes(stats.network.totalUp)}</div>
               </div>
-              <div className="text-center p-1.5 rounded bg-muted/20 border border-border/20">
+              <div className="text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
                 <div className="text-xs font-mono text-muted-foreground">{t('label.netDown')}</div>
                 <div className="text-xs font-mono font-bold tabular-nums">{formatSpeed(stats.network.down).replace('/s','')}</div>
                 <div className="text-xxs font-mono text-muted-foreground/50">{formatBytes(stats.network.totalDown)}</div>
               </div>
-              <div className="text-center p-1.5 rounded bg-muted/20 border border-border/20">
+              <div className="text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
                 <div className="text-xs font-mono text-muted-foreground">{t('label.up')}</div>
                 <div className="text-xs font-mono font-bold tabular-nums">{formatUptime(stats.uptime)}</div>
               </div>
@@ -264,8 +264,8 @@ export function NodeCard({ node }: NodeCardProps) {
 
           </div>
         ) : (
-          <div className="flex items-center justify-center h-20 text-muted-foreground text-xs font-mono">
-            {t('telemetry.noData')}
+          <div className="flex flex-col items-center justify-center h-20 text-muted-foreground text-xs font-mono gap-1.5">
+            <span className="no-signal-pulse uppercase tracking-widest text-muted-foreground/60">{t('telemetry.noData')}</span>
           </div>
         )}
       </div>

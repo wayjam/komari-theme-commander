@@ -60,7 +60,7 @@
   --foreground: oklch(0.18 0.02 240);
   --card: oklch(0.99 0.005 220 / 80%);
   --card-foreground: oklch(0.18 0.02 240);
-  --popover: oklch(0.98 0.008 220 / 90%);
+  --popover: oklch(0.98 0.008 220);
   --popover-foreground: oklch(0.18 0.02 240);
   --primary: oklch(0.65 0.15 195);
   --primary-foreground: oklch(0.99 0 0);
@@ -98,7 +98,7 @@
   --foreground: oklch(0.92 0.01 210);
   --card: oklch(0.12 0.025 265 / 80%);
   --card-foreground: oklch(0.92 0.01 210);
-  --popover: oklch(0.14 0.025 265 / 92%);
+  --popover: oklch(0.14 0.025 265);
   --popover-foreground: oklch(0.92 0.01 210);
   --primary: oklch(0.75 0.18 195);
   --primary-foreground: oklch(0.08 0.02 265);
@@ -871,5 +871,254 @@
   [data-theme="deepspace"] [data-slot="chart"] .recharts-tooltip-wrapper .bg-background {
     border-color: oklch(0.75 0.18 195 / 30%);
     box-shadow: 0 0 12px oklch(0.75 0.18 195 / 15%), 0 4px 16px oklch(0.08 0.02 265 / 50%);
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     Sparkline — glow + last-value dot
+     ════════════════════════════════════════════════════════════ */
+
+  .sparkline-container {
+    position: relative;
+  }
+
+  .sparkline-dot-glow {
+    pointer-events: none;
+  }
+
+  [data-theme="deepspace"] .sparkline-container {
+    filter: drop-shadow(0 0 4px oklch(0.75 0.18 195 / 30%));
+  }
+
+  [data-theme="deepspace"] .sparkline-dot-glow {
+    filter: drop-shadow(0 0 3px currentColor);
+  }
+
+  [data-theme="clean"] .sparkline-dot-glow {
+    display: none;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     Commander corners — Visibility boost for deepspace
+     ════════════════════════════════════════════════════════════ */
+
+  [data-theme="deepspace"] .commander-corners::before,
+  [data-theme="deepspace"] .commander-corners::after,
+  [data-theme="deepspace"] .commander-corners > .corner-bottom::before,
+  [data-theme="deepspace"] .commander-corners > .corner-bottom::after {
+    opacity: 0.35;
+    border-color: var(--primary);
+  }
+
+  [data-theme="deepspace"] .commander-corners:hover::before,
+  [data-theme="deepspace"] .commander-corners:hover::after,
+  [data-theme="deepspace"] .commander-corners:hover > .corner-bottom::before,
+  [data-theme="deepspace"] .commander-corners:hover > .corner-bottom::after {
+    opacity: 0.6;
+  }
+
+  /* Scanner effect — Boost for deepspace */
+  [data-theme="deepspace"] .commander-scanner-effect::after {
+    opacity: 0.08;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     Chart Card — Commander decoration
+     ════════════════════════════════════════════════════════════ */
+
+  .chart-card-commander {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .chart-card-commander::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(to right, var(--primary), var(--accent));
+    opacity: 0.6;
+    z-index: 1;
+  }
+
+  /* Bottom corners via extra pseudo on CardContent */
+  .chart-card-commander::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    width: 6px;
+    height: 6px;
+    border-bottom: 1.5px solid var(--primary);
+    border-right: 1.5px solid var(--primary);
+    opacity: 0.15;
+    pointer-events: none;
+  }
+
+  [data-theme="deepspace"] .chart-card-commander::after {
+    opacity: 0.35;
+  }
+
+  [data-theme="clean"] .chart-card-commander::before,
+  [data-theme="clean"] .chart-card-commander::after {
+    display: none;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     Header/Footer — Neon accent lines
+     ════════════════════════════════════════════════════════════ */
+
+  .header-neon-line {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--primary), var(--accent), transparent);
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  .footer-neon-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--primary), var(--accent), transparent);
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  [data-theme="deepspace"] .header-neon-line,
+  [data-theme="deepspace"] .footer-neon-line {
+    opacity: 0.6;
+    filter: drop-shadow(0 0 4px var(--primary));
+  }
+
+  [data-theme="clean"] .header-neon-line,
+  [data-theme="clean"] .footer-neon-line {
+    display: none;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     Dropdown — Commander styling
+     ════════════════════════════════════════════════════════════ */
+
+  .commander-dropdown {
+    position: relative;
+  }
+
+  .commander-dropdown::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--primary), transparent);
+    opacity: 0.3;
+  }
+
+  [data-theme="deepspace"] .commander-dropdown {
+    box-shadow: 0 4px 20px oklch(0.08 0.02 265 / 60%), 0 0 8px oklch(0.75 0.18 195 / 10%);
+  }
+
+  [data-theme="clean"] .commander-dropdown::before {
+    display: none;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     Data Grid Cell — HUD accent
+     ════════════════════════════════════════════════════════════ */
+
+  .hud-data-cell {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hud-data-cell::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 10%;
+    right: 10%;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--primary), transparent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .hud-data-cell:hover::after {
+    opacity: 0.3;
+  }
+
+  [data-theme="clean"] .hud-data-cell::after {
+    display: none;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     Offline / Empty state — Enhanced visuals
+     ════════════════════════════════════════════════════════════ */
+
+  .offline-card {
+    border-style: dashed !important;
+    border-color: oklch(0.5 0 0 / 20%) !important;
+  }
+
+  [data-theme="deepspace"] .offline-card {
+    border-color: oklch(0.65 0.25 15 / 20%) !important;
+  }
+
+  .no-signal-pulse {
+    animation: no-signal-flash 2s ease-in-out infinite;
+  }
+
+  @keyframes no-signal-flash {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     Threat badge — Enhanced warning
+     ════════════════════════════════════════════════════════════ */
+
+  [data-theme="deepspace"] .threat-badge {
+    text-shadow: 0 0 8px oklch(0.65 0.25 15 / 60%);
+    box-shadow: 0 0 12px oklch(0.65 0.25 15 / 20%);
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     Sidebar node list — HUD enhancements
+     ════════════════════════════════════════════════════════════ */
+
+  .sidebar-node-item {
+    position: relative;
+  }
+
+  .sidebar-node-scanline {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--color-primary), transparent);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+  }
+
+  .sidebar-node-item:hover .sidebar-node-scanline {
+    opacity: 0.3;
+  }
+
+  [data-theme="deepspace"] .sidebar-node-item:hover .sidebar-node-scanline {
+    opacity: 0.5;
+    box-shadow: 0 0 4px var(--color-primary);
+  }
+
+  [data-theme="clean"] .sidebar-node-scanline {
+    display: none;
   }
 }
