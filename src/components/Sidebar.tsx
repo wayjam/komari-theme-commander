@@ -7,7 +7,7 @@ import { ArrowLeft, Cpu, HardDrive, MemoryStick, Network, BarChart3, ExternalLin
 import type { NodeWithStatus } from '@/services/api';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { cn, extractRegionEmoji, formatSpeed, formatBytes, formatUptime, getUsageStatus, calcTrafficUsage, formatTrafficType, getExpiryStatus, formatExpiry } from '@/lib/utils';
+import { cn, extractRegionEmoji, formatSpeed, formatBytes, formatUptime, getUsageStatus, calcTrafficUsage, formatTrafficType } from '@/lib/utils';
 import type { TrafficLimitType } from '@/lib/utils';
 import { useAppConfig } from '@/hooks/useAppConfig';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
