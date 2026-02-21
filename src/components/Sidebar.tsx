@@ -555,13 +555,28 @@ function NodeDetailView({
           {/* Tags */}
           {node.tags && (() => {
             const tagList = node.tags.split(/[,;]/).map(t => t.trim()).filter(Boolean);
+            const maxTags = 5;
+            const visibleTags = tagList.slice(0, maxTags);
+            const hiddenCount = tagList.length - visibleTags.length;
             return tagList.length > 0 ? (
               <div className="flex flex-wrap gap-1 mt-1">
-                {tagList.map((tag, i) => (
+                {visibleTags.map((tag, i) => (
                   <span key={i} className="text-xs font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded-sm">
                     {tag}
                   </span>
                 ))}
+                {hiddenCount > 0 && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="text-xs font-mono text-muted-foreground/60 bg-muted/30 px-1.5 py-0.5 rounded-sm cursor-default">
+                        +{hiddenCount}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs font-mono">
+                      {tagList.slice(maxTags).join(', ')}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
               </div>
             ) : null;
           })()}
