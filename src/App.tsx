@@ -88,21 +88,13 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
       <span className="corner-bottom" />
       {/* Row 1: Name + Status + System Info */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
           <span className={cn('w-2.5 h-2.5 rounded-full shrink-0', isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500')} />
-          <h2 className="text-base font-display font-bold truncate">{node.name}</h2>
-          {appConfig.isLoggedIn && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="text-xxs font-mono text-muted-foreground/40 cursor-default select-all">{node.uuid}</span>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs font-mono">UUID: {node.uuid}</TooltipContent>
-            </Tooltip>
-          )}
+          <h2 className="text-base font-display font-bold truncate max-w-[60vw] sm:max-w-none">{node.name}</h2>
           {isOnline && stats?.updated_at ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className={cn('text-xxs font-mono font-bold px-1.5 py-0.5 rounded cursor-default', 'bg-green-500/15 text-green-500')}>
+                <span className={cn('text-xxs font-mono font-bold px-1.5 py-0.5 rounded cursor-default shrink-0', 'bg-green-500/15 text-green-500')}>
                   {t('status.online')}
                 </span>
               </TooltipTrigger>
@@ -111,20 +103,28 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
               </TooltipContent>
             </Tooltip>
           ) : (
-            <span className={cn('text-xxs font-mono font-bold px-1.5 py-0.5 rounded', isOnline ? 'bg-green-500/15 text-green-500' : 'bg-red-500/15 text-red-500')}>
+            <span className={cn('text-xxs font-mono font-bold px-1.5 py-0.5 rounded shrink-0', isOnline ? 'bg-green-500/15 text-green-500' : 'bg-red-500/15 text-red-500')}>
               {isOnline ? t('status.online') : t('status.offline')}
             </span>
           )}
+          {appConfig.isLoggedIn && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="hidden sm:inline text-xxs font-mono text-muted-foreground/40 cursor-default select-all">{node.uuid}</span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs font-mono">UUID: {node.uuid}</TooltipContent>
+            </Tooltip>
+          )}
           {node.group && (
-            <span className="text-xxs font-mono font-bold px-1.5 py-0.5 rounded bg-primary/15 text-primary">[{node.group}]</span>
+            <span className="text-xxs font-mono font-bold px-1.5 py-0.5 rounded bg-primary/15 text-primary shrink-0">[{node.group}]</span>
           )}
           {node.hidden && (
-            <span className="text-xxs font-mono font-bold px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-500">
+            <span className="text-xxs font-mono font-bold px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-500 shrink-0">
               {t('node.hidden')}
             </span>
           )}
           {node.ipv6 && (
-            <span className="text-xxs font-mono font-bold px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-500">
+            <span className="text-xxs font-mono font-bold px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-500 shrink-0">
               IPv6
             </span>
           )}
@@ -546,7 +546,7 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { nodes, loading, refreshNodes, getOnlineCount, getOfflineCount } = useNodes();
+  const { nodes, loading, refreshNodes } = useNodes();
   const { activeEffects } = useEffects();
   const appConfig = useAppConfig();
 
@@ -573,8 +573,6 @@ function App() {
     init();
   }, []);
 
-  const onlineCount = useMemo(() => getOnlineCount(), [nodes]);
-  const offlineCount = useMemo(() => getOfflineCount(), [nodes]);
 
   const networkStats = useMemo(() => {
     let totalUp = 0;
@@ -618,36 +616,85 @@ function App() {
           <header className="sticky top-0 z-50 border-b border-border/50 bg-background/85 backdrop-blur-xl relative">
             <div className="commander-scanner-effect" />
             <div className="header-neon-line" />
-            <div className="container mx-auto px-3 sm:px-4 h-12 flex items-center justify-between gap-2 relative z-10">
-              <div className="flex items-center gap-3 min-w-0">
+            <div className="container mx-auto px-3 sm:px-4 relative z-10">
+              {/* Desktop: single row with everything */}
+              <div className="hidden sm:flex h-12 items-center justify-between gap-2">
+                <div className="flex items-center gap-3 min-w-0">
+                  <button
+                    onClick={() => navigate('/')}
+                    className="text-xl font-bold font-display truncate hover:text-primary transition-colors cursor-pointer"
+                    title={siteDescription || siteName}
+                  >
+                    {siteName}
+                  </button>
+                  {hasCriticalNode && (
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-xs font-mono text-red-500 animate-pulse threat-badge">
+                      <AlertTriangle className="h-3 w-3" />
+                      <span className="hidden lg:inline uppercase tracking-widest glitch-text">System Threat Detected</span>
+                      <span className="lg:hidden uppercase">Threat</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex border border-border/50 rounded overflow-hidden">
+                    {viewButtons.map(({ mode, icon: Icon, label }) => (
+                      <button
+                        key={mode}
+                        onClick={() => {
+                          handleSetViewMode(mode);
+                          if (!isDashboard) navigate('/');
+                        }}
+                        className={`p-1.5 transition-colors cursor-pointer ${viewMode === mode ? 'bg-primary text-primary-foreground' : 'hover:bg-muted/50'}`}
+                        title={label}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                      </button>
+                    ))}
+                  </div>
+                  <LanguageSwitcher />
+                  <ThemeSwitcher />
+                  {appConfig.isLoggedIn ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => window.location.href = '/admin'}
+                      className="h-7 px-2 text-xs font-mono hover:bg-primary/15 hover:text-primary"
+                    >
+                      <User className="h-3.5 w-3.5 mr-1" />
+                      <span>{appConfig.username || t('action.admin')}</span>
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => window.location.href = '/admin'}
+                      className="h-7 px-2 text-xs font-mono hover:bg-primary/15 hover:text-primary"
+                    >
+                      <Settings className="h-3.5 w-3.5 mr-1" />
+                      <span>{t('action.admin')}</span>
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Mobile: Row 1 — title only */}
+              <div className="sm:hidden flex items-center justify-between h-9 pt-1">
                 <button
                   onClick={() => navigate('/')}
-                  className="text-2xl sm:text-xl font-bold font-display truncate hover:text-primary transition-colors cursor-pointer"
+                  className="text-lg font-bold font-display truncate hover:text-primary transition-colors cursor-pointer"
                   title={siteDescription || siteName}
                 >
                   {siteName}
                 </button>
-                <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                    {onlineCount}
-                  </span>
-                  <span>/</span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                    {offlineCount}
-                  </span>
-                </div>
-
                 {hasCriticalNode && (
-                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-xs font-mono text-red-500 animate-pulse threat-badge">
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-xs font-mono text-red-500 animate-pulse threat-badge shrink-0">
                     <AlertTriangle className="h-3 w-3" />
-                    <span className="hidden lg:inline uppercase tracking-widest glitch-text">System Threat Detected</span>
-                    <span className="lg:hidden uppercase">Threat</span>
+                    <span className="uppercase">Threat</span>
                   </div>
                 )}
               </div>
-              <div className="flex items-center gap-1.5 sm:gap-2">
+              {/* Mobile: Row 2 — view switcher + controls */}
+              <div className="sm:hidden flex items-center justify-between pb-1.5">
                 <div className="flex border border-border/50 rounded overflow-hidden">
                   {viewButtons.map(({ mode, icon: Icon, label }) => (
                     <button
@@ -663,29 +710,29 @@ function App() {
                     </button>
                   ))}
                 </div>
-                <LanguageSwitcher />
-                <ThemeSwitcher />
-                {appConfig.isLoggedIn ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => window.location.href = '/admin'}
-                    className="h-7 px-2 text-xs font-mono hover:bg-primary/15 hover:text-primary"
-                  >
-                    <User className="h-3.5 w-3.5 sm:mr-1" />
-                    <span className="hidden sm:inline">{appConfig.username || t('action.admin')}</span>
-                  </Button>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => window.location.href = '/admin'}
-                    className="h-7 px-2 text-xs font-mono hover:bg-primary/15 hover:text-primary"
-                  >
-                    <Settings className="h-3.5 w-3.5 sm:mr-1" />
-                    <span className="hidden sm:inline">{t('action.admin')}</span>
-                  </Button>
-                )}
+                <div className="flex items-center gap-1.5">
+                  <LanguageSwitcher />
+                  <ThemeSwitcher />
+                  {appConfig.isLoggedIn ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => window.location.href = '/admin'}
+                      className="h-7 px-2 text-xs font-mono hover:bg-primary/15 hover:text-primary"
+                    >
+                      <User className="h-3.5 w-3.5" />
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => window.location.href = '/admin'}
+                      className="h-7 px-2 text-xs font-mono hover:bg-primary/15 hover:text-primary"
+                    >
+                      <Settings className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </header>
@@ -706,7 +753,7 @@ function App() {
               <div className="flex items-center gap-3">
                 <WebSocketStatus />
                 <span className="hidden sm:inline text-muted-foreground/30">|</span>
-                <ClockDisplay />
+                <span className="hidden sm:inline"><ClockDisplay /></span>
                 <span className="hidden sm:inline text-muted-foreground/60">|</span>
                 <div className="hidden sm:flex items-center gap-2">
                   <span>↑ {formatSpeed(networkStats.totalUp)}</span>

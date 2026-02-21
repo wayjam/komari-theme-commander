@@ -106,7 +106,7 @@ export function GlobeView({ nodes, loading = false, onViewCharts }: GlobeViewPro
   }, [logLines]);
 
   return (
-    <div className="relative z-10 flex flex-col lg:flex-row gap-4 w-full h-[calc(100vh-theme(spacing.12)-theme(spacing.9)-2rem)] sm:h-[calc(100vh-theme(spacing.12)-theme(spacing.9)-3rem)]">
+    <div className="relative z-10 flex flex-col lg:flex-row gap-4 w-full h-[calc(100vh-theme(spacing.10)-theme(spacing.8)-theme(spacing.9)-2rem)] sm:h-[calc(100vh-theme(spacing.12)-theme(spacing.9)-3rem)]">
       {/* Globe — Main */}
       <div className="flex-1 flex items-center justify-center min-h-0 relative commander-corners z-30">
         <span className="corner-bottom" />

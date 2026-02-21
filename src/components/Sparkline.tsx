@@ -1,5 +1,5 @@
 import { useId, useMemo, useCallback, memo } from 'react';
-import { Area, AreaChart, ResponsiveContainer, YAxis } from 'recharts';
+import { Area, AreaChart, YAxis } from 'recharts';
 
 interface SparklineProps {
   data: number[];
@@ -47,27 +47,25 @@ export const Sparkline = memo(function Sparkline({
 
   return (
     <div className={`sparkline-container ${className ?? ''}`} style={{ width, height }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={chartData} margin={{ top: 3, right: 4, bottom: 3, left: 2 }}>
-          <defs>
-            <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity={0.3} />
-              <stop offset="100%" stopColor={color} stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <YAxis domain={['dataMin', 'dataMax']} hide />
-          <Area
-            type="monotone"
-            dataKey="v"
-            stroke={color}
-            strokeWidth={1.5}
-            fill={`url(#${gradId})`}
-            isAnimationActive={false}
-            dot={renderDot}
-            activeDot={false}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
+      <AreaChart width={width} height={height} data={chartData} margin={{ top: 3, right: 4, bottom: 3, left: 2 }}>
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+            <stop offset="100%" stopColor={color} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <YAxis domain={['dataMin', 'dataMax']} hide />
+        <Area
+          type="monotone"
+          dataKey="v"
+          stroke={color}
+          strokeWidth={1.5}
+          fill={`url(#${gradId})`}
+          isAnimationActive={false}
+          dot={renderDot}
+          activeDot={false}
+        />
+      </AreaChart>
     </div>
   );
 });

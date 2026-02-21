@@ -416,7 +416,7 @@ export function UptimeView({ nodes }: UptimeViewProps) {
           <h2 className="text-sm font-display font-bold">{t('uptime.monitor')}</h2>
         </div>
 
-        <div className="flex items-center gap-3 sm:ml-auto">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 sm:ml-auto">
           {/* Summary badges */}
           <div className="flex items-center gap-2 text-xs font-mono">
             <span className="flex items-center gap-1">

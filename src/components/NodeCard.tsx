@@ -177,11 +177,23 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
                 {node.group}
               </span>
             )}
-            {tagList.map((tag, i) => (
+            {tagList.slice(0, 5).map((tag, i) => (
               <span key={i} className="text-xs font-mono text-muted-foreground/80 bg-muted/50 px-1.5 py-0.5 rounded-sm">
                 {tag}
               </span>
             ))}
+            {tagList.length > 5 && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-xs font-mono text-muted-foreground/60 bg-muted/40 px-1.5 py-0.5 rounded-sm cursor-default">
+                    +{tagList.length - 5}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs font-mono">
+                  {tagList.slice(5).join(', ')}
+                </TooltipContent>
+              </Tooltip>
+            )}
             {node.hidden && (
               <span className="text-xs font-mono text-yellow-500/80 bg-yellow-500/15 px-1.5 py-0.5 rounded-sm">
                 {t('node.hidden')}

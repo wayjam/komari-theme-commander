@@ -355,40 +355,44 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
         </div>
 
         {/* Chart tabs */}
-        <div className="flex items-center justify-between gap-0.5 px-4 py-1.5 border-b border-border/30 overflow-x-auto">
-          <div className="flex items-center gap-0.5">
-            {chartTabIds.map(id => (
+        <div className="relative">
+          <div className="flex items-center justify-between gap-0.5 px-4 py-1.5 border-b border-border/30 overflow-x-auto scrollbar-none">
+            <div className="flex items-center gap-0.5">
+              {chartTabIds.map(id => (
+                <button
+                  key={id}
+                  onClick={() => setActiveChart(id)}
+                  className={`px-3 py-1 text-xs font-mono font-bold rounded transition-colors whitespace-nowrap ${
+                    activeChart === id
+                      ? 'bg-primary/15 text-primary border border-primary/30'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
+                  }`}
+                >
+                  {t(chartTabKeys[id])}
+                </button>
+              ))}
+            </div>
+            {activeChart === 'ping' && (
               <button
-                key={id}
-                onClick={() => setActiveChart(id)}
-                className={`px-3 py-1 text-xs font-mono font-bold rounded transition-colors whitespace-nowrap ${
-                  activeChart === id
-                    ? 'bg-primary/15 text-primary border border-primary/30'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
+                onClick={() => setSmooth(s => !s)}
+                title={t('chart.ewmaTooltip')}
+                className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono tracking-widest transition-all duration-200 cursor-pointer shrink-0 ${
+                  smooth
+                    ? 'bg-primary/10 text-primary/80'
+                    : 'text-muted-foreground/40 hover:text-muted-foreground/60'
                 }`}
               >
-                {t(chartTabKeys[id])}
+                <span className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                  smooth
+                    ? 'bg-primary shadow-[0_0_4px_var(--color-primary)]'
+                    : 'bg-muted-foreground/20'
+                }`} />
+                <span>{smooth ? 'SMOOTH' : 'RAW'}</span>
               </button>
-            ))}
+            )}
           </div>
-          {activeChart === 'ping' && (
-            <button
-              onClick={() => setSmooth(s => !s)}
-              title={t('chart.ewmaTooltip')}
-              className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono tracking-widest transition-all duration-200 cursor-pointer ${
-                smooth
-                  ? 'bg-primary/10 text-primary/80'
-                  : 'text-muted-foreground/40 hover:text-muted-foreground/60'
-              }`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                smooth
-                  ? 'bg-primary shadow-[0_0_4px_var(--color-primary)]'
-                  : 'bg-muted-foreground/20'
-              }`} />
-              <span>{smooth ? 'SMOOTH' : 'RAW'}</span>
-            </button>
-          )}
+          {/* Fade hint for horizontal scroll on mobile */}
+          <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-card/95 to-transparent pointer-events-none sm:hidden" />
         </div>
 
         {/* Chart area */}

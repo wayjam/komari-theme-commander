@@ -114,24 +114,36 @@ export function NodeTable({ nodes }: NodeTableProps) {
         return (
           <div className="min-w-0 space-y-0.5">
             {/* Node name row */}
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
               <span
-                className="text-base font-display font-bold truncate cursor-pointer hover:text-primary transition-colors"
+                className="text-base font-display font-bold truncate cursor-pointer hover:text-primary transition-colors shrink-0 max-w-[50%]"
                 onClick={() => navigate(`/node/${node.uuid}`)}
               >{node.name}</span>
-              <span className="text-xs font-mono text-muted-foreground/60">{node.region}</span>
+              <span className="text-xs font-mono text-muted-foreground/60 shrink-0">{node.region}</span>
               {node.group && (
-                <span className="text-xs font-mono text-primary/80 bg-primary/15 px-1.5 py-0.5 rounded-sm">
+                <span className="text-xs font-mono text-primary/80 bg-primary/15 px-1.5 py-0.5 rounded-sm shrink-0">
                   {node.group}
                 </span>
               )}
-              {tagList.map((tag, i) => (
-                <span key={i} className="text-xs font-mono text-muted-foreground/80 bg-muted/50 px-1.5 py-0.5 rounded-sm">
+              {tagList.slice(0, 5).map((tag, i) => (
+                <span key={i} className="text-xs font-mono text-muted-foreground/80 bg-muted/50 px-1.5 py-0.5 rounded-sm shrink-0">
                   {tag}
                 </span>
               ))}
+              {tagList.length > 5 && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-xs font-mono text-muted-foreground/60 bg-muted/40 px-1.5 py-0.5 rounded-sm cursor-default shrink-0">
+                      +{tagList.length - 5}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs font-mono">
+                    {tagList.slice(5).join(', ')}
+                  </TooltipContent>
+                </Tooltip>
+              )}
               {node.hidden && (
-                <span className="text-xs font-mono text-yellow-500/80 bg-yellow-500/15 px-1.5 py-0.5 rounded-sm">
+                <span className="text-xs font-mono text-yellow-500/80 bg-yellow-500/15 px-1.5 py-0.5 rounded-sm shrink-0">
                   {t('node.hidden')}
                 </span>
               )}
@@ -401,7 +413,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
                 !isOnline && 'opacity-45'
               )}
             >
-              <div className="flex items-center justify-between">
+              <div className="space-y-1">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className={cn(
                     'w-1.5 h-1.5 rounded-full flex-shrink-0',
@@ -413,23 +425,37 @@ export function NodeTable({ nodes }: NodeTableProps) {
                   >{node.name}</span>
                   <span className="text-xs font-mono text-muted-foreground/60 flex-shrink-0">{node.region}</span>
                 </div>
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  {node.group && (
-                    <span className="text-xs font-mono text-primary/80 bg-primary/15 px-1.5 py-0.5 rounded-sm">
-                      {node.group}
-                    </span>
-                  )}
-                  {tagList.map((tag, i) => (
-                    <span key={i} className="text-xs font-mono text-muted-foreground/80 bg-muted/50 px-1.5 py-0.5 rounded-sm">
-                      {tag}
-                    </span>
-                  ))}
-                  {node.hidden && (
-                    <span className="text-xs font-mono text-yellow-500/80 bg-yellow-500/15 px-1.5 py-0.5 rounded-sm">
-                      {t('node.hidden')}
-                    </span>
-                  )}
-                </div>
+                {(node.group || tagList.length > 0 || node.hidden) && (
+                  <div className="flex flex-wrap items-center gap-1.5 ml-3.5">
+                    {node.group && (
+                      <span className="text-xs font-mono text-primary/80 bg-primary/15 px-1.5 py-0.5 rounded-sm">
+                        {node.group}
+                      </span>
+                    )}
+                    {tagList.slice(0, 5).map((tag, i) => (
+                      <span key={i} className="text-xs font-mono text-muted-foreground/80 bg-muted/50 px-1.5 py-0.5 rounded-sm">
+                        {tag}
+                      </span>
+                    ))}
+                    {tagList.length > 5 && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-xs font-mono text-muted-foreground/60 bg-muted/40 px-1.5 py-0.5 rounded-sm cursor-default">
+                            +{tagList.length - 5}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-xs font-mono">
+                          {tagList.slice(5).join(', ')}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                    {node.hidden && (
+                      <span className="text-xs font-mono text-yellow-500/80 bg-yellow-500/15 px-1.5 py-0.5 rounded-sm">
+                        {t('node.hidden')}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
               {stats && (
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono text-muted-foreground ml-3.5">

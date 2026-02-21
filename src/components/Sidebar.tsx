@@ -800,19 +800,6 @@ function NodeDetailView({
               </div>
             )}
 
-            {/* Expiry */}
-            {isLoggedIn && node.expired_at && (() => {
-              const expiryStatus = getExpiryStatus(node.expired_at);
-              return expiryStatus ? (
-                <div className={cn(
-                  'text-xs font-mono px-2.5',
-                  expiryStatus === 'expired' ? 'text-red-500' : expiryStatus === 'warning' ? 'text-yellow-500' : 'text-muted-foreground/60',
-                )}>
-                  {formatExpiry(node.expired_at)}
-                </div>
-              ) : null;
-            })()}
-
             {/* Remark */}
             {node.public_remark && (
               <div className="text-xs font-mono text-muted-foreground/60 px-2.5 border-l-2 border-primary/20">
@@ -822,12 +809,12 @@ function NodeDetailView({
           </>
         ) : null}
 
-        {/* View Charts Button */}
+        {/* Action buttons — Charts hidden on mobile (modal too small), Detail always visible */}
         <div className="flex gap-2">
           <Button
             variant="outline"
             size="sm"
-            className="flex-1 text-xs font-mono border-primary/30 hover:bg-primary/15 hover:text-primary"
+            className="hidden sm:flex flex-1 text-xs font-mono border-primary/30 hover:bg-primary/15 hover:text-primary"
             onClick={() => onViewCharts(node.uuid, node.name)}
           >
             <BarChart3 className="h-3 w-3 mr-1.5" />
