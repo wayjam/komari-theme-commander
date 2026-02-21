@@ -257,7 +257,7 @@ function LazyNodeRow({ node, rangeHours, onNavigate, onResult, forceKey }: LazyN
         const data = await apiService.getLoadHistory(node.uuid, fetchHours);
         if (cancelled) return;
 
-        const newRecords: LoadRecord[] = data?.records ?? [];
+        const newRecords = (data?.records ?? []) as unknown as LoadRecord[];
 
         let finalRecords: LoadRecord[];
         if (isIncremental && cached) {
@@ -306,7 +306,7 @@ function LazyNodeRow({ node, rangeHours, onNavigate, onResult, forceKey }: LazyN
         const deltaMs = Date.now() - cached.fetchedAt;
         const deltaHours = Math.ceil(deltaMs / 3600_000) + 1;
         const data = await apiService.getLoadHistory(node.uuid, deltaHours);
-        const newRecords: LoadRecord[] = data?.records ?? [];
+        const newRecords = (data?.records ?? []) as unknown as LoadRecord[];
         const merged = mergeRecords(cached.records, newRecords, rangeHours);
         const result = computeUptime(merged, rangeHours);
 

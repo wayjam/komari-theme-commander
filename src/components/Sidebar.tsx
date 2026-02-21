@@ -179,6 +179,8 @@ function NodeListView({
   const lastSortUpdate = useRef(0);
 
   // Initial order or manual toggle update
+  // Note: intentionally excludes `nodes` from deps — we only re-sort on toggle change,
+  // not on every real-time stats update (which would cause constant jumping).
   useEffect(() => {
     const getOrder = () => {
       const items = [...nodes];
@@ -196,6 +198,7 @@ function NodeListView({
 
     setStableOrder(getOrder());
     lastSortUpdate.current = Date.now();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveSortByActive]);
 
   // Keep a ref of latest nodes so the interval callback can access current data

@@ -42,8 +42,8 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
         setConfig({
           isLoggedIn: !!userInfo?.logged_in,
           username: userInfo?.username || '',
-          recordPreserveTime: publicSettings?.record_preserve_time || 720,
-          pingRecordPreserveTime: publicSettings?.ping_record_preserve_time || 48,
+          recordPreserveTime: (publicSettings?.record_preserve_time as number) || 720,
+          pingRecordPreserveTime: (publicSettings?.ping_record_preserve_time as number) || 48,
           loaded: true,
         });
       } catch (e) {

@@ -562,9 +562,9 @@ function App() {
           apiService.getPublicSettings(),
           apiService.getVersion(),
         ]);
-        if (publicSettings?.sitename) setSiteName(publicSettings.sitename);
-        if (publicSettings?.description) setSiteDescription(publicSettings.description);
-        if (publicSettings?.custom_body) setCustomBody(publicSettings.custom_body);
+        if (publicSettings?.sitename) setSiteName(publicSettings.sitename as string);
+        if (publicSettings?.description) setSiteDescription(publicSettings.description as string);
+        if (publicSettings?.custom_body) setCustomBody(publicSettings.custom_body as string);
         if (versionInfo?.version) setVersion(versionInfo.version);
       } catch (e) {
         console.error('Failed to fetch init data:', e);

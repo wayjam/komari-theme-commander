@@ -3,6 +3,9 @@
  * Used by NodeCharts and ChartModal to avoid duplication
  */
 
+/** A single row of chart data — `time` is always present, other keys are numeric task/metric values */
+export type ChartDataRow = { time: string; [key: string]: string | number | null };
+
 // HUD-style neon color palette
 export const chartColors = [
   "oklch(0.75 0.18 195)",  // Cyan — CPU
@@ -87,7 +90,7 @@ export function transformLoadRecords(records: LoadRecord[]): ChartDataPoint[] {
 }
 
 /** Format tooltip label with date + time */
-export function labelFormatter(value: any): string {
+export function labelFormatter(value: number | string): string {
   return new Date(value).toLocaleString([], {
     month: '2-digit',
     day: '2-digit',
@@ -116,7 +119,7 @@ export function processPingRecords(
   records: PingRecord[],
   tasks: TaskInfo[],
   hours: number,
-): any[] {
+): ChartDataRow[] {
   if (!records.length) return [];
 
   // Compute jitter tolerance from task intervals
@@ -126,7 +129,7 @@ export function processPingRecords(
   const fallbackIntervalSec = taskIntervals.length ? Math.min(...taskIntervals) : 60;
   const toleranceMs = Math.min(6000, Math.max(800, Math.floor(fallbackIntervalSec * 1000 * 0.25)));
 
-  const grouped: Record<number, any> = {};
+  const grouped: Record<number, ChartDataRow> = {};
   const anchors: number[] = [];
 
   for (const rec of records) {
@@ -144,7 +147,7 @@ export function processPingRecords(
   }
 
   const merged = Object.values(grouped).sort(
-    (a: any, b: any) => new Date(a.time).getTime() - new Date(b.time).getTime(),
+    (a: ChartDataRow, b: ChartDataRow) => new Date(a.time as string).getTime() - new Date(b.time as string).getTime(),
   );
 
   // Clip to the last `hours` window with one extra leading point
@@ -166,10 +169,10 @@ export function processPingRecords(
  * Only interpolates across gaps shorter than maxGapMs.
  */
 export function interpolatePingNulls(
-  data: any[],
+  data: ChartDataRow[],
   taskKeys: string[],
   opts: { maxGapMultiplier?: number; minCapMs?: number; maxCapMs?: number } = {},
-): any[] {
+): ChartDataRow[] {
   if (!data.length || !taskKeys.length) return data;
 
   const { maxGapMultiplier = 6, minCapMs = 120_000, maxCapMs = 1_800_000 } = opts;
@@ -192,8 +195,8 @@ export function interpolatePingNulls(
         if (lastValidIdx !== null && i - lastValidIdx > 1) {
           const gapMs = timestamps[i] - timestamps[lastValidIdx];
           if (gapMs <= maxGapMs) {
-            const startVal = result[lastValidIdx][key];
-            const endVal = val;
+            const startVal = result[lastValidIdx][key] as number;
+            const endVal = val as number;
             for (let j = lastValidIdx + 1; j < i; j++) {
               const ratio = (timestamps[j] - timestamps[lastValidIdx]) / gapMs;
               result[j][key] = startVal + (endVal - startVal) * ratio;
@@ -212,10 +215,10 @@ export function interpolatePingNulls(
  * @param alpha - Smoothing factor (0 < alpha <= 1). Lower = smoother. Default 0.3.
  */
 export function ewmaSmooth(
-  data: any[],
+  data: ChartDataRow[],
   taskKeys: string[],
   alpha: number = 0.3,
-): any[] {
+): ChartDataRow[] {
   if (!data.length || !taskKeys.length) return data;
   const result = data.map(d => ({ ...d }));
 
@@ -228,9 +231,9 @@ export function ewmaSmooth(
         continue;
       }
       if (prev === null) {
-        prev = val;
+        prev = val as number;
       } else {
-        prev = alpha * val + (1 - alpha) * prev;
+        prev = alpha * (val as number) + (1 - alpha) * prev;
         result[i][key] = Math.round(prev * 100) / 100;
       }
     }

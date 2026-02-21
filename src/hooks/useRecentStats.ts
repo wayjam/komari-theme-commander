@@ -61,8 +61,8 @@ export function RecentStatsProvider({
               const stats = await apiService.getNodeRecentStats(uuid);
               // Extract CPU usage values from the stats array
               const cpuValues = (stats || [])
-                .map((s: any) => s?.cpu?.usage ?? null)
-                .filter((v: any): v is number => v !== null);
+                .map((s: { cpu?: { usage?: number } }) => s?.cpu?.usage ?? null)
+                .filter((v: number | null): v is number => v !== null);
               return { uuid, data: cpuValues };
             } catch {
               return { uuid, data: [] as number[] };

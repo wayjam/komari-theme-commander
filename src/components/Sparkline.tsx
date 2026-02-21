@@ -26,10 +26,8 @@ export const Sparkline = memo(function Sparkline({
   color = 'var(--color-primary)',
   className,
 }: SparklineProps) {
-  if (!data || data.length < 2) return null;
-
   const gradId = useId();
-  const chartData = useMemo(() => data.map((v, i) => ({ i, v })), [data]);
+  const chartData = useMemo(() => data?.map((v, i) => ({ i, v })) ?? [], [data]);
 
   const renderDot = useCallback(
     (props: Record<string, unknown>) => (
@@ -44,6 +42,8 @@ export const Sparkline = memo(function Sparkline({
     ),
     [chartData.length, color],
   );
+
+  if (!data || data.length < 2) return null;
 
   return (
     <div className={`sparkline-container ${className ?? ''}`} style={{ width, height }}>

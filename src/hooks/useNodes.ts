@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiService, wsService } from '../services/api';
-import type { NodeWithStatus } from '../services/api';
+import type { NodeWithStatus, NodeStats, WsMessage } from '../services/api';
 
 /**
  * Shallow-compare two stats objects. Returns true if they are equivalent.
  */
-function statsEqual(a: any, b: any): boolean {
+function statsEqual(a: NodeStats | undefined, b: NodeStats | undefined): boolean {
   if (a === b) return true;
   if (!a || !b) return false;
   return (
@@ -72,7 +72,7 @@ export function useNodes() {
 
   // Set up WebSocket listener
   useEffect(() => {
-    const handleWebSocketData = (data: any) => {
+    const handleWebSocketData = (data: WsMessage) => {
       if (data.online && data.data) {
         const prevNodes = nodesRef.current;
         let changed = false;

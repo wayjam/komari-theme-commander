@@ -83,7 +83,7 @@ export interface ApiResponse<T> {
 // share one Promise
 // ============================================================
 
-const pendingCalls = new Map<string, Promise<any>>();
+const pendingCalls = new Map<string, Promise<unknown>>();
 
 function dedup<T>(key: string, fn: () => Promise<T>): Promise<T> {
   const existing = pendingCalls.get(key);
@@ -221,7 +221,7 @@ class ApiService {
   }
 
   // Fetch load history records
-  async getLoadHistory(uuid: string, hours: number = 24): Promise<any> {
+  async getLoadHistory(uuid: string, hours: number = 24): Promise<{ count: number; records: RPC2StatusRecord[] } | null> {
     return dedup(`getLoadHistory:${uuid}:${hours}`, async () => {
       try {
         const result = await rpc2Client.call<
@@ -255,7 +255,7 @@ class ApiService {
   }
 
   // Fetch ping history records
-  async getPingHistory(uuid: string, hours: number = 24): Promise<any> {
+  async getPingHistory(uuid: string, hours: number = 24): Promise<{ count: number; records: RPC2PingRecord[]; tasks: { id: number; name: string; interval: number; loss: number; type?: string; avg?: number; latest?: number; max?: number; min?: number; p50?: number; p99?: number; p99_p50_ratio?: number; total?: number }[] } | null> {
     return dedup(`getPingHistory:${uuid}:${hours}`, async () => {
       try {
         const result = await rpc2Client.call<
@@ -323,7 +323,7 @@ class ApiService {
   }
 
   // Fetch public settings
-  async getPublicSettings(): Promise<any> {
+  async getPublicSettings(): Promise<Record<string, unknown> | null> {
     return dedup('getPublicSettings', async () => {
       try {
         return await rpc2Client.call('common:getPublicInfo');
@@ -369,10 +369,15 @@ export const apiService = new ApiService();
 // WebSocketService — polls common:getNodesLatestStatus via RPC2
 // ============================================================
 
+export interface WsMessage {
+  online: string[];
+  data: Record<string, NodeStats>;
+}
+
 export class WebSocketService {
-  private listeners: Set<(data: any) => void> = new Set();
+  private listeners: Set<(data: WsMessage) => void> = new Set();
   private onlineNodes: Set<string> = new Set();
-  private nodeData: Map<string, any> = new Map();
+  private nodeData: Map<string, NodeStats> = new Map();
   private pollingInterval: ReturnType<typeof setInterval> | null = null;
 
   connect() {
@@ -423,7 +428,7 @@ export class WebSocketService {
     }
   }
 
-  subscribe(listener: (data: any) => void) {
+  subscribe(listener: (data: WsMessage) => void) {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   }
@@ -439,7 +444,7 @@ export class WebSocketService {
     return Array.from(this.onlineNodes);
   }
 
-  getNodeData(uuid: string): any {
+  getNodeData(uuid: string): NodeStats | undefined {
     return this.nodeData.get(uuid);
   }
 

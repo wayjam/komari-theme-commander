@@ -296,7 +296,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
       },
     }),
 
-  ], [getCpuSparkline, navigate, t]);
+  ], [getCpuSparkline, navigate, t, isLoggedIn]);
 
   const table = useReactTable({
     data: nodes,

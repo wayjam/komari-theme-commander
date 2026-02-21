@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * JSON-RPC 2.0 Standard Type Definitions
  * Based on specification: https://www.jsonrpc.org/specification

@@ -177,7 +177,7 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
     });
   }, [pingData, tasks]);
 
-  const timeFormatter = useCallback((value: any, index: number) => {
+  const timeFormatter = useCallback((value: number | string, index: number) => {
     if (!chartData.length) return "";
     const total = chartData.length;
     if (isMobile) {
@@ -368,7 +368,7 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
                 <YAxis {...yAxisPercentProps} />
                 <ChartTooltip
                   cursor={false}
-                  formatter={(v: any) => `${typeof v === 'number' ? v.toFixed(2) : v}%`}
+                  formatter={(v: number | string) => `${typeof v === 'number' ? v.toFixed(2) : v}%`}
                   content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />}
                 />
                 <ChartLegend content={<ChartLegendContent />} />
@@ -395,7 +395,7 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
                 <YAxis {...yAxisPlainProps} />
                 <ChartTooltip
                   cursor={false}
-                  formatter={(v: any) => typeof v === 'number' ? v.toFixed(2) : v}
+                  formatter={(v: number | string) => typeof v === 'number' ? v.toFixed(2) : v}
                   content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />}
                 />
                 <ChartLegend content={<ChartLegendContent />} />
@@ -421,7 +421,7 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
                 <YAxis {...yAxisPercentProps} />
                 <ChartTooltip
                   cursor={false}
-                  formatter={(v: any) => `${typeof v === 'number' ? v.toFixed(2) : v}%`}
+                  formatter={(v: number | string) => `${typeof v === 'number' ? v.toFixed(2) : v}%`}
                   content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />}
                 />
                 <ChartLegend content={<ChartLegendContent />} />
@@ -449,7 +449,7 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
                 <YAxis {...yAxisPercentProps} />
                 <ChartTooltip
                   cursor={false}
-                  formatter={(v: any) => `${typeof v === 'number' ? v.toFixed(2) : v}%`}
+                  formatter={(v: number | string) => `${typeof v === 'number' ? v.toFixed(2) : v}%`}
                   content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />}
                 />
                 <ChartLegend content={<ChartLegendContent />} />
@@ -521,7 +521,7 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
                 />
                 <ChartTooltip
                   cursor={false}
-                  formatter={(v: any) => `${typeof v === 'number' ? v.toFixed(1) : v} KB/s`}
+                  formatter={(v: number | string) => `${typeof v === 'number' ? v.toFixed(1) : v} KB/s`}
                   content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />}
                 />
                 <ChartLegend content={<ChartLegendContent />} />

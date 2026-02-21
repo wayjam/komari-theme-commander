@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type {
   JSONRPC2Request,
   JSONRPC2Response,
@@ -285,11 +286,7 @@ export class RPC2Client {
       try {
         return await this.callViaWebSocket(method, params, options);
       } catch {
-        try {
-          return await this.callViaHTTP(method, params, options);
-        } catch (httpErr) {
-          throw httpErr;
-        }
+        return this.callViaHTTP(method, params, options);
       }
     }
 

@@ -116,7 +116,7 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
   }, [pingData, tasks, timeRange, smooth]);
 
   const pingConfig = useMemo(() => {
-    const c: Record<string, any> = {};
+    const c: Record<string, { label: string; color: string }> = {};
     tasks.forEach((t, i) => { c[t.id] = { label: t.name, color: chartColors[i % chartColors.length] }; });
     return c;
   }, [tasks]);
@@ -125,8 +125,12 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
     return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }, []);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleLegendClick = useCallback((e: any) => {
-    setHiddenLines((prev) => ({ ...prev, [e.dataKey]: !prev[e.dataKey] }));
+    if (e?.dataKey != null) {
+      const key = String(e.dataKey);
+      setHiddenLines((prev) => ({ ...prev, [key]: !prev[key] }));
+    }
   }, []);
 
   const margin = { top: 8, right: 8, bottom: 4, left: 8 };
@@ -182,7 +186,7 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
             <YAxis {...yPlainProps} unit="ms" width={42} />
             <ChartTooltip
               cursor={false}
-              formatter={(v: any) => `${Math.round(v)} ms`}
+              formatter={(v: number | string) => `${Math.round(Number(v))} ms`}
               content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />}
             />
             <ChartLegend content={<ChartLegendContent />} onClick={handleLegendClick} />
@@ -233,7 +237,7 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
               <CartesianGrid vertical={false} stroke={gridStrokeColor} strokeOpacity={0.3} />
               <XAxis {...xAxisProps} />
               <YAxis {...yPctProps} />
-              <ChartTooltip cursor={false} formatter={(v: any) => `${Number(v).toFixed(1)}%`} content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />} />
+              <ChartTooltip cursor={false} formatter={(v: number | string) => `${Number(v).toFixed(1)}%`} content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />} />
               <Line dataKey="cpu" stroke={chartColors[0]} dot={false} strokeWidth={2} isAnimationActive={false} />
             </LineChart>
           </ChartContainer>
@@ -245,7 +249,7 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
               <CartesianGrid vertical={false} stroke={gridStrokeColor} strokeOpacity={0.3} />
               <XAxis {...xAxisProps} />
               <YAxis {...yPctProps} />
-              <ChartTooltip cursor={false} formatter={(v: any) => `${Number(v).toFixed(1)}%`} content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />} />
+              <ChartTooltip cursor={false} formatter={(v: number | string) => `${Number(v).toFixed(1)}%`} content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />} />
               <Line dataKey="ram" stroke={chartColors[2]} dot={false} strokeWidth={2} isAnimationActive={false} />
               <Line dataKey="swap" stroke={chartColors[8]} dot={false} strokeWidth={1.5} isAnimationActive={false} strokeDasharray="4 2" />
             </LineChart>
@@ -258,7 +262,7 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
               <CartesianGrid vertical={false} stroke={gridStrokeColor} strokeOpacity={0.3} />
               <XAxis {...xAxisProps} />
               <YAxis {...yPctProps} />
-              <ChartTooltip cursor={false} formatter={(v: any) => `${Number(v).toFixed(1)}%`} content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />} />
+              <ChartTooltip cursor={false} formatter={(v: number | string) => `${Number(v).toFixed(1)}%`} content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />} />
               <Line dataKey="disk" stroke={chartColors[3]} dot={false} strokeWidth={2} isAnimationActive={false} />
             </LineChart>
           </ChartContainer>
@@ -298,7 +302,7 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
               <YAxis {...yPlainProps} unit="KB" width={42} />
               <ChartTooltip
                 cursor={false}
-                formatter={(v: any) => `${Number(v).toFixed(1)} KB/s`}
+                formatter={(v: number | string) => `${Number(v).toFixed(1)} KB/s`}
                 content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />}
               />
               <ChartLegend content={<ChartLegendContent />} />

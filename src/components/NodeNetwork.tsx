@@ -281,7 +281,7 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
     });
   }, [pingData, tasks]);
 
-  const timeFormatter = useCallback((value: any, index: number) => {
+  const timeFormatter = useCallback((value: number | string, index: number) => {
     if (!chartData.length) return "";
     const total = chartData.length;
     if (isMobile) {
@@ -296,14 +296,18 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
     return "";
   }, [chartData.length, isMobile]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleLegendClick = useCallback((e: any) => {
-    setHiddenLines((prev) => ({ ...prev, [e.dataKey]: !prev[e.dataKey] }));
+    if (e?.dataKey != null) {
+      const key = String(e.dataKey);
+      setHiddenLines((prev) => ({ ...prev, [key]: !prev[key] }));
+    }
   }, []);
 
   const connConfig = { connections: { label: t('label.tcp'), color: chartColors[4] }, connections_udp: { label: t('label.udp'), color: chartColors[5] } };
   const netConfig = { network_in: { label: t('label.in'), color: chartColors[6] }, network_out: { label: t('label.out'), color: chartColors[7] } };
   const pingConfig = useMemo(() => {
-    const c: Record<string, any> = {};
+    const c: Record<string, { label: string; color: string }> = {};
     tasks.forEach((tk, i) => { c[tk.id] = { label: tk.name, color: chartColors[i % chartColors.length] }; });
     return c;
   }, [tasks]);
@@ -641,7 +645,7 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
                 />
                 <ChartTooltip
                   cursor={false}
-                  formatter={(v: any) => `${typeof v === 'number' ? v.toFixed(1) : v} KB/s`}
+                  formatter={(v: number | string) => `${typeof v === 'number' ? v.toFixed(1) : v} KB/s`}
                   content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />}
                 />
                 <ChartLegend content={<ChartLegendContent />} />
@@ -722,7 +726,7 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
                   />
                   <ChartTooltip
                     cursor={false}
-                    formatter={(v: any) => `${Math.round(v)} ms`}
+                    formatter={(v: number | string) => `${Math.round(Number(v))} ms`}
                     content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />}
                   />
                   <ChartLegend content={<ChartLegendContent />} onClick={handleLegendClick} />
