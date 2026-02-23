@@ -107,6 +107,8 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
   const selectedNodeIdRef = useRef(selectedNodeId);
   selectedNodeIdRef.current = selectedNodeId;
 
+  const dprRef = useRef(Math.min(window.devicePixelRatio, 2));
+
   // Stable onRender — uses refs so globe doesn't need to be recreated
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onRender = useCallback((state: Record<string, any>) => {
@@ -127,10 +129,11 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
       phiRef.current += 0.003;
     }
 
+    const dpr = dprRef.current;
     state.phi = phiRef.current;
     state.theta = thetaRef.current;
-    state.width = widthRef.current * 2;
-    state.height = widthRef.current * 2;
+    state.width = widthRef.current * dpr;
+    state.height = widthRef.current * dpr;
     state.markers = markersRef.current;
   }, []);
 
@@ -142,43 +145,65 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
     if (!container) return;
 
     const config = THEME_CONFIG[theme];
+    const dpr = dprRef.current;
 
-    const updateSize = () => {
+    const buildGlobe = () => {
       const size = Math.min(container.clientWidth, container.clientHeight);
       widthRef.current = size;
-      canvas.width = size * 2;
-      canvas.height = size * 2;
+      canvas.width = size * dpr;
+      canvas.height = size * dpr;
       canvas.style.width = `${size}px`;
       canvas.style.height = `${size}px`;
+
+      return createGlobe(canvas, {
+        devicePixelRatio: dpr,
+        width: size * dpr,
+        height: size * dpr,
+        phi: phiRef.current,
+        theta: thetaRef.current,
+        dark: config.dark,
+        diffuse: 1.2,
+        mapSamples: 16000,
+        mapBrightness: theme === 'deepspace' ? 2 : 6,
+        baseColor: config.baseColor,
+        markerColor: config.markerColor,
+        glowColor: config.glowColor,
+        markers: markersRef.current,
+        onRender,
+      });
     };
 
-    updateSize();
-
-    const globe = createGlobe(canvas, {
-      devicePixelRatio: Math.min(window.devicePixelRatio, 2),
-      width: widthRef.current * 2,
-      height: widthRef.current * 2,
-      phi: phiRef.current,
-      theta: thetaRef.current,
-      dark: config.dark,
-      diffuse: 1.2,
-      mapSamples: 16000,
-      mapBrightness: theme === 'deepspace' ? 2 : 6,
-      baseColor: config.baseColor,
-      markerColor: config.markerColor,
-      glowColor: config.glowColor,
-      markers: markersRef.current,
-      onRender,
-    });
-
+    let globe = buildGlobe();
     globeRef.current = globe;
 
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+    let lastSize = widthRef.current;
+
     const resizeObserver = new ResizeObserver(() => {
-      updateSize();
+      const newSize = Math.min(container.clientWidth, container.clientHeight);
+      // Only rebuild if size actually changed
+      if (newSize === lastSize) return;
+      lastSize = newSize;
+
+      // Update canvas immediately to avoid visual glitch
+      widthRef.current = newSize;
+      canvas.width = newSize * dpr;
+      canvas.height = newSize * dpr;
+      canvas.style.width = `${newSize}px`;
+      canvas.style.height = `${newSize}px`;
+
+      // Debounce globe rebuild to avoid thrashing during drag-resize
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        globe.destroy();
+        globe = buildGlobe();
+        globeRef.current = globe;
+      }, 200);
     });
     resizeObserver.observe(container);
 
     return () => {
+      if (resizeTimer) clearTimeout(resizeTimer);
       globe.destroy();
       globeRef.current = null;
       resizeObserver.disconnect();
