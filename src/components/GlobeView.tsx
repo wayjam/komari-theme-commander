@@ -201,24 +201,24 @@ export function GlobeView({ nodes, loading = false, onViewCharts }: GlobeViewPro
           </div>
         </div>
 
-        {/* Threat Detection - Critical Nodes */}
+        {/* Threat Detection - Critical Nodes (top-right) */}
         {nodes.some(n => n.status === 'online' && (
           (n.stats?.cpu.usage ?? 0) > 90 || 
           (n.stats ? (n.stats.ram.used / n.stats.ram.total) > 0.95 : false)
         )) && (
-          <div className="absolute bottom-4 left-4 z-20 pointer-events-none">
-            <div className="text-xs font-mono text-red-500/60 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+          <div className="absolute top-4 right-4 z-20 pointer-events-none text-right">
+            <div className="text-xs font-mono text-red-500/60 uppercase tracking-[0.2em] mb-2 flex items-center gap-2 justify-end">
               {t('hud.activeThreats')}
+              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
             </div>
             <div className="space-y-1">
               {nodes.filter(n => n.status === 'online' && (
                 (n.stats?.cpu.usage ?? 0) > 90 || 
                 (n.stats ? (n.stats.ram.used / n.stats.ram.total) > 0.95 : false)
               )).slice(0, 3).map(node => (
-                <div key={node.uuid} className="text-xxs font-mono text-red-400/50 flex gap-2 items-center">
+                <div key={node.uuid} className="text-xxs font-mono text-red-400/50 flex gap-2 items-center justify-end">
+                  <span className="animate-pulse">{t('hud.criticalLoad')}{" << "}</span>
                   <span className="bg-red-500/10 px-1 border border-red-500/20">{node.name.substring(0, 10)}</span>
-                  <span className="animate-pulse">{" >> "}{t('hud.criticalLoad')}</span>
                 </div>
               ))}
             </div>
