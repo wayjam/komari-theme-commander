@@ -7,9 +7,10 @@ import { ArrowLeft, Cpu, HardDrive, MemoryStick, Network, BarChart3, ExternalLin
 import type { NodeWithStatus } from '@/services/api';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { cn, extractRegionEmoji, formatSpeed, formatBytes, formatUptime, getUsageStatus, calcTrafficUsage, formatTrafficType } from '@/lib/utils';
+import { cn, extractRegionEmoji, formatSpeed, formatBytes, formatUptime, getUsageStatus, calcTrafficUsage, formatTrafficType, getExpiryStatus, formatExpiry } from '@/lib/utils';
 import type { TrafficLimitType } from '@/lib/utils';
 import { useAppConfig } from '@/hooks/useAppConfig';
+import dayjs from 'dayjs';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import prettyBytes from 'pretty-bytes';
 
@@ -551,6 +552,34 @@ function NodeDetailView({
                 <span className="text-xs font-mono text-primary">{node.group}</span>
               </>
             )}
+            {/* Expiry badge with billing tooltip */}
+            {isLoggedIn && node.price !== -1 && (() => {
+              const expiryStatus = getExpiryStatus(node.expired_at);
+              if (!expiryStatus) return null;
+              return (
+                <>
+                  <span className="text-xs text-muted-foreground/40">|</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className={cn(
+                        'text-xs font-mono cursor-default',
+                        expiryStatus === 'expired' ? 'text-red-500' : expiryStatus === 'warning' ? 'text-yellow-500' : 'text-muted-foreground/60',
+                      )}>
+                        {formatExpiry(node.expired_at)}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="whitespace-pre-line text-xs font-mono">
+                      {t('label.expiryTooltipDetail', {
+                        date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
+                        cycle: node.billing_cycle ?? '-',
+                        renewal: node.auto_renewal ? t('label.yes') : t('label.no'),
+                        price: node.price === -1 ? t('label.free') : node.price === 0 ? t('label.notSet') : `${node.currency}${node.price}`,
+                      })}
+                    </TooltipContent>
+                  </Tooltip>
+                </>
+              );
+            })()}
           </div>
           {/* Tags */}
           {node.tags && (() => {

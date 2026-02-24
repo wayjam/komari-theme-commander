@@ -9,6 +9,7 @@ import { formatBytes, formatSpeed, formatUptime, getUsageStatus, calcTrafficUsag
 import type { TrafficLimitType } from '@/lib/utils';
 import { useAppConfig } from '@/hooks/useAppConfig';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
+import dayjs from 'dayjs';
 
 interface NodeCardProps {
   node: NodeWithStatus;
@@ -151,16 +152,28 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
               const expiryStatus = getExpiryStatus(node.expired_at);
               if (!expiryStatus) return null;
               return (
-                <span className={cn(
-                  'text-xxs leading-none font-mono px-1.5 py-0.5 rounded-sm flex-shrink-0 border',
-                  expiryStatus === 'expired'
-                    ? 'text-red-500 bg-red-500/10 border-red-500/20'
-                    : expiryStatus === 'warning'
-                      ? 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20'
-                      : 'text-muted-foreground/60 bg-muted/20 border-border/20',
-                )}>
-                  {formatExpiry(node.expired_at)}
-                </span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className={cn(
+                      'text-xxs leading-none font-mono px-1.5 py-0.5 rounded-sm flex-shrink-0 border cursor-default',
+                      expiryStatus === 'expired'
+                        ? 'text-red-500 bg-red-500/10 border-red-500/20'
+                        : expiryStatus === 'warning'
+                          ? 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20'
+                          : 'text-muted-foreground/60 bg-muted/20 border-border/20',
+                    )}>
+                      {formatExpiry(node.expired_at)}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="whitespace-pre-line text-xs font-mono">
+                    {t('label.expiryTooltipDetail', {
+                      date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
+                      cycle: node.billing_cycle ?? '-',
+                      renewal: node.auto_renewal ? t('label.yes') : t('label.no'),
+                      price: node.price === -1 ? t('label.free') : node.price === 0 ? t('label.notSet') : `${node.currency}${node.price}`,
+                    })}
+                  </TooltipContent>
+                </Tooltip>
               );
             })()}
 

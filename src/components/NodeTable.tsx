@@ -19,6 +19,7 @@ import { useRecentStats } from '@/hooks/useRecentStats';
 import { formatSpeed, formatUptime, formatBytes, getUsageStatus, calcTrafficUsage, formatTrafficType, getExpiryStatus, formatExpiry, cn } from '@/lib/utils';
 import type { TrafficLimitType } from '@/lib/utils';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
+import dayjs from 'dayjs';
 
 interface NodeTableProps {
   nodes: NodeWithStatus[];
@@ -172,12 +173,29 @@ export function NodeTable({ nodes }: NodeTableProps) {
                 </span>
               )}
               {expiryStatus && (
-                <span className={cn(
-                  'text-xs font-mono',
-                  expiryStatus === 'expired' ? 'text-red-500' : expiryStatus === 'warning' ? 'text-yellow-500' : 'text-muted-foreground/40',
-                )}>
-                  {formatExpiry(node.expired_at)}
-                </span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className={cn(
+                      'text-xs font-mono cursor-default',
+                      expiryStatus === 'expired' ? 'text-red-500' : expiryStatus === 'warning' ? 'text-yellow-500' : 'text-muted-foreground/40',
+                    )}>
+                      {formatExpiry(node.expired_at)}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="whitespace-pre-line text-xs font-mono">
+                    {isLoggedIn
+                      ? t('label.expiryTooltipDetail', {
+                          date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
+                          cycle: node.billing_cycle ?? '-',
+                          renewal: node.auto_renewal ? t('label.yes') : t('label.no'),
+                          price: node.price === -1 ? t('label.free') : node.price === 0 ? t('label.notSet') : `${node.currency}${node.price}`,
+                        })
+                      : t('label.expiryTooltip', {
+                          date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
+                        })
+                    }
+                  </TooltipContent>
+                </Tooltip>
               )}
             </div>
           </div>
