@@ -5,5 +5,18 @@
     "version": "1.1.1",
     "author": "WayJam",
     "url": "https://github.com/wayjam/komari-theme-commander",
-    "preview": "preview.png"
+    "preview": "preview.png",
+    "configuration": {
+        "type": "managed",
+        "name": "Commander Theme Settings",
+        "data": [
+            { "name": "View Settings", "type": "title" },
+            { "key": "default_view", "name": "Default View", "type": "select", "options": "globe,grid,table,uptime", "default": "globe", "help": "The view mode shown on first visit" },
+            { "key": "enable_globe", "name": "Enable Globe View", "type": "switch", "default": true, "help": "Show the 3D globe view option" },
+            { "key": "enable_uptime", "name": "Enable Uptime View", "type": "switch", "default": true, "help": "Show the uptime leaderboard view option" },
+            { "name": "Appearance", "type": "title" },
+            { "key": "default_theme", "name": "Default Theme", "type": "select", "options": "lumina,deepspace,clean", "default": "lumina", "help": "Default color theme for first-time visitors" },
+            { "key": "custom_footer", "name": "Custom Footer Text", "type": "string", "default": "", "help": "Custom text displayed in the footer area" }
+        ]
+    }
 }

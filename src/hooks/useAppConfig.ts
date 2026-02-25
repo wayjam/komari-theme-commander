@@ -2,11 +2,28 @@ import { createContext, useContext, useState, useEffect, useMemo, useRef, type R
 import { createElement } from 'react';
 import { apiService } from '@/services/api';
 
+export interface ThemeConfig {
+  default_view: 'globe' | 'grid' | 'table' | 'uptime';
+  enable_globe: boolean;
+  enable_uptime: boolean;
+  default_theme: 'lumina' | 'deepspace' | 'clean';
+  custom_footer: string;
+}
+
+const defaultThemeConfig: ThemeConfig = {
+  default_view: 'globe',
+  enable_globe: true,
+  enable_uptime: true,
+  default_theme: 'lumina',
+  custom_footer: '',
+};
+
 export interface AppConfig {
   isLoggedIn: boolean;
   username: string;
   recordPreserveTime: number;   // hours, default 720
   pingRecordPreserveTime: number; // hours, default 48
+  themeConfig: ThemeConfig;
   loaded: boolean;
 }
 
@@ -15,6 +32,7 @@ const defaultConfig: AppConfig = {
   username: '',
   recordPreserveTime: 720,
   pingRecordPreserveTime: 48,
+  themeConfig: defaultThemeConfig,
   loaded: false,
 };
 
@@ -39,11 +57,41 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
           apiService.getPublicSettings().catch(() => null),
         ]);
 
+        // Parse theme configuration from public settings
+        const tc: ThemeConfig = { ...defaultThemeConfig };
+        if (publicSettings) {
+          if (typeof publicSettings.default_view === 'string' && ['globe', 'grid', 'table', 'uptime'].includes(publicSettings.default_view as string)) {
+            tc.default_view = publicSettings.default_view as ThemeConfig['default_view'];
+          }
+          if (typeof publicSettings.enable_globe === 'boolean') tc.enable_globe = publicSettings.enable_globe;
+          if (publicSettings.enable_globe === 'true') tc.enable_globe = true;
+          if (publicSettings.enable_globe === 'false') tc.enable_globe = false;
+          if (typeof publicSettings.enable_uptime === 'boolean') tc.enable_uptime = publicSettings.enable_uptime;
+          if (publicSettings.enable_uptime === 'true') tc.enable_uptime = true;
+          if (publicSettings.enable_uptime === 'false') tc.enable_uptime = false;
+          if (typeof publicSettings.default_theme === 'string' && ['lumina', 'deepspace', 'clean'].includes(publicSettings.default_theme as string)) {
+            tc.default_theme = publicSettings.default_theme as ThemeConfig['default_theme'];
+          }
+          if (typeof publicSettings.custom_footer === 'string') tc.custom_footer = publicSettings.custom_footer as string;
+        }
+
+        // Fallback: if default_view references a disabled view, pick first available
+        if ((tc.default_view === 'globe' && !tc.enable_globe) ||
+            (tc.default_view === 'uptime' && !tc.enable_uptime)) {
+          const fallbackOrder: ThemeConfig['default_view'][] = ['grid', 'table', 'globe', 'uptime'];
+          tc.default_view = fallbackOrder.find(v => {
+            if (v === 'globe') return tc.enable_globe;
+            if (v === 'uptime') return tc.enable_uptime;
+            return true; // grid & table always enabled
+          }) ?? 'grid';
+        }
+
         setConfig({
           isLoggedIn: !!userInfo?.logged_in,
           username: userInfo?.username || '',
           recordPreserveTime: (publicSettings?.record_preserve_time as number) || 720,
           pingRecordPreserveTime: (publicSettings?.ping_record_preserve_time as number) || 48,
+          themeConfig: tc,
           loaded: true,
         });
       } catch (e) {

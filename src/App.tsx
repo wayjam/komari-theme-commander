@@ -13,6 +13,7 @@ import { Button } from './components/ui/button'
 import { useNodes } from './hooks/useNodes'
 import { useEffects } from './hooks/useEffects'
 import { useAppConfig } from './hooks/useAppConfig'
+import { useTheme } from './hooks/useTheme'
 import { RecentStatsProvider } from './hooks/useRecentStats'
 import { UptimeView } from './components/UptimeView'
 import { ArrowLeft, Settings, Globe, LayoutGrid, List, Shield, Cpu, MemoryStick, HardDrive, Activity, Network, Clock, User, Monitor, Box, Layers, AlertTriangle, ExternalLink } from 'lucide-react'
@@ -549,11 +550,41 @@ function App() {
   const { nodes, loading, refreshNodes } = useNodes();
   const { activeEffects } = useEffects();
   const appConfig = useAppConfig();
+  const { setTheme } = useTheme();
+
+  const { themeConfig } = appConfig;
+
+  // Apply default_theme from server config if user hasn't set a preference
+  useEffect(() => {
+    if (!appConfig.loaded) return;
+    const savedTheme = localStorage.getItem('appearance');
+    if (!savedTheme) {
+      setTheme(themeConfig.default_theme);
+    }
+  }, [appConfig.loaded, themeConfig.default_theme, setTheme]);
 
   const handleSetViewMode = useCallback((mode: ViewMode) => {
     setViewMode(mode);
     localStorage.setItem('nodeViewMode', mode);
   }, []);
+
+  // When config loads, apply default_view (if user hasn't chosen) and enforce disabled views
+  useEffect(() => {
+    if (!appConfig.loaded) return;
+    const savedView = localStorage.getItem('nodeViewMode');
+    const isViewEnabled = (v: ViewMode) => {
+      if (v === 'globe') return themeConfig.enable_globe;
+      if (v === 'uptime') return themeConfig.enable_uptime;
+      return true;
+    };
+    // If no saved preference, apply default_view from config
+    if (!savedView) {
+      handleSetViewMode(themeConfig.default_view);
+    } else if (!isViewEnabled(viewMode)) {
+      // Current view is disabled — fallback
+      handleSetViewMode(themeConfig.default_view);
+    }
+  }, [appConfig.loaded, themeConfig, viewMode, handleSetViewMode]);
 
   useEffect(() => {
     const init = async () => {
@@ -600,12 +631,19 @@ function App() {
     });
   }, [nodes]);
 
-  const viewButtons = useMemo<{ mode: ViewMode; icon: typeof Globe; label: string }[]>(() => [
-    { mode: 'globe', icon: Globe, label: t('view.globe') },
-    { mode: 'grid', icon: LayoutGrid, label: t('view.grid') },
-    { mode: 'table', icon: List, label: t('view.table') },
-    { mode: 'uptime', icon: Shield, label: t('view.uptime') },
-  ], [t]);
+  const viewButtons = useMemo<{ mode: ViewMode; icon: typeof Globe; label: string }[]>(() => {
+    const all: { mode: ViewMode; icon: typeof Globe; label: string }[] = [
+      { mode: 'globe', icon: Globe, label: t('view.globe') },
+      { mode: 'grid', icon: LayoutGrid, label: t('view.grid') },
+      { mode: 'table', icon: List, label: t('view.table') },
+      { mode: 'uptime', icon: Shield, label: t('view.uptime') },
+    ];
+    return all.filter(({ mode }) => {
+      if (mode === 'globe') return themeConfig.enable_globe;
+      if (mode === 'uptime') return themeConfig.enable_uptime;
+      return true;
+    });
+  }, [t, themeConfig]);
 
   return (
     <NodesContext.Provider value={{ nodes, loading, refreshNodes }}>
@@ -791,6 +829,12 @@ function App() {
                         Commander
                       </a>
                     </span>
+                  </>
+                )}
+                {themeConfig.custom_footer && (
+                  <>
+                    <span className="hidden sm:inline text-muted-foreground/40">|</span>
+                    <span className="hidden sm:inline text-muted-foreground/60">{themeConfig.custom_footer}</span>
                   </>
                 )}
               </div>
