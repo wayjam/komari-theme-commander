@@ -203,8 +203,8 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
         </div>
       )}
 
-      {/* Row 2: System specs */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4 pb-3 border-b border-border/30">
+      {/* Row 2: System specs — CPU+GPU first row, System+Arch second row */}
+      <div className="grid grid-cols-2 gap-2 mb-4 pb-3 border-b border-border/30">
         {node.cpu_name && (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -218,6 +218,22 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
             </TooltipTrigger>
             <TooltipContent side="bottom" className="max-w-xs text-xs font-mono">
               {node.cpu_name} ({node.cpu_cores}C)
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {node.gpu_name && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-start gap-2 p-2 rounded bg-muted/10 border border-border/15 cursor-default">
+                <Box className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-xs font-mono text-muted-foreground/60 uppercase">{t('label.gpu')}</div>
+                  <div className="text-xs font-mono text-foreground/80 truncate">{node.gpu_name}</div>
+                </div>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-xs text-xs font-mono">
+              {node.gpu_name}
             </TooltipContent>
           </Tooltip>
         )}
@@ -254,22 +270,6 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
             </TooltipTrigger>
             <TooltipContent side="bottom" className="max-w-xs text-xs font-mono">
               {node.arch}{node.virtualization ? ` · ${node.virtualization}` : ''}
-            </TooltipContent>
-          </Tooltip>
-        )}
-        {node.gpu_name && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="flex items-start gap-2 p-2 rounded bg-muted/10 border border-border/15 cursor-default">
-                <Box className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
-                <div className="min-w-0">
-                  <div className="text-xs font-mono text-muted-foreground/60 uppercase">{t('label.gpu')}</div>
-                  <div className="text-xs font-mono text-foreground/80 truncate">{node.gpu_name}</div>
-                </div>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="max-w-xs text-xs font-mono">
-              {node.gpu_name}
             </TooltipContent>
           </Tooltip>
         )}

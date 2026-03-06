@@ -626,32 +626,30 @@ function NodeDetailView({
                 <Server className="h-3 w-3 text-primary" />
                 <span className="text-xs font-display font-bold text-muted-foreground uppercase">{t('info.system')}</span>
               </div>
-              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs font-mono">
-                <span className="text-muted-foreground">{t('label.cpu')}</span>
+              <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs font-mono">
+                <span className="text-muted-foreground whitespace-nowrap">{t('label.cpu')}</span>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="truncate cursor-default">{node.cpu_name || '-'}</span>
+                    <span className="truncate cursor-default">{node.cpu_name || '-'} ({node.cpu_cores}C)</span>
                   </TooltipTrigger>
-                  <TooltipContent side="right" className="max-w-xs text-xs font-mono">{node.cpu_name || '-'}</TooltipContent>
+                  <TooltipContent side="right" className="max-w-xs text-xs font-mono">{node.cpu_name || '-'} ({node.cpu_cores}C)</TooltipContent>
                 </Tooltip>
-                <span className="text-muted-foreground">{t('label.cores')}</span>
-                <span>{node.cpu_cores}C</span>
-                <span className="text-muted-foreground">{t('label.arch')}</span>
-                <span>{node.arch || '-'}</span>
-                <span className="text-muted-foreground">{t('label.os')}</span>
+                <span className="text-muted-foreground whitespace-nowrap">{t('label.arch')}</span>
+                <span className="truncate">{node.arch || '-'}</span>
+                <span className="text-muted-foreground whitespace-nowrap">{t('label.os')}</span>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="truncate cursor-default">{node.os || '-'}</span>
                   </TooltipTrigger>
                   <TooltipContent side="right" className="max-w-xs text-xs font-mono">{node.os || '-'}</TooltipContent>
                 </Tooltip>
-                <span className="text-muted-foreground">{t('label.virt')}</span>
-                <span>{node.virtualization || '-'}</span>
-                <span className="text-muted-foreground">{t('label.region')}</span>
-                <span>{node.region || '-'}</span>
+                <span className="text-muted-foreground whitespace-nowrap">{t('label.virt')}</span>
+                <span className="truncate">{node.virtualization || '-'}</span>
+                <span className="text-muted-foreground whitespace-nowrap">{t('label.region')}</span>
+                <span className="truncate">{node.region || '-'}</span>
                 {node.kernel_version && (
                   <>
-                    <span className="text-muted-foreground">{t('label.kernel')}</span>
+                    <span className="text-muted-foreground whitespace-nowrap">{t('label.kernel')}</span>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <span className="truncate cursor-default">{node.kernel_version}</span>
@@ -775,7 +773,7 @@ function NodeDetailView({
                   <div className="text-xs font-mono text-muted-foreground">{t('label.upload')}</div>
                   <div className="text-sm font-mono font-bold">{formatSpeed(stats.network.up)}</div>
                 </div>
-                <div>
+                <div className="text-right">
                   <div className="text-xs font-mono text-muted-foreground">{t('label.download')}</div>
                   <div className="text-sm font-mono font-bold">{formatSpeed(stats.network.down)}</div>
                 </div>
@@ -785,7 +783,7 @@ function NodeDetailView({
                     {stats.network.totalUp ? formatBytes(stats.network.totalUp) : t('label.na')}
                   </div>
                 </div>
-                <div>
+                <div className="text-right">
                   <div className="text-xs font-mono text-muted-foreground">{t('label.totalDown')}</div>
                   <div className="text-sm font-mono font-bold">
                     {stats.network.totalDown ? formatBytes(stats.network.totalDown) : t('label.na')}
@@ -797,7 +795,7 @@ function NodeDetailView({
                       <div className="text-xs font-mono text-muted-foreground">{t('label.tcp')}</div>
                       <div className="text-sm font-mono font-bold">{stats.connections.tcp}</div>
                     </div>
-                    <div>
+                    <div className="text-right">
                       <div className="text-xs font-mono text-muted-foreground">{t('label.udp')}</div>
                       <div className="text-sm font-mono font-bold">{stats.connections.udp}</div>
                     </div>
