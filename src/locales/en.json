@@ -144,6 +144,12 @@
     "select": "Select theme",
     "title": "THEME"
   },
+  "privacy": {
+    "label": "Privacy Mode",
+    "on": "Privacy mode is on — node names are masked",
+    "off": "Privacy mode is off",
+    "toggle": "Toggle privacy mode"
+  },
   "ws": {
     "connecting": "CONNECTING",
     "live": "LIVE",

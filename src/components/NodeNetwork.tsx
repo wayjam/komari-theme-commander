@@ -77,6 +77,7 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
   const nodeUuid = propUuid || params.uuid || '';
   const [nodeName, setNodeName] = useState(propName || '');
   const { recordPreserveTime, isLoggedIn } = useAppConfig();
+  const { maskName } = usePrivacyMode();
 
   const [loadData, setLoadData] = useState<LoadRecord[] | null>(null);
   const [pingData, setPingData] = useState<PingRecord[] | null>(null);
@@ -109,10 +110,10 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
     if (!nodeName && nodeUuid) {
       apiService.getNodes().then(nodes => {
         const node = nodes.find(n => n.uuid === nodeUuid);
-        if (node) setNodeName(node.name);
+        if (node) setNodeName(maskName(node.uuid, node.name));
       });
     }
-  }, [nodeUuid, nodeName]);
+  }, [nodeUuid, nodeName, maskName]);
 
   const chartMargin = useMemo(() => ({
     top: 10,

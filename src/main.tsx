@@ -5,6 +5,7 @@ import './i18n'
 import './index.css'
 import { ThemeProvider } from './hooks/useTheme'
 import { AppConfigProvider } from './hooks/useAppConfig'
+import { PrivacyModeProvider } from './hooks/usePrivacyMode'
 import { TooltipProvider } from './components/ui/tooltip'
 import App from './App.tsx'
 
@@ -13,9 +14,11 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <ThemeProvider>
         <AppConfigProvider>
-          <TooltipProvider>
-            <App />
-          </TooltipProvider>
+          <PrivacyModeProvider>
+            <TooltipProvider>
+              <App />
+            </TooltipProvider>
+          </PrivacyModeProvider>
         </AppConfigProvider>
       </ThemeProvider>
     </BrowserRouter>

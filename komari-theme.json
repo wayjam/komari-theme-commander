@@ -54,6 +54,13 @@
                 "type": "string",
                 "default": "",
                 "help": "Custom text displayed in the footer area"
+            },
+            {
+                "key": "enable_privacy_mode",
+                "name": "Enable Privacy Mode",
+                "type": "switch",
+                "default": false,
+                "help": "When enabled, all node names are replaced with fake names to protect privacy"
             }
         ]
     }

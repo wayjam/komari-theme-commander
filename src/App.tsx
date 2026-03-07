@@ -16,12 +16,13 @@ import { useAppConfig } from './hooks/useAppConfig'
 import { useTheme } from './hooks/useTheme'
 import { RecentStatsProvider } from './hooks/useRecentStats'
 import { UptimeView } from './components/UptimeView'
-import { ArrowLeft, Settings, Globe, LayoutGrid, List, Shield, Cpu, MemoryStick, HardDrive, Activity, Network, Clock, User, Monitor, Box, Layers, AlertTriangle, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Settings, Globe, LayoutGrid, List, Shield, Cpu, MemoryStick, HardDrive, Activity, Network, Clock, User, Monitor, Box, Layers, AlertTriangle, ExternalLink, EyeOff, Eye } from 'lucide-react'
 import { useState, useEffect, useCallback, useMemo, memo, createContext, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Routes, Route, useNavigate, useParams, useLocation, Link } from 'react-router-dom'
 import { apiService } from './services/api'
 import { formatSpeed, formatBytes, formatUptime, getUsageStatus, calcTrafficUsage, formatTrafficType, getExpiryStatus, formatExpiry, cn, extractRegionEmoji, extractRegionText } from './lib/utils'
+import { usePrivacyMode } from './hooks/usePrivacyMode'
 import type { TrafficLimitType } from './lib/utils'
 import type { NodeWithStatus } from './services/api'
 import { Tooltip, TooltipTrigger, TooltipContent } from './components/ui/tooltip'
@@ -74,6 +75,7 @@ const ViewModeContext = createContext<ViewModeContextType>({
 function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
   const { t } = useTranslation();
   const appConfig = useAppConfig();
+  const { maskName } = usePrivacyMode();
   const isOnline = node.status === 'online';
   const stats = node.stats;
   const cpuUsage = stats?.cpu?.usage ?? 0;
@@ -82,6 +84,7 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
   const isFree = node.price === -1;
   const expiryStatus = (isFree || !appConfig.isLoggedIn) ? null : getExpiryStatus(node.expired_at);
   const hasTraffic = !!(node.traffic_limit && node.traffic_limit > 0 && node.traffic_limit_type && node.traffic_limit_type !== 'no_limit');
+  const displayName = maskName(node.uuid, node.name);
 
   return (
     <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl p-4 commander-corners relative overflow-hidden">
@@ -91,7 +94,7 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
         <div className="flex flex-wrap items-center gap-2 min-w-0">
           <span className={cn('w-2.5 h-2.5 rounded-full shrink-0', isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500')} />
-          <h2 className="text-base font-display font-bold truncate max-w-[60vw] sm:max-w-none">{node.name}</h2>
+          <h2 className="text-base font-display font-bold truncate max-w-[60vw] sm:max-w-none">{displayName}</h2>
           {isOnline && stats?.updated_at ? (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -420,6 +423,7 @@ function NodeDetailRoute() {
   const { uuid } = useParams<{ uuid: string }>();
   const navigate = useNavigate();
   const { nodes } = useNodesContext();
+  const { maskName } = usePrivacyMode();
   const node = nodes.find(n => n.uuid === uuid);
   const [nodeName, setNodeName] = useState('');
 
@@ -433,6 +437,8 @@ function NodeDetailRoute() {
       });
     }
   }, [uuid, node]);
+
+  const displayName = uuid ? maskName(uuid, nodeName) : nodeName;
 
   if (!uuid) return null;
 
@@ -449,7 +455,7 @@ function NodeDetailRoute() {
           {t('action.back')}
         </Button>
         <span className="text-xs font-mono text-muted-foreground">
-          / {nodeName || uuid}
+          / {displayName || uuid}
         </span>
       </div>
 
@@ -457,7 +463,7 @@ function NodeDetailRoute() {
       {node && <NodeInfoPanel node={node} />}
 
       {/* Charts */}
-      <NodeCharts nodeUuid={uuid} nodeName={nodeName} />
+      <NodeCharts nodeUuid={uuid} nodeName={displayName} />
     </div>
   );
 }
@@ -551,6 +557,7 @@ function App() {
   const { activeEffects } = useEffects();
   const appConfig = useAppConfig();
   const { setTheme } = useTheme();
+  const { privacyMode, setPrivacyMode, togglePrivacyMode, maskNodes } = usePrivacyMode();
 
   const { themeConfig } = appConfig;
 
@@ -562,6 +569,18 @@ function App() {
       setTheme(themeConfig.default_theme);
     }
   }, [appConfig.loaded, themeConfig.default_theme, setTheme]);
+
+  // Apply enable_privacy_mode from server config if user hasn't set a local preference
+  // When enabled: logged-in users default to off, non-logged-in users default to on
+  useEffect(() => {
+    if (!appConfig.loaded) return;
+    const savedPrivacy = localStorage.getItem('privacy-mode');
+    if (savedPrivacy === null && themeConfig.enable_privacy_mode) {
+      setPrivacyMode(!appConfig.isLoggedIn);
+    }
+  }, [appConfig.loaded, themeConfig.enable_privacy_mode, appConfig.isLoggedIn, setPrivacyMode]);
+
+  const maskedNodes = useMemo(() => maskNodes(nodes), [maskNodes, nodes]);
 
   const handleSetViewMode = useCallback((mode: ViewMode) => {
     setViewMode(mode);
@@ -646,7 +665,7 @@ function App() {
   }, [t, themeConfig]);
 
   return (
-    <NodesContext.Provider value={{ nodes, loading, refreshNodes }}>
+    <NodesContext.Provider value={{ nodes: maskedNodes, loading, refreshNodes }}>
       <RecentStatsProvider onlineUuids={onlineUuids}>
       <ViewModeContext.Provider value={{ viewMode, setViewMode: handleSetViewMode }}>
         <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -691,6 +710,24 @@ function App() {
                   </div>
                   <LanguageSwitcher />
                   <ThemeSwitcher />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={togglePrivacyMode}
+                        className={cn(
+                          'h-7 w-7 p-0 text-xs font-mono cursor-pointer',
+                          privacyMode ? 'bg-primary/15 text-primary hover:bg-primary/25' : 'hover:bg-muted/50'
+                        )}
+                      >
+                        {privacyMode ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs font-mono">
+                      {privacyMode ? t('privacy.on') : t('privacy.off')}
+                    </TooltipContent>
+                  </Tooltip>
                   {appConfig.isLoggedIn ? (
                     <Button
                       variant="ghost"
@@ -751,6 +788,18 @@ function App() {
                 <div className="flex items-center gap-1.5">
                   <LanguageSwitcher />
                   <ThemeSwitcher />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={togglePrivacyMode}
+                    className={cn(
+                      'h-7 w-7 p-0 text-xs font-mono cursor-pointer',
+                      privacyMode ? 'bg-primary/15 text-primary hover:bg-primary/25' : 'hover:bg-muted/50'
+                    )}
+                    title={privacyMode ? t('privacy.on') : t('privacy.off')}
+                  >
+                    {privacyMode ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </Button>
                   {appConfig.isLoggedIn ? (
                     <Button
                       variant="ghost"

@@ -8,6 +8,7 @@ export interface ThemeConfig {
   enable_uptime: boolean;
   default_theme: 'lumina' | 'deepspace' | 'clean';
   custom_footer: string;
+  enable_privacy_mode: boolean;
 }
 
 const defaultThemeConfig: ThemeConfig = {
@@ -16,6 +17,7 @@ const defaultThemeConfig: ThemeConfig = {
   enable_uptime: true,
   default_theme: 'lumina',
   custom_footer: '',
+  enable_privacy_mode: false,
 };
 
 export interface AppConfig {
@@ -73,6 +75,9 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
             tc.default_theme = publicSettings.default_theme as ThemeConfig['default_theme'];
           }
           if (typeof publicSettings.custom_footer === 'string') tc.custom_footer = publicSettings.custom_footer as string;
+          if (typeof publicSettings.enable_privacy_mode === 'boolean') tc.enable_privacy_mode = publicSettings.enable_privacy_mode;
+          if (publicSettings.enable_privacy_mode === 'true') tc.enable_privacy_mode = true;
+          if (publicSettings.enable_privacy_mode === 'false') tc.enable_privacy_mode = false;
         }
 
         // Fallback: if default_view references a disabled view, pick first available
