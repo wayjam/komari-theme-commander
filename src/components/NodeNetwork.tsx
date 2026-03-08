@@ -6,6 +6,7 @@ import { ArrowLeft, Network, Signal, ArrowUpDown, Unplug, ChevronDown, ChevronRi
 import { HudSpinner } from './HudSpinner';
 import { apiService } from '../services/api';
 import { useAppConfig } from '@/hooks/useAppConfig';
+import { usePrivacyMode } from '@/hooks/usePrivacyMode';
 import { formatSpeed, formatBytes } from '@/lib/utils';
 import type { NodeWithStatus } from '@/services/api';
 import {

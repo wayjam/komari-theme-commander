@@ -24,7 +24,7 @@ function hashCode(str: string): number {
   return Math.abs(hash);
 }
 
-function generateFakeName(uuid: string, index: number): string {
+function generateFakeName(uuid: string, _index?: number): string {
   const h = hashCode(uuid);
   const prefix = FAKE_PREFIXES[h % FAKE_PREFIXES.length];
   const suffix = FAKE_SUFFIXES[(h >> 4) % FAKE_SUFFIXES.length];
