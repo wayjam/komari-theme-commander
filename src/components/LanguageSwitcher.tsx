@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Languages, ChevronDown } from 'lucide-react';
+import { Languages } from 'lucide-react';
 import { Button } from './ui/button';
 import { supportedLanguages, type SupportedLanguage } from '../i18n';
 
@@ -46,11 +46,9 @@ export function LanguageSwitcher() {
         variant="ghost"
         size="sm"
         onClick={() => setDropdownOpen(!dropdownOpen)}
-        className="h-7 px-2 text-xs font-mono hover:bg-primary/15 hover:text-primary"
+        className="h-7 w-7 p-0 text-xs font-mono cursor-pointer hover:bg-muted/50"
       >
-        <Languages className="h-3.5 w-3.5 sm:mr-1" />
-        <span className="hidden sm:inline">{displayLabel}</span>
-        <ChevronDown className="h-3 w-3 ml-0.5" />
+        <Languages className="h-3.5 w-3.5" />
       </Button>
 
       {dropdownOpen && (

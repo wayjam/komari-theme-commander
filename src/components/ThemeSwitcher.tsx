@@ -1,15 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme, type Theme } from '../hooks/useTheme';
-import { Sun, Moon, Eye, ChevronDown } from 'lucide-react';
+import { Sun, Moon, Cloud, Check } from 'lucide-react';
 import { Button } from './ui/button';
+import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 
 const themeOrder: Theme[] = ['lumina', 'deepspace', 'clean'];
 
 const themeIcons: Record<Theme, typeof Sun> = {
   lumina: Sun,
   deepspace: Moon,
-  clean: Eye,
+  clean: Cloud,
 };
 
 export function ThemeSwitcher() {
@@ -17,12 +18,6 @@ export function ThemeSwitcher() {
   const { theme, setTheme } = useTheme();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
-
-  const cycle = () => {
-    const idx = themeOrder.indexOf(theme);
-    const next = themeOrder[(idx + 1) % themeOrder.length];
-    setTheme(next);
-  };
 
   // Close on outside click
   useEffect(() => {
@@ -41,38 +36,25 @@ export function ThemeSwitcher() {
 
   return (
     <div className="relative" ref={panelRef}>
-      <div className="flex items-center">
-        {/* Main button: click to cycle */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={cycle}
-          className="h-7 px-2 text-xs font-mono hover:bg-primary/15 hover:text-primary rounded-r-none"
-          title={t('theme.currentSwitch', { label })}
-        >
-          <Icon className="h-3.5 w-3.5 sm:mr-1" />
-          <span className="hidden sm:inline">{label}</span>
-        </Button>
-        {/* Dropdown arrow */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setDropdownOpen(!dropdownOpen)}
-          className="h-7 px-1 text-xs font-mono hover:bg-primary/15 hover:text-primary rounded-l-none border-l border-border/30"
-          title={t('theme.select')}
-        >
-          <ChevronDown className="h-3 w-3" />
-        </Button>
-      </div>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className="h-7 w-7 p-0 text-xs font-mono cursor-pointer hover:bg-muted/50"
+          >
+            <Icon className="h-3.5 w-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs font-mono">
+          {label}
+        </TooltipContent>
+      </Tooltip>
 
       {/* Dropdown menu */}
       {dropdownOpen && (
-        <div className="absolute right-0 top-full mt-1 w-40 rounded-lg border border-border/50 bg-popover backdrop-blur-none shadow-xl z-50 overflow-hidden commander-dropdown">
-          <div className="px-3 py-1.5 border-b border-border/50">
-            <span className="text-xxs font-mono font-bold uppercase tracking-wider text-muted-foreground">
-              {t('theme.title')}
-            </span>
-          </div>
+        <div className="absolute right-0 top-full mt-1 w-36 rounded-lg border border-border/50 bg-popover shadow-xl z-50 overflow-hidden commander-dropdown">
           <div className="p-1">
             {themeOrder.map((th) => {
               const TIcon = themeIcons[th];
@@ -94,7 +76,7 @@ export function ThemeSwitcher() {
                   <TIcon className="h-3.5 w-3.5" />
                   <span className="text-xs font-mono font-medium">{tLabel}</span>
                   {isActive && (
-                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
+                    <Check className="ml-auto h-3.5 w-3.5 text-primary" />
                   )}
                 </button>
               );

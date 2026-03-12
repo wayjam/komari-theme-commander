@@ -16,7 +16,7 @@ import { useAppConfig } from './hooks/useAppConfig'
 import { useTheme } from './hooks/useTheme'
 import { RecentStatsProvider } from './hooks/useRecentStats'
 import { UptimeView } from './components/UptimeView'
-import { ArrowLeft, Settings, Globe, LayoutGrid, List, Shield, Cpu, MemoryStick, HardDrive, Activity, Network, Clock, User, Monitor, Box, Layers, AlertTriangle, ExternalLink, EyeOff, Eye } from 'lucide-react'
+import { ArrowLeft, Settings, Globe, LayoutGrid, List, Shield, Cpu, MemoryStick, HardDrive, Activity, Network, Clock, User, Monitor, Box, Layers, AlertTriangle, ExternalLink, Fingerprint } from 'lucide-react'
 import { useState, useEffect, useCallback, useMemo, memo, createContext, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Routes, Route, useNavigate, useParams, useLocation, Link } from 'react-router-dom'
@@ -710,45 +710,41 @@ function App() {
                   </div>
                   <LanguageSwitcher />
                   <ThemeSwitcher />
+                  {appConfig.isLoggedIn && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={togglePrivacyMode}
+                          className={cn(
+                            'h-7 w-7 p-0 text-xs font-mono cursor-pointer',
+                            privacyMode ? 'bg-primary/15 text-primary hover:bg-primary/25' : 'hover:bg-muted/50'
+                          )}
+                        >
+                          <Fingerprint className={cn("h-3.5 w-3.5", privacyMode && "text-primary")} />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="text-xs font-mono">
+                        {privacyMode ? t('privacy.on') : t('privacy.off')}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={togglePrivacyMode}
-                        className={cn(
-                          'h-7 w-7 p-0 text-xs font-mono cursor-pointer',
-                          privacyMode ? 'bg-primary/15 text-primary hover:bg-primary/25' : 'hover:bg-muted/50'
-                        )}
+                        onClick={() => window.location.href = '/admin'}
+                        className="h-7 w-7 p-0 text-xs font-mono hover:bg-primary/15 hover:text-primary cursor-pointer"
                       >
-                        {privacyMode ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                        {appConfig.isLoggedIn ? <User className="h-3.5 w-3.5" /> : <Settings className="h-3.5 w-3.5" />}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="text-xs font-mono">
-                      {privacyMode ? t('privacy.on') : t('privacy.off')}
+                      {appConfig.isLoggedIn ? (appConfig.username || t('action.admin')) : t('action.admin')}
                     </TooltipContent>
                   </Tooltip>
-                  {appConfig.isLoggedIn ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => window.location.href = '/admin'}
-                      className="h-7 px-2 text-xs font-mono hover:bg-primary/15 hover:text-primary"
-                    >
-                      <User className="h-3.5 w-3.5 mr-1" />
-                      <span>{appConfig.username || t('action.admin')}</span>
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => window.location.href = '/admin'}
-                      className="h-7 px-2 text-xs font-mono hover:bg-primary/15 hover:text-primary"
-                    >
-                      <Settings className="h-3.5 w-3.5 mr-1" />
-                      <span>{t('action.admin')}</span>
-                    </Button>
-                  )}
                 </div>
               </div>
 
@@ -788,37 +784,29 @@ function App() {
                 <div className="flex items-center gap-1.5">
                   <LanguageSwitcher />
                   <ThemeSwitcher />
+                  {appConfig.isLoggedIn && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={togglePrivacyMode}
+                      className={cn(
+                        'h-7 w-7 p-0 text-xs font-mono cursor-pointer',
+                        privacyMode ? 'bg-primary/15 text-primary hover:bg-primary/25' : 'hover:bg-muted/50'
+                      )}
+                      title={privacyMode ? t('privacy.on') : t('privacy.off')}
+                    >
+                      <Fingerprint className={cn("h-3.5 w-3.5", privacyMode && "text-primary")} />
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={togglePrivacyMode}
-                    className={cn(
-                      'h-7 w-7 p-0 text-xs font-mono cursor-pointer',
-                      privacyMode ? 'bg-primary/15 text-primary hover:bg-primary/25' : 'hover:bg-muted/50'
-                    )}
-                    title={privacyMode ? t('privacy.on') : t('privacy.off')}
+                    onClick={() => window.location.href = '/admin'}
+                    className="h-7 w-7 p-0 text-xs font-mono hover:bg-primary/15 hover:text-primary cursor-pointer"
+                    title={appConfig.isLoggedIn ? (appConfig.username || t('action.admin')) : t('action.admin')}
                   >
-                    {privacyMode ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    {appConfig.isLoggedIn ? <User className="h-3.5 w-3.5" /> : <Settings className="h-3.5 w-3.5" />}
                   </Button>
-                  {appConfig.isLoggedIn ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => window.location.href = '/admin'}
-                      className="h-7 px-2 text-xs font-mono hover:bg-primary/15 hover:text-primary"
-                    >
-                      <User className="h-3.5 w-3.5" />
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => window.location.href = '/admin'}
-                      className="h-7 px-2 text-xs font-mono hover:bg-primary/15 hover:text-primary"
-                    >
-                      <Settings className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
                 </div>
               </div>
             </div>
