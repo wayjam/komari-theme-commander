@@ -4,12 +4,6 @@ import { Languages } from 'lucide-react';
 import { Button } from './ui/button';
 import { supportedLanguages, type SupportedLanguage } from '../i18n';
 
-const languageLabels: Record<SupportedLanguage, string> = {
-  en: 'EN',
-  'zh-Hans': '简',
-  'zh-Hant': '繁',
-};
-
 function resolveLanguage(lang: string): SupportedLanguage {
   const codes = supportedLanguages.map(l => l.code);
   if (codes.includes(lang as SupportedLanguage)) return lang as SupportedLanguage;
@@ -27,7 +21,6 @@ export function LanguageSwitcher() {
   const panelRef = useRef<HTMLDivElement>(null);
 
   const currentLang = resolveLanguage(i18n.language);
-  const displayLabel = languageLabels[currentLang] || currentLang;
 
   useEffect(() => {
     if (!dropdownOpen) return;
