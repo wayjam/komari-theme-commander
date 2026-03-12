@@ -7,6 +7,11 @@
 
 > 一个为 [Komari Monitor](https://github.com/komari-monitor/komari) 量身打造的现代化指挥官主题，融合赛博朋克美学与终端 HUD 风格，提供沉浸式的服务器监控体验。
 
+## 🚀 Quick Start
+
+- 从 Release 下载主题 zip 包，上传到 Komari 后台即可。
+- 或在 Komari 后台填写主题 URL：`https://github.com/wayjam/komari-theme-commander` 
+
 ## ✨ 核心特性
 
 ### 🎨 三款精心设计的主题
@@ -50,34 +55,36 @@
 - 基于 i18next，浏览器语言自动检测
 - 用户偏好持久化存储
 
-### ⚙️ 管理端配置
+### 📸 主题预览
 
-主题提供后台可视化配置面板（无需修改代码）：
+更多截图请参见 [`images/screenshot/`](./images/screenshot/) 目录。
 
-- **默认视图** — 选择用户首次访问时展示的视图模式
-- **视图启用开关** — 灵活控制 Globe/Uptime 视图的显示与隐藏
-- **默认主题** — 为首次访问者预设颜色主题
-- **自定义页脚** — 添加自定义文本内容到页脚区域
+## ⚙️ 主题配置
+
+主题提供后台可视化配置面板：
+
+### 视图设置（View Settings）
+
+| 配置项 | 类型 | 默认值 | 说明 |
+|--------|------|--------|------|
+| Default View | 下拉选择 | `globe` | 用户首次访问时展示的视图模式（globe/grid/table/uptime） |
+| Enable Globe View | 开关 | ✅ | 是否显示 3D 地球视图选项 |
+| Enable Uptime View | 开关 | ✅ | 是否显示在线时长排行视图选项 |
+
+### 外观设置（Appearance）
+
+| 配置项 | 类型 | 默认值 | 说明 |
+|--------|------|--------|------|
+| Default Theme | 下拉选择 | `lumina` | 首次访问者的默认颜色主题（lumina/deepspace/clean） |
+| Custom Footer Text | 文本 | 空 | 自定义页脚区域显示的文本内容 |
+
+### 隐私设置（Privacy）
+
+| 配置项 | 类型 | 默认值 | 说明 |
+|--------|------|--------|------|
+| Enable Privacy Mode | 开关 | ❌ | 开启后，未登录用户看到的所有节点名称将自动替换为随机生成的假名称以保护隐私；已登录用户默认不启用，但可通过头部按钮手动切换 |
 
 配置项通过 Komari 后台的 `Theme Settings` 面板进行调整，实时生效。
-
-## 🛠️ 技术栈
-
-- **React 19** — 最新版 React 框架
-- **TypeScript** — 类型安全的 JavaScript 超集
-- **Vite 7** — 极速构建工具
-- **Tailwind CSS 4** — 实用优先的 CSS 框架
-- **shadcn/ui** — New York 风格的高质量组件库
-- **Recharts** — 声明式图表库
-- **Cobe** — WebGL 驱动的 3D 地球
-- **Motion** — 流畅的动画库
-- **i18next** — 专业的国际化解决方案
-- **RPC2 Protocol** — Komari 原生 RPC 协议支持
-
-## 🚀 Quick Start
-
-- 从 Release 下载主题 zip 包，上传到 Komari 后台即可。
-- 或在 Komari 后台填写主题 URL：`https://github.com/wayjam/komari-theme-commander` 
 
 ## ⚙️ Development
 
