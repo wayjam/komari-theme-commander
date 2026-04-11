@@ -76,6 +76,9 @@ export default defineConfig(({ mode }) => {
     ...(mode === "development"
       ? {
           server: {
+            // 多项目并行开发时避免都抢 5173：本仓库默认 5174，可用 VITE_DEV_SERVER_PORT 覆盖
+            port: Number.parseInt(env.VITE_DEV_SERVER_PORT || "5174", 10),
+            strictPort: false,
             proxy: {
               "/api": {
                 target: apiTarget,
