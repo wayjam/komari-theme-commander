@@ -182,62 +182,82 @@ function ChartTooltipContent({
           const itemConfig = getPayloadConfigFromPayload(config, item, key)
           const indicatorColor = color || item.payload.fill || item.color
 
+          const seriesLabel =
+            itemConfig?.label ??
+            item.name ??
+            (item.dataKey != null ? String(item.dataKey) : "")
+
+          const hasValue =
+            item.value !== undefined &&
+            item.value !== null &&
+            !(typeof item.value === "number" && Number.isNaN(item.value))
+
+          const valueNode = formatter
+            ? hasValue
+              ? formatter(
+                  item.value as number | string,
+                  item.name ?? "",
+                  item,
+                  index,
+                  item.payload
+                )
+              : null
+            : hasValue
+              ? typeof item.value === "number"
+                ? item.value.toLocaleString()
+                : String(item.value)
+              : null
+
           return (
             <div
-              key={item.dataKey}
+              key={`${String(item.dataKey)}-${index}`}
               className={cn(
-                "[&>svg]:text-muted-foreground flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5",
+                "[&>svg]:text-muted-foreground flex w-full min-w-0 flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5",
                 indicator === "dot" && "items-center"
               )}
             >
-              {formatter && item?.value !== undefined && item.name ? (
-                formatter(item.value, item.name, item, index, item.payload)
+              {itemConfig?.icon ? (
+                <itemConfig.icon />
               ) : (
-                <>
-                  {itemConfig?.icon ? (
-                    <itemConfig.icon />
-                  ) : (
-                    !hideIndicator && (
-                      <div
-                        className={cn(
-                          "shrink-0 rounded-[2px] border-(--color-border) bg-(--color-bg)",
-                          {
-                            "h-2.5 w-2.5": indicator === "dot",
-                            "w-1": indicator === "line",
-                            "w-0 border-[1.5px] border-dashed bg-transparent":
-                              indicator === "dashed",
-                            "my-0.5": nestLabel && indicator === "dashed",
-                          }
-                        )}
-                        style={
-                          {
-                            "--color-bg": indicatorColor,
-                            "--color-border": indicatorColor,
-                          } as React.CSSProperties
-                        }
-                      />
-                    )
-                  )}
+                !hideIndicator && (
                   <div
                     className={cn(
-                      "flex flex-1 justify-between leading-none",
-                      nestLabel ? "items-end" : "items-center"
+                      "shrink-0 rounded-[2px] border-(--color-border) bg-(--color-bg)",
+                      {
+                        "h-2.5 w-2.5": indicator === "dot",
+                        "w-1": indicator === "line",
+                        "w-0 border-[1.5px] border-dashed bg-transparent":
+                          indicator === "dashed",
+                        "my-0.5": nestLabel && indicator === "dashed",
+                      }
                     )}
-                  >
-                    <div className="grid gap-1.5">
-                      {nestLabel ? tooltipLabel : null}
-                      <span className="text-muted-foreground">
-                        {itemConfig?.label || item.name}
-                      </span>
-                    </div>
-                    {item.value && (
-                      <span className="text-foreground font-mono font-medium tabular-nums">
-                        {item.value.toLocaleString()}
-                      </span>
-                    )}
-                  </div>
-                </>
+                    style={
+                      {
+                        "--color-bg": indicatorColor,
+                        "--color-border": indicatorColor,
+                      } as React.CSSProperties
+                    }
+                  />
+                )
               )}
+              <div
+                className={cn(
+                  "flex min-w-0 flex-1 justify-between gap-3 leading-none",
+                  nestLabel ? "items-end" : "items-center"
+                )}
+              >
+                <div className="grid min-w-0 gap-1.5">
+                  {nestLabel ? tooltipLabel : null}
+                  <span className="text-muted-foreground truncate">
+                    {seriesLabel}
+                  </span>
+                </div>
+                {valueNode != null && (
+                  <span className="shrink-0 font-mono font-medium text-foreground tabular-nums">
+                    {valueNode}
+                  </span>
+                )}
+              </div>
             </div>
           )
         })}
@@ -254,16 +274,23 @@ function ChartLegendContent({
   payload,
   verticalAlign = "bottom",
   nameKey,
+  /** When set, entries with `true` are dimmed (e.g. toggled-off series). */
+  inactiveDataKeys,
+  /** Passed through from `<Legend onClick={...} />` — must be invoked on each row (see Recharts `DefaultLegendContent`). */
+  onClick,
 }: React.ComponentProps<"div"> &
-  Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign"> & {
+  Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign" | "onClick"> & {
     hideIcon?: boolean
     nameKey?: string
+    inactiveDataKeys?: Record<string, boolean>
   }) {
   const { config } = useChart()
 
   if (!payload?.length) {
     return null
   }
+
+  const interactive = inactiveDataKeys != null || typeof onClick === "function"
 
   return (
     <div
@@ -273,16 +300,27 @@ function ChartLegendContent({
         className
       )}
     >
-      {payload.map((item) => {
+      {payload.map((item, index) => {
         const key = `${nameKey || item.dataKey || "value"}`
         const itemConfig = getPayloadConfigFromPayload(config, item, key)
+        const dk = item.dataKey != null ? String(item.dataKey) : ""
+        const isInactive = inactiveDataKeys != null && !!inactiveDataKeys[dk]
 
         return (
           <div
-            key={item.value}
+            key={dk || String(item.value)}
             className={cn(
-              "[&>svg]:text-muted-foreground flex items-center gap-1.5 [&>svg]:h-3 [&>svg]:w-3"
+              "[&>svg]:text-muted-foreground flex items-center gap-1.5 [&>svg]:h-3 [&>svg]:w-3",
+              interactive && "cursor-pointer select-none transition-opacity",
+              isInactive && "opacity-40 line-through decoration-muted-foreground/50"
             )}
+            onClick={
+              onClick
+                ? (e: React.MouseEvent) => {
+                    onClick(item, index, e)
+                  }
+                : undefined
+            }
           >
             {itemConfig?.icon && !hideIcon ? (
               <itemConfig.icon />

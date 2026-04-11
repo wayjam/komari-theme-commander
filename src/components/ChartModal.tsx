@@ -5,25 +5,15 @@ import { HudSpinner } from './HudSpinner';
 import { motion } from 'motion/react';
 import { apiService } from '@/services/api';
 import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
-} from './ui/chart';
+  CpuUsageLineChart,
+  SystemLoadLineChart,
+  MemoryLineChart,
+  DiskUsageLineChart,
+  ConnectionsLineChart,
+  NetworkTrafficAreaChart,
+  PingLatencyLineChart,
+} from '@/components/metric-charts';
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  AreaChart,
-  Area,
-} from 'recharts';
-import {
-  chartColors,
-  gridStrokeColor,
-  labelFormatter,
   transformLoadRecords,
   processPingRecords,
   interpolatePingNulls,
@@ -55,6 +45,8 @@ const chartTabKeys: Record<ChartType, string> = {
   ping: 'chart.ping',
 };
 
+const modalChartClass = 'h-full w-full';
+
 export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
   const { t } = useTranslation();
   const [loadData, setLoadData] = useState<LoadRecord[] | null>(null);
@@ -75,7 +67,7 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
       .then(([loadHistory, pingHistory]) => {
         if (loadHistory?.records) {
           const records = (loadHistory.records as LoadRecord[]).sort(
-            (a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()
+            (a, b) => new Date(a.time).getTime() - new Date(b.time).getTime(),
           );
           setLoadData(records);
         }
@@ -90,10 +82,14 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
       .catch(() => setLoading(false));
   }, [nodeUuid, timeRange]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
@@ -115,103 +111,41 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
     return processed;
   }, [pingData, tasks, timeRange, smooth]);
 
-  const pingConfig = useMemo(() => {
-    const c: Record<string, { label: string; color: string }> = {};
-    tasks.forEach((t, i) => { c[t.id] = { label: t.name, color: chartColors[i % chartColors.length] }; });
-    return c;
-  }, [tasks]);
-
-  const timeFormatter = useCallback((value: string) => {
-    return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  }, []);
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleLegendClick = useCallback((e: any) => {
     if (e?.dataKey != null) {
       const key = String(e.dataKey);
-      setHiddenLines((prev) => ({ ...prev, [key]: !prev[key] }));
+      setHiddenLines(prev => ({ ...prev, [key]: !prev[key] }));
     }
   }, []);
-
-  const margin = { top: 8, right: 8, bottom: 4, left: 8 };
-  const xAxisProps = {
-    dataKey: 'time' as const,
-    tickLine: false,
-    axisLine: false,
-    tickFormatter: timeFormatter,
-    interval: 'preserveStartEnd' as const,
-    minTickGap: 60,
-    tick: { fontSize: 10 },
-    height: 28,
-  };
-  const yPctProps = {
-    domain: [0, 100] as [number, number],
-    tickLine: false,
-    axisLine: false,
-    unit: '%',
-    allowDecimals: false,
-    tick: { fontSize: 10 },
-    width: 38,
-  };
-  const yPlainProps = {
-    tickLine: false,
-    axisLine: false,
-    tick: { fontSize: 10 },
-    width: 38,
-  };
 
   const renderChart = () => {
     if (loading) {
       return (
-        <div className="flex items-center justify-center h-full">
+        <div className="flex h-full items-center justify-center">
           <HudSpinner size="md" />
         </div>
       );
     }
 
-    // Ping chart uses pingChartData, others use chartData
     if (activeChart === 'ping') {
-      if (!pingChartData.length) {
-        return (
-          <div className="flex items-center justify-center h-full">
-            <span className="text-xs font-mono text-muted-foreground">{t('chart.noPingData')}</span>
-          </div>
-        );
-      }
       return (
-        <ChartContainer config={pingConfig} className="h-full w-full">
-          <LineChart data={pingChartData} margin={margin}>
-            <CartesianGrid vertical={false} stroke={gridStrokeColor} strokeOpacity={0.3} />
-            <XAxis {...xAxisProps} />
-            <YAxis {...yPlainProps} unit="ms" width={42} />
-            <ChartTooltip
-              cursor={false}
-              formatter={(v: number | string) => `${Math.round(Number(v))} ms`}
-              content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />}
-            />
-            <ChartLegend content={<ChartLegendContent />} onClick={handleLegendClick} />
-            {tasks.map((task, idx) => (
-              <Line
-                key={task.id}
-                dataKey={String(task.id)}
-                name={task.name}
-                stroke={chartColors[idx % chartColors.length]}
-                dot={false}
-                isAnimationActive={false}
-                strokeWidth={2}
-                connectNulls={false}
-                type={smooth ? "basis" : "linear"}
-                hide={!!hiddenLines[task.id]}
-              />
-            ))}
-          </LineChart>
-        </ChartContainer>
+        <PingLatencyLineChart
+          pingChartData={pingChartData}
+          tasks={tasks}
+          mode="modal"
+          isMobile={false}
+          containerClassName={modalChartClass}
+          smooth={smooth}
+          hiddenLines={hiddenLines}
+          onLegendClick={handleLegendClick}
+        />
       );
     }
 
     if (!chartData.length) {
       return (
-        <div className="flex items-center justify-center h-full">
+        <div className="flex h-full items-center justify-center">
           <span className="text-xs font-mono text-muted-foreground">{t('chart.noData')}</span>
         </div>
       );
@@ -219,98 +153,20 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
 
     switch (activeChart) {
       case 'load':
-        return (
-          <ChartContainer config={{ load: { label: t('label.load'), color: chartColors[1] } }} className="h-full w-full">
-            <LineChart data={chartData} margin={margin}>
-              <CartesianGrid vertical={false} stroke={gridStrokeColor} strokeOpacity={0.3} />
-              <XAxis {...xAxisProps} />
-              <YAxis {...yPlainProps} />
-              <ChartTooltip cursor={false} content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />} />
-              <Line dataKey="load" stroke={chartColors[1]} dot={false} strokeWidth={2} isAnimationActive={false} />
-            </LineChart>
-          </ChartContainer>
-        );
+        return <SystemLoadLineChart chartData={chartData} mode="modal" containerClassName={modalChartClass} />;
       case 'cpu':
-        return (
-          <ChartContainer config={{ cpu: { label: t('label.cpu'), color: chartColors[0] } }} className="h-full w-full">
-            <LineChart data={chartData} margin={margin}>
-              <CartesianGrid vertical={false} stroke={gridStrokeColor} strokeOpacity={0.3} />
-              <XAxis {...xAxisProps} />
-              <YAxis {...yPctProps} />
-              <ChartTooltip cursor={false} formatter={(v: number | string) => `${Number(v).toFixed(1)}%`} content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />} />
-              <Line dataKey="cpu" stroke={chartColors[0]} dot={false} strokeWidth={2} isAnimationActive={false} />
-            </LineChart>
-          </ChartContainer>
-        );
+        return <CpuUsageLineChart chartData={chartData} mode="modal" containerClassName={modalChartClass} />;
       case 'ram':
-        return (
-          <ChartContainer config={{ ram: { label: t('label.ram'), color: chartColors[2] }, swap: { label: t('label.swap'), color: chartColors[8] } }} className="h-full w-full">
-            <LineChart data={chartData} margin={margin}>
-              <CartesianGrid vertical={false} stroke={gridStrokeColor} strokeOpacity={0.3} />
-              <XAxis {...xAxisProps} />
-              <YAxis {...yPctProps} />
-              <ChartTooltip cursor={false} formatter={(v: number | string) => `${Number(v).toFixed(1)}%`} content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />} />
-              <Line dataKey="ram" stroke={chartColors[2]} dot={false} strokeWidth={2} isAnimationActive={false} />
-              <Line dataKey="swap" stroke={chartColors[8]} dot={false} strokeWidth={1.5} isAnimationActive={false} strokeDasharray="4 2" />
-            </LineChart>
-          </ChartContainer>
-        );
+        return <MemoryLineChart chartData={chartData} mode="modal" containerClassName={modalChartClass} />;
       case 'disk':
-        return (
-          <ChartContainer config={{ disk: { label: t('label.disk'), color: chartColors[3] } }} className="h-full w-full">
-            <LineChart data={chartData} margin={margin}>
-              <CartesianGrid vertical={false} stroke={gridStrokeColor} strokeOpacity={0.3} />
-              <XAxis {...xAxisProps} />
-              <YAxis {...yPctProps} />
-              <ChartTooltip cursor={false} formatter={(v: number | string) => `${Number(v).toFixed(1)}%`} content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />} />
-              <Line dataKey="disk" stroke={chartColors[3]} dot={false} strokeWidth={2} isAnimationActive={false} />
-            </LineChart>
-          </ChartContainer>
-        );
+        return <DiskUsageLineChart chartData={chartData} mode="modal" containerClassName={modalChartClass} />;
       case 'network':
-        return (
-          <ChartContainer config={{ connections: { label: t('label.tcp'), color: chartColors[4] }, connections_udp: { label: t('label.udp'), color: chartColors[5] } }} className="h-full w-full">
-            <LineChart data={chartData} margin={margin}>
-              <CartesianGrid vertical={false} stroke={gridStrokeColor} strokeOpacity={0.3} />
-              <XAxis {...xAxisProps} />
-              <YAxis {...yPlainProps} />
-              <ChartTooltip cursor={false} content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />} />
-              <Line dataKey="connections" stroke={chartColors[4]} dot={false} strokeWidth={2} isAnimationActive={false} />
-              <Line dataKey="connections_udp" stroke={chartColors[5]} dot={false} strokeWidth={1.5} isAnimationActive={false} />
-            </LineChart>
-          </ChartContainer>
-        );
       case 'connections':
-        return (
-          <ChartContainer config={{ connections: { label: t('label.tcp'), color: chartColors[4] }, connections_udp: { label: t('label.udp'), color: chartColors[5] } }} className="h-full w-full">
-            <LineChart data={chartData} margin={margin}>
-              <CartesianGrid vertical={false} stroke={gridStrokeColor} strokeOpacity={0.3} />
-              <XAxis {...xAxisProps} />
-              <YAxis {...yPlainProps} />
-              <ChartTooltip cursor={false} content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />} />
-              <Line dataKey="connections" stroke={chartColors[4]} dot={false} strokeWidth={2} isAnimationActive={false} />
-              <Line dataKey="connections_udp" stroke={chartColors[5]} dot={false} strokeWidth={1.5} isAnimationActive={false} />
-            </LineChart>
-          </ChartContainer>
-        );
+        return <ConnectionsLineChart chartData={chartData} mode="modal" containerClassName={modalChartClass} />;
       case 'traffic':
-        return (
-          <ChartContainer config={{ network_in: { label: t('label.in'), color: chartColors[6] }, network_out: { label: t('label.out'), color: chartColors[7] } }} className="h-full w-full">
-            <AreaChart data={chartData} margin={margin}>
-              <CartesianGrid vertical={false} stroke={gridStrokeColor} strokeOpacity={0.3} />
-              <XAxis {...xAxisProps} />
-              <YAxis {...yPlainProps} unit="KB" width={42} />
-              <ChartTooltip
-                cursor={false}
-                formatter={(v: number | string) => `${Number(v).toFixed(1)} KB/s`}
-                content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />}
-              />
-              <ChartLegend content={<ChartLegendContent />} />
-              <Area dataKey="network_in" stroke={chartColors[6]} fill={chartColors[6]} fillOpacity={0.12} strokeWidth={1.5} isAnimationActive={false} />
-              <Area dataKey="network_out" stroke={chartColors[7]} fill={chartColors[7]} fillOpacity={0.12} strokeWidth={1.5} isAnimationActive={false} />
-            </AreaChart>
-          </ChartContainer>
-        );
+        return <NetworkTrafficAreaChart chartData={chartData} mode="modal" containerClassName={modalChartClass} />;
+      default:
+        return null;
     }
   };
 
@@ -323,17 +179,17 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
         transition={{ duration: 0.2 }}
       />
       <motion.div
-        className="relative w-[90vw] max-w-3xl bg-card/95 backdrop-blur-xl border border-border/50 rounded-lg shadow-2xl overflow-hidden commander-corners"
-        onClick={(e) => e.stopPropagation()}
+        className="relative w-[90vw] max-w-3xl overflow-hidden rounded-lg border border-border/50 bg-card/95 shadow-2xl backdrop-blur-xl commander-corners"
+        onClick={e => e.stopPropagation()}
         initial={{ opacity: 0, scale: 0.92, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
       >
         <span className="corner-bottom" />
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/50">
+        <div className="flex items-center justify-between border-b border-border/50 px-4 py-2.5">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-mono font-bold">{nodeName}</span>
+            <span className="font-mono text-xs font-bold">{nodeName}</span>
             <span className="text-xxs font-mono text-muted-foreground">{t('chart.nodeMonitor')}</span>
           </div>
           <div className="flex items-center gap-2">
@@ -341,8 +197,9 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
               {[1, 6, 24, 168].map(h => (
                 <button
                   key={h}
+                  type="button"
                   onClick={() => setTimeRange(h)}
-                  className={`px-2 py-0.5 text-xs font-mono rounded transition-colors ${
+                  className={`rounded px-2 py-0.5 font-mono text-xs transition-colors ${
                     timeRange === h
                       ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:bg-muted/50'
@@ -352,7 +209,7 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
                 </button>
               ))}
             </div>
-            <button onClick={onClose} className="p-1 rounded hover:bg-muted/50 transition-colors">
+            <button type="button" onClick={onClose} className="rounded p-1 transition-colors hover:bg-muted/50">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -360,16 +217,17 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
 
         {/* Chart tabs */}
         <div className="relative">
-          <div className="flex items-center justify-between gap-0.5 px-4 py-1.5 border-b border-border/30 overflow-x-auto scrollbar-none">
+          <div className="scrollbar-none flex items-center justify-between gap-0.5 overflow-x-auto border-b border-border/30 px-4 py-1.5">
             <div className="flex items-center gap-0.5">
               {chartTabIds.map(id => (
                 <button
                   key={id}
+                  type="button"
                   onClick={() => setActiveChart(id)}
-                  className={`px-3 py-1 text-xs font-mono font-bold rounded transition-colors whitespace-nowrap ${
+                  className={`whitespace-nowrap rounded px-3 py-1 font-mono text-xs font-bold transition-colors ${
                     activeChart === id
-                      ? 'bg-primary/15 text-primary border border-primary/30'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
+                      ? 'border border-primary/30 bg-primary/15 text-primary'
+                      : 'text-muted-foreground hover:bg-muted/30 hover:text-foreground'
                   }`}
                 >
                   {t(chartTabKeys[id])}
@@ -378,31 +236,27 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
             </div>
             {activeChart === 'ping' && (
               <button
+                type="button"
                 onClick={() => setSmooth(s => !s)}
                 title={t('chart.ewmaTooltip')}
-                className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono tracking-widest transition-all duration-200 cursor-pointer shrink-0 ${
-                  smooth
-                    ? 'bg-primary/10 text-primary/80'
-                    : 'text-muted-foreground/40 hover:text-muted-foreground/60'
+                className={`flex shrink-0 cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 font-mono text-xs tracking-widest transition-all duration-200 ${
+                  smooth ? 'bg-primary/10 text-primary/80' : 'text-muted-foreground/40 hover:text-muted-foreground/60'
                 }`}
               >
-                <span className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                  smooth
-                    ? 'bg-primary shadow-[0_0_4px_var(--color-primary)]'
-                    : 'bg-muted-foreground/20'
-                }`} />
+                <span
+                  className={`h-1.5 w-1.5 rounded-full transition-all duration-300 ${
+                    smooth ? 'bg-primary shadow-[0_0_4px_var(--color-primary)]' : 'bg-muted-foreground/20'
+                  }`}
+                />
                 <span>{smooth ? 'SMOOTH' : 'RAW'}</span>
               </button>
             )}
           </div>
-          {/* Fade hint for horizontal scroll on mobile */}
-          <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-card/95 to-transparent pointer-events-none sm:hidden" />
+          <div className="pointer-events-none absolute top-0 right-0 bottom-0 w-6 bg-gradient-to-l from-card/95 to-transparent sm:hidden" />
         </div>
 
         {/* Chart area */}
-        <div className="h-[300px] sm:h-[360px] p-3">
-          {renderChart()}
-        </div>
+        <div className="h-[300px] p-3 sm:h-[360px]">{renderChart()}</div>
       </motion.div>
     </div>
   );

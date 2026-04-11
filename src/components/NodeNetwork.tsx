@@ -2,68 +2,32 @@ import { useEffect, useMemo, useState, useCallback, Fragment } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { ArrowLeft, Network, Signal, ArrowUpDown, Unplug, ChevronDown, ChevronRight, Info } from 'lucide-react';
+import { Button } from './ui/button';
+import { ArrowLeft, Network, Signal, ArrowUpDown, Unplug, ChevronDown, ChevronRight, Info, Clock } from 'lucide-react';
 import { HudSpinner } from './HudSpinner';
 import { apiService } from '../services/api';
 import { useAppConfig } from '@/hooks/useAppConfig';
 import { usePrivacyMode } from '@/hooks/usePrivacyMode';
-import { formatSpeed, formatBytes } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { formatSpeed, formatBytes, cn } from '@/lib/utils';
 import type { NodeWithStatus } from '@/services/api';
 import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
-} from './ui/chart';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  AreaChart,
-  Area,
-} from 'recharts';
+  ConnectionsLineChart,
+  NetworkTrafficAreaChart,
+  PingLatencyLineChart,
+} from '@/components/metric-charts';
 import {
   chartColors,
   chartCardClass,
   chartContainerClass,
-  gridStrokeColor,
-  labelFormatter,
   processPingRecords,
   interpolatePingNulls,
   ewmaSmooth,
+  transformLoadRecords,
+  type LoadRecord,
   type PingRecord,
   type TaskInfo,
 } from '@/lib/chart-utils';
-
-interface LoadRecord {
-  time: string;
-  cpu: number;
-  ram: number;
-  ram_total: number;
-  swap: number;
-  swap_total: number;
-  disk: number;
-  disk_total: number;
-  load: number;
-  connections: number;
-  connections_udp: number;
-  net_in: number;
-  net_out: number;
-}
-
-const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 640);
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
-  }, []);
-  return isMobile;
-};
 
 interface NodeNetworkProps {
   nodeUuid?: string;
@@ -116,24 +80,6 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
     }
   }, [nodeUuid, nodeName, maskName]);
 
-  const chartMargin = useMemo(() => ({
-    top: 10,
-    right: isMobile ? 4 : 16,
-    bottom: isMobile ? 20 : 10,
-    left: isMobile ? 4 : 16
-  }), [isMobile]);
-
-  const yAxisConfig = useMemo(() => ({
-    tick: { fontSize: isMobile ? 10 : 12, dx: -5 },
-    width: isMobile ? 35 : 40
-  }), [isMobile]);
-
-  const xAxisConfig = useMemo(() => ({
-    tick: { fontSize: isMobile ? 10 : 11 },
-    height: isMobile ? 30 : 40,
-    minTickGap: isMobile ? 50 : 30
-  }), [isMobile]);
-
   // Fetch ping data independently (not tied to timeRange)
   const fetchPingData = useCallback(() => {
     if (!nodeUuid) return;
@@ -182,13 +128,7 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
   const chartData = useMemo(() => {
     const data = loadData || [];
     if (!data.length) return [];
-    return data.map((r) => ({
-      time: new Date(r.time).toISOString(),
-      connections: r.connections,
-      connections_udp: r.connections_udp,
-      network_in: r.net_in / 1024,
-      network_out: r.net_out / 1024,
-    }));
+    return transformLoadRecords(data);
   }, [loadData]);
 
   const pingChartData = useMemo(() => {
@@ -283,21 +223,6 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
     });
   }, [pingData, tasks]);
 
-  const timeFormatter = useCallback((value: number | string, index: number) => {
-    if (!chartData.length) return "";
-    const total = chartData.length;
-    if (isMobile) {
-      if (index === 0 || index === total - 1) {
-        return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      }
-    } else {
-      if (index === 0 || index === total - 1 || index === Math.floor(total / 2)) {
-        return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      }
-    }
-    return "";
-  }, [chartData.length, isMobile]);
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleLegendClick = useCallback((e: any) => {
     if (e?.dataKey != null) {
@@ -305,34 +230,6 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
       setHiddenLines((prev) => ({ ...prev, [key]: !prev[key] }));
     }
   }, []);
-
-  const connConfig = { connections: { label: t('label.tcp'), color: chartColors[4] }, connections_udp: { label: t('label.udp'), color: chartColors[5] } };
-  const netConfig = { network_in: { label: t('label.in'), color: chartColors[6] }, network_out: { label: t('label.out'), color: chartColors[7] } };
-  const pingConfig = useMemo(() => {
-    const c: Record<string, { label: string; color: string }> = {};
-    tasks.forEach((tk, i) => { c[tk.id] = { label: tk.name, color: chartColors[i % chartColors.length] }; });
-    return c;
-  }, [tasks]);
-
-  const xAxisProps = {
-    dataKey: "time",
-    tickLine: false,
-    axisLine: false,
-    tickFormatter: timeFormatter,
-    interval: "preserveStartEnd" as const,
-    minTickGap: xAxisConfig.minTickGap,
-    tick: xAxisConfig.tick,
-    height: xAxisConfig.height,
-  };
-
-  const yAxisPlainProps = {
-    tickLine: false,
-    axisLine: false,
-    orientation: "left" as const,
-    type: "number" as const,
-    tick: yAxisConfig.tick,
-    width: yAxisConfig.width,
-  };
 
   if (loading) {
     return (
@@ -354,127 +251,149 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
   }
 
   return (
-    <div className="space-y-4 w-full overflow-hidden">
-      {/* Header */}
-      <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl overflow-hidden">
+    <div className="w-full space-y-4 overflow-hidden">
+      {/* 与节点详情页 `/node/:uuid` 对齐：返回 + 面包屑（网络页为节点详情的子视图） */}
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          variant="ghost"
+          size="sm"
+          type="button"
+          onClick={() => navigate(`/node/${nodeUuid}`)}
+          className="h-7 px-2 font-mono text-xs hover:bg-primary/15 hover:text-primary"
+        >
+          <ArrowLeft className="mr-1 h-3.5 w-3.5" />
+          {t('action.back')}
+        </Button>
+        <span className="flex min-w-0 items-center gap-2 font-mono text-xs text-muted-foreground">
+          <Network className="h-3.5 w-3.5 shrink-0 text-primary" />
+          <span className="truncate">
+            / {nodeName || nodeUuid}
+            <span className="text-muted-foreground/70"> · {t('label.network')}</span>
+          </span>
+        </span>
+      </div>
+
+      {/* 与 NodeCharts 同一时间范围条样式与位置（在实时面板与图表区之前） */}
+      <div className="overflow-hidden rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl">
         <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate(-1)}
-              className="px-2 py-1 text-xs font-mono rounded hover:bg-primary/15 hover:text-primary transition-colors cursor-pointer flex items-center"
-            >
-              <ArrowLeft className="h-3.5 w-3.5 mr-1" />
-              {t('action.back')}
-            </button>
-            <div className="w-px h-5 bg-border/30" />
-            <Network className="h-4 w-4 text-primary" />
-            <span className="text-sm font-display font-bold">{nodeName || nodeUuid}</span>
-            <span className="text-xs font-display font-bold text-muted-foreground uppercase tracking-wider">{t('label.network')}</span>
+          <div className="flex items-center gap-2">
+            <Clock className="h-3.5 w-3.5 text-primary" />
+            <span className="font-display text-xs font-bold tracking-wider text-muted-foreground uppercase">{t('chart.timeRange')}</span>
           </div>
           <div className="flex items-center gap-1">
             {timeRanges.map(tr => (
               <button
                 key={tr.value}
+                type="button"
                 onClick={() => setTimeRange(tr.value)}
-                className={`px-2.5 py-1 text-xs font-mono rounded transition-all duration-200 cursor-pointer ${
+                className={`cursor-pointer rounded px-2.5 py-1 font-mono text-xs transition-all duration-200 ${
                   timeRange === tr.value
-                    ? 'bg-primary/15 text-primary border border-primary/30'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
+                    ? 'border border-primary/30 bg-primary/15 text-primary'
+                    : 'text-muted-foreground hover:bg-muted/30 hover:text-foreground'
                 }`}
               >
                 {tr.label}
               </button>
             ))}
-            <div className="w-px h-5 bg-border/30 mx-1" />
-            <button onClick={fetchData} className="px-2 py-1 text-xs font-mono rounded text-muted-foreground hover:bg-primary/15 hover:text-primary transition-colors cursor-pointer">
+            <div className="mx-1 h-5 w-px bg-border/30" />
+            <button
+              type="button"
+              onClick={fetchData}
+              className="cursor-pointer rounded px-2 py-1 font-mono text-xs text-muted-foreground transition-colors hover:bg-primary/15 hover:text-primary"
+            >
               ↻
             </button>
           </div>
         </div>
       </div>
 
-      {/* Network Info Panel — live stats with theme-aware design */}
+      {/* Network Info Panel — 实时速率与累计流量分层，避免 lg 三列栅格错位 */}
       {stats && (
-        <div className="network-stats-panel rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl overflow-hidden">
-          <div className="grid grid-cols-2 lg:grid-cols-3 divide-x divide-y divide-border/20">
-            {/* Upload / Download */}
-            <div className="relative p-4 group">
-              <div className="network-stat-glow absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-              <div className="relative">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-primary/10 text-primary text-xs">↑</span>
-                  <span className="text-xs font-display font-bold text-muted-foreground/60 uppercase tracking-wider">{t('label.upload')}</span>
+        <div className="network-stats-panel contain-layout rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl overflow-hidden">
+          {/* 实时上/下行：主信息区，大屏并排、小屏纵向堆叠 */}
+          <div className="grid grid-cols-1 divide-y divide-border/20 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+            <div className="relative p-4 sm:p-5 group">
+              <div className="network-stat-glow pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+              <div className="relative flex min-h-[4.25rem] flex-col justify-center">
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xs text-primary">↑</span>
+                  <span className="text-xs font-display font-bold uppercase tracking-wider text-muted-foreground/70">{t('label.upload')}</span>
                 </div>
-                <div className="text-lg font-mono font-bold tabular-nums">{formatSpeed(stats.network.up)}</div>
+                <div className="text-xl font-mono font-bold leading-none tracking-tight text-foreground tabular-nums sm:text-2xl">
+                  {formatSpeed(stats.network.up)}
+                </div>
               </div>
             </div>
-            <div className="relative p-4 group">
-              <div className="network-stat-glow absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-              <div className="relative">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-accent/10 text-accent text-xs">↓</span>
-                  <span className="text-xs font-display font-bold text-muted-foreground/60 uppercase tracking-wider">{t('label.download')}</span>
+            <div className="relative p-4 sm:p-5 group">
+              <div className="network-stat-glow pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+              <div className="relative flex min-h-[4.25rem] flex-col justify-center">
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent/10 text-xs text-accent">↓</span>
+                  <span className="text-xs font-display font-bold uppercase tracking-wider text-muted-foreground/70">{t('label.download')}</span>
                 </div>
-                <div className="text-lg font-mono font-bold tabular-nums">{formatSpeed(stats.network.down)}</div>
+                <div className="text-xl font-mono font-bold leading-none tracking-tight text-foreground tabular-nums sm:text-2xl">
+                  {formatSpeed(stats.network.down)}
+                </div>
               </div>
             </div>
+          </div>
 
-            {/* Total Traffic */}
-            <div className="relative p-4 group">
-              <div className="network-stat-glow absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-              <div className="relative">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-muted/30">
+          {/* 累计上下行：次级信息，统一字阶与对齐 */}
+          <div className="grid grid-cols-2 divide-x divide-border/20 border-t border-border/20">
+            <div className="relative p-4 sm:p-4 group">
+              <div className="network-stat-glow pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+              <div className="relative flex min-h-[3.75rem] flex-col justify-center">
+                <div className="mb-1.5 flex items-center gap-2">
+                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded bg-muted/35">
                     <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                   </span>
-                  <span className="text-xs font-display font-bold text-muted-foreground/60 uppercase tracking-wider">{t('label.totalUp')}</span>
+                  <span className="text-xxs font-display font-bold uppercase tracking-wider text-muted-foreground/60 sm:text-xs">{t('label.totalUp')}</span>
                 </div>
-                <div className="text-sm font-mono font-bold tabular-nums">
+                <div className="text-sm font-mono font-bold tabular-nums text-foreground sm:text-base">
                   {stats.network.totalUp ? formatBytes(stats.network.totalUp) : t('label.na')}
                 </div>
               </div>
             </div>
-            <div className="relative p-4 group">
-              <div className="network-stat-glow absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-              <div className="relative">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-muted/30">
+            <div className="relative p-4 sm:p-4 group">
+              <div className="network-stat-glow pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+              <div className="relative flex min-h-[3.75rem] flex-col justify-center">
+                <div className="mb-1.5 flex items-center gap-2">
+                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded bg-muted/35">
                     <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                   </span>
-                  <span className="text-xs font-display font-bold text-muted-foreground/60 uppercase tracking-wider">{t('label.totalDown')}</span>
+                  <span className="text-xxs font-display font-bold uppercase tracking-wider text-muted-foreground/60 sm:text-xs">{t('label.totalDown')}</span>
                 </div>
-                <div className="text-sm font-mono font-bold tabular-nums">
+                <div className="text-sm font-mono font-bold tabular-nums text-foreground sm:text-base">
                   {stats.network.totalDown ? formatBytes(stats.network.totalDown) : t('label.na')}
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* TCP / UDP Connections */}
-            {isLoggedIn && (
-              <div className="relative p-4 col-span-2 lg:col-span-1 group">
-                <div className="network-stat-glow absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-                <div className="relative">
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-muted/30">
-                      <Unplug className="h-3 w-3 text-muted-foreground" />
-                    </span>
-                    <span className="text-xs font-display font-bold text-muted-foreground/60 uppercase tracking-wider">{t('label.tcpUdp')}</span>
+          {isLoggedIn && (
+            <div className="relative border-t border-border/20 p-4 sm:px-5 sm:py-4 group">
+              <div className="network-stat-glow pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+              <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded bg-muted/35">
+                    <Unplug className="h-3 w-3 text-muted-foreground" />
+                  </span>
+                  <span className="text-xs font-display font-bold uppercase tracking-wider text-muted-foreground/70">{t('label.tcpUdp')}</span>
+                </div>
+                <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 sm:justify-end">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xs font-mono text-muted-foreground/70">TCP</span>
+                    <span className="text-base font-mono font-bold tabular-nums">{stats.connections.tcp}</span>
                   </div>
-                  <div className="flex items-baseline gap-4">
-                    <div>
-                      <span className="text-xs font-mono text-muted-foreground/60">TCP</span>
-                      <span className="text-sm font-mono font-bold tabular-nums ml-1.5">{stats.connections.tcp}</span>
-                    </div>
-                    <div className="w-px h-4 bg-border/30" />
-                    <div>
-                      <span className="text-xs font-mono text-muted-foreground/60">UDP</span>
-                      <span className="text-sm font-mono font-bold tabular-nums ml-1.5">{stats.connections.udp}</span>
-                    </div>
+                  <div className="hidden h-4 w-px bg-border/35 sm:block" aria-hidden />
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xs font-mono text-muted-foreground/70">UDP</span>
+                    <span className="text-base font-mono font-bold tabular-nums">{stats.connections.udp}</span>
                   </div>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -521,46 +440,67 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
                       return (
                         <Fragment key={item.id}>
                           <tr
-                            className="border-b border-border/10 last:border-0 hover:bg-muted/10 transition-colors cursor-pointer"
+                            className={cn(
+                              'group cursor-pointer border-b transition-colors',
+                              isExpanded
+                                ? 'border-border/20 bg-primary/[0.07] shadow-[inset_3px_0_0_0_var(--color-primary)] hover:bg-primary/[0.09]'
+                                : 'border-border/10 hover:bg-muted/10 last:border-0',
+                            )}
                             onClick={toggleExpand}
                           >
-                            <td className="px-2 py-2 w-8 text-center">
-                              {isExpanded
-                                ? <ChevronDown className="h-3 w-3 text-muted-foreground inline-block" />
-                                : <ChevronRight className="h-3 w-3 text-muted-foreground inline-block" />
-                              }
+                            <td className="w-8 px-2 py-2.5 text-center align-middle">
+                              {isExpanded ? (
+                                <ChevronDown className="inline-block h-3.5 w-3.5 text-primary" />
+                              ) : (
+                                <ChevronRight className="inline-block h-3.5 w-3.5 text-muted-foreground transition-colors group-hover:text-foreground" />
+                              )}
                             </td>
-                            <td className="px-4 py-2">
+                            <td className="px-4 py-2.5">
                               <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: chartColors[tasks.findIndex(t => t.id === item.id) % chartColors.length] }} />
-                                <span className="text-xs font-mono font-medium">{item.name}</span>
+                                <span
+                                  className={cn(
+                                    'h-2 w-2 shrink-0 rounded-full ring-2 ring-offset-1 ring-offset-background transition-shadow',
+                                    isExpanded ? 'ring-primary/35' : 'ring-transparent',
+                                  )}
+                                  style={{ backgroundColor: chartColors[tasks.findIndex(t => t.id === item.id) % chartColors.length] }}
+                                />
+                                <span
+                                  className={cn(
+                                    'font-mono text-xs transition-colors',
+                                    isExpanded ? 'font-semibold text-foreground' : 'font-medium text-foreground/90',
+                                  )}
+                                >
+                                  {item.name}
+                                </span>
                               </div>
                             </td>
-                            <td className="text-right px-4 py-2">
+                            <td className="px-4 py-2.5 text-right align-middle">
                               <span className="text-xs font-mono font-bold tabular-nums">
                                 {item.current !== null ? `${Math.round(item.current)} ms` : '—'}
                               </span>
                             </td>
-                            <td className="text-right px-4 py-2">
+                            <td className="px-4 py-2.5 text-right align-middle">
                               <span className="text-xs font-mono tabular-nums text-muted-foreground">
                                 {item.avg !== null ? `${Math.round(item.avg)} ms` : '—'}
                               </span>
                             </td>
-                            <td className="text-right px-4 py-2">
+                            <td className="px-4 py-2.5 text-right align-middle">
                               <span className={`text-xs font-mono font-bold tabular-nums ${item.loss > 5 ? 'text-red-500' : item.loss > 0 ? 'text-yellow-500' : 'text-green-500'}`}>
                                 {item.loss.toFixed(1)}%
                               </span>
                             </td>
-                            <td className="text-right px-4 py-2">
+                            <td className="px-4 py-2.5 text-right align-middle">
                               <span className={`text-xs font-mono tabular-nums ${item.jitter !== null && item.jitter > 1 ? 'text-yellow-500' : 'text-muted-foreground'}`}>
                                 {item.jitter !== null ? item.jitter.toFixed(2) : '—'}
                               </span>
                             </td>
                           </tr>
                           {isExpanded && (
-                            <tr key={`${item.id}-detail`} className="border-b border-border/10">
-                              <td colSpan={6} className="px-4 py-3 bg-muted/5">
-                                <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-2">
+                            <tr key={`${item.id}-detail`} className="border-b border-border/10 bg-muted/[0.12]">
+                              <td colSpan={6} className="p-0">
+                                <div className="border-t border-primary/15 px-3 pb-3 pt-0">
+                                  <div className="px-4 py-3.5">
+                                    <div className="grid grid-cols-3 gap-x-6 gap-y-3 sm:grid-cols-4 lg:grid-cols-6">
                                   <div>
                                     <div className="text-xs font-mono text-muted-foreground/60 uppercase">{t('chart.min')}</div>
                                     <div className="text-xs font-mono font-bold tabular-nums">{item.min !== null ? `${Math.round(item.min)} ms` : '—'}</div>
@@ -607,6 +547,8 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
                                     <div className="text-xs font-mono text-muted-foreground/60 uppercase">{t('chart.sampleCount')}</div>
                                     <div className="text-xs font-mono font-bold tabular-nums">{item.total !== null ? item.total : '—'}</div>
                                   </div>
+                                    </div>
+                                  </div>
                                 </div>
                               </td>
                             </tr>
@@ -622,132 +564,82 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
-        {/* Network Traffic */}
+      {/* 与节点详情页中图表顺序一致：连接数 → 网络流量 → Ping（独占一行） */}
+      <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-2">
         <Card className={chartCardClass}>
-          <CardHeader className="pb-2 px-4 pt-3">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <ArrowUpDown className="h-4 w-4 text-primary" />
-              {t('chart.networkTraffic')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-3">
-            <ChartContainer config={netConfig} className={chartContainerClass}>
-              <AreaChart data={chartData} margin={chartMargin}>
-                <CartesianGrid vertical={false} stroke={gridStrokeColor} strokeOpacity={0.3} />
-                <XAxis {...xAxisProps} />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  unit="KB/s"
-                  orientation="left"
-                  type="number"
-                  tick={{ ...yAxisConfig.tick, dx: -5 }}
-                  width={isMobile ? 50 : 60}
-                />
-                <ChartTooltip
-                  cursor={false}
-                  formatter={(v: number | string) => `${typeof v === 'number' ? v.toFixed(1) : v} KB/s`}
-                  content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />}
-                />
-                <ChartLegend content={<ChartLegendContent />} />
-                <Area dataKey="network_in" name={t('label.in')} stroke={chartColors[6]} fill={chartColors[6]} fillOpacity={0.15} type="linear" />
-                <Area dataKey="network_out" name={t('label.out')} stroke={chartColors[7]} fill={chartColors[7]} fillOpacity={0.15} type="linear" />
-              </AreaChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-
-        {/* Connections */}
-        <Card className={chartCardClass}>
-          <CardHeader className="pb-2 px-4 pt-3">
+          <CardHeader className="px-4 pt-3 pb-2">
             <CardTitle className="flex items-center gap-2 text-sm font-semibold">
               <Unplug className="h-4 w-4 text-primary" />
               {t('chart.connections')}
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
-            <ChartContainer config={connConfig} className={chartContainerClass}>
-              <LineChart data={chartData} margin={chartMargin}>
-                <CartesianGrid vertical={false} stroke={gridStrokeColor} strokeOpacity={0.3} />
-                <XAxis {...xAxisProps} />
-                <YAxis {...yAxisPlainProps} />
-                <ChartTooltip
-                  cursor={false}
-                  content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />}
-                />
-                <ChartLegend content={<ChartLegendContent />} />
-                <Line dataKey="connections" name={t('label.tcp')} stroke={chartColors[4]} dot={false} isAnimationActive={false} strokeWidth={2} type="linear" />
-                <Line dataKey="connections_udp" name={t('label.udp')} stroke={chartColors[5]} dot={false} isAnimationActive={false} strokeWidth={2} type="linear" />
-              </LineChart>
-            </ChartContainer>
+            <ConnectionsLineChart
+              chartData={chartData}
+              mode="detail"
+              isMobile={isMobile}
+              containerClassName={chartContainerClass}
+            />
           </CardContent>
         </Card>
 
-        {/* Ping Latency */}
+        <Card className={chartCardClass}>
+          <CardHeader className="px-4 pt-3 pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+              <ArrowUpDown className="h-4 w-4 text-primary" />
+              {t('chart.networkTraffic')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-3">
+            <NetworkTrafficAreaChart
+              chartData={chartData}
+              mode="detail"
+              isMobile={isMobile}
+              containerClassName={chartContainerClass}
+            />
+          </CardContent>
+        </Card>
+
         {pingChartData.length > 0 && (
           <Card className={`${chartCardClass} lg:col-span-2`}>
-            <CardHeader className="pb-2 px-4 pt-3">
+            <CardHeader className="px-4 pt-3 pb-2">
               <CardTitle className="flex items-center justify-between text-sm font-semibold">
                 <span className="flex items-center gap-2">
                   <Signal className="h-4 w-4 text-primary" />
                   {t('chart.pingLatency')}
                 </span>
                 <button
+                  type="button"
                   onClick={() => setSmooth(s => !s)}
                   title={t('chart.ewmaTooltip')}
-                  className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono tracking-widest transition-all duration-200 cursor-pointer ${
+                  className={`flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 font-mono text-xs tracking-widest transition-all duration-200 ${
                     smooth
                       ? 'bg-primary/10 text-primary/80'
                       : 'text-muted-foreground/40 hover:text-muted-foreground/60'
                   }`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                    smooth
-                      ? 'bg-primary shadow-[0_0_4px_var(--color-primary)]'
-                      : 'bg-muted-foreground/20'
-                  }`} />
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full transition-all duration-300 ${
+                      smooth
+                        ? 'bg-primary shadow-[0_0_4px_var(--color-primary)]'
+                        : 'bg-muted-foreground/20'
+                    }`}
+                  />
                   <span>{smooth ? 'SMOOTH' : 'RAW'}</span>
                 </button>
               </CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-3">
-              <ChartContainer config={pingConfig} className={chartContainerClass}>
-                <LineChart data={pingChartData} margin={chartMargin}>
-                  <CartesianGrid vertical={false} stroke={gridStrokeColor} strokeOpacity={0.3} />
-                  <XAxis {...xAxisProps} />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    unit="ms"
-                    allowDecimals={false}
-                    orientation="left"
-                    type="number"
-                    tick={yAxisConfig.tick}
-                    width={isMobile ? 45 : 50}
-                  />
-                  <ChartTooltip
-                    cursor={false}
-                    formatter={(v: number | string) => `${Math.round(Number(v))} ms`}
-                    content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />}
-                  />
-                  <ChartLegend content={<ChartLegendContent />} onClick={handleLegendClick} />
-                  {tasks.map((task, idx) => (
-                    <Line
-                      key={task.id}
-                      dataKey={String(task.id)}
-                      name={task.name}
-                      stroke={chartColors[idx % chartColors.length]}
-                      dot={false}
-                      isAnimationActive={false}
-                      strokeWidth={2}
-                      connectNulls={false}
-                      type={smooth ? "basis" : "linear"}
-                      hide={!!hiddenLines[task.id]}
-                    />
-                  ))}
-                </LineChart>
-              </ChartContainer>
+              <PingLatencyLineChart
+                pingChartData={pingChartData}
+                tasks={tasks}
+                mode="detail"
+                isMobile={isMobile}
+                containerClassName={chartContainerClass}
+                smooth={smooth}
+                hiddenLines={hiddenLines}
+                onLegendClick={handleLegendClick}
+              />
             </CardContent>
           </Card>
         )}

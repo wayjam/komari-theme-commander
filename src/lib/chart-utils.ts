@@ -1,6 +1,6 @@
 /**
  * Shared chart constants, types, and data transformation utilities
- * Used by NodeCharts and ChartModal to avoid duplication
+ * Used by metric chart components (`src/components/metric-charts/`) and consumers
  */
 
 /** A single row of chart data — `time` is always present, other keys are numeric task/metric values */
