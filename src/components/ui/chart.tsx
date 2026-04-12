@@ -253,7 +253,7 @@ function ChartTooltipContent({
                   </span>
                 </div>
                 {valueNode != null && (
-                  <span className="shrink-0 font-mono font-medium text-foreground tabular-nums">
+                  <span className="shrink-0 font-metric font-medium text-foreground">
                     {valueNode}
                   </span>
                 )}

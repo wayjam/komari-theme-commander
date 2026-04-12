@@ -1,23 +1,19 @@
 import { ThemeSwitcher } from './components/ThemeSwitcher'
 import { LanguageSwitcher } from './components/LanguageSwitcher'
-import { NodeList } from './components/NodeList'
-import { NodeCharts } from './components/NodeCharts'
-import { NodeNetwork } from './components/NodeNetwork'
-import { GlobeView } from './components/GlobeView'
 import { WebSocketStatus } from './components/WebSocketStatus'
 import { EffectsOverlay } from './components/EffectsOverlay'
 import { Starfield } from './components/Starfield'
-import { ChartModal } from './components/ChartModal'
 import { CircularGauge } from './components/CircularGauge'
+import { HudSpinner } from './components/HudSpinner'
 import { Button } from './components/ui/button'
 import { useNodes } from './hooks/useNodes'
 import { useEffects } from './hooks/useEffects'
 import { useAppConfig } from './hooks/useAppConfig'
 import { useTheme } from './hooks/useTheme'
 import { RecentStatsProvider } from './hooks/useRecentStats'
-import { UptimeView } from './components/UptimeView'
 import { ArrowLeft, Settings, Globe, LayoutGrid, List, Shield, Cpu, MemoryStick, HardDrive, Activity, Network, Clock, User, Monitor, Box, Layers, AlertTriangle, ExternalLink, Fingerprint } from 'lucide-react'
-import { useState, useEffect, useCallback, useMemo, memo, createContext, useContext } from 'react'
+import { useState, useEffect, useCallback, useMemo, memo, createContext, useContext, lazy, Suspense } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 import { Routes, Route, useNavigate, useParams, useLocation, Link } from 'react-router-dom'
 import { apiService } from './services/api'
@@ -29,7 +25,48 @@ import { Tooltip, TooltipTrigger, TooltipContent } from './components/ui/tooltip
 import dayjs from 'dayjs'
 import './App.css'
 
+const GlobeView = lazy(() => import('./components/GlobeView').then(m => ({ default: m.GlobeView })));
+const NodeList = lazy(() => import('./components/NodeList').then(m => ({ default: m.NodeList })));
+const UptimeView = lazy(() => import('./components/UptimeView').then(m => ({ default: m.UptimeView })));
+const NodeCharts = lazy(() => import('./components/NodeCharts').then(m => ({ default: m.NodeCharts })));
+const NodeNetwork = lazy(() => import('./components/NodeNetwork').then(m => ({ default: m.NodeNetwork })));
+const ChartModal = lazy(() => import('./components/ChartModal').then(m => ({ default: m.ChartModal })));
+
+function ViewLoadingFallback() {
+  return (
+    <div className="flex min-h-[min(28rem,55vh)] w-full items-center justify-center">
+      <HudSpinner size="lg" />
+    </div>
+  );
+}
+
+function ChartsRouteFallback() {
+  return (
+    <div className="flex h-64 w-full items-center justify-center rounded-lg border border-border/50 bg-card/50">
+      <HudSpinner size="lg" />
+    </div>
+  );
+}
+
 type ViewMode = 'globe' | 'grid' | 'table' | 'uptime';
+
+/** Warm Vite async chunks when user hovers a view they might switch to */
+function prefetchDashboardView(mode: ViewMode) {
+  switch (mode) {
+    case 'globe':
+      void import('./components/GlobeView');
+      break;
+    case 'uptime':
+      void import('./components/UptimeView');
+      break;
+    case 'grid':
+    case 'table':
+      void import('./components/NodeList');
+      break;
+    default:
+      break;
+  }
+}
 
 function getInitialViewMode(): ViewMode {
   const saved = localStorage.getItem('nodeViewMode');
@@ -87,18 +124,19 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
   const displayName = maskName(node.uuid, node.name);
 
   return (
-    <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl p-4 commander-corners relative overflow-hidden">
+    <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl p-4 sm:p-5 commander-corners relative overflow-hidden">
       <div className="commander-scanner-effect" />
       <span className="corner-bottom" />
+      <div className="flex flex-col gap-5">
       {/* Row 1: Name + Status + System Info */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="flex flex-wrap items-center gap-2 min-w-0">
-          <span className={cn('w-2.5 h-2.5 rounded-full shrink-0', isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500')} />
+          <span className={cn('w-2.5 h-2.5 rounded-full shrink-0', isOnline ? 'bg-success motion-safe:animate-pulse' : 'bg-destructive')} />
           <h2 className="text-base font-display font-bold truncate max-w-[60vw] sm:max-w-none">{displayName}</h2>
           {isOnline && stats?.updated_at ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className={cn('text-xxs font-mono font-bold px-1.5 py-0.5 rounded cursor-default shrink-0', 'bg-green-500/15 text-green-500')}>
+                <span className={cn('text-xxs font-mono font-bold px-1.5 py-0.5 rounded cursor-default shrink-0', 'bg-success/15 text-success')}>
                   {t('status.online')}
                 </span>
               </TooltipTrigger>
@@ -107,7 +145,7 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
               </TooltipContent>
             </Tooltip>
           ) : (
-            <span className={cn('text-xxs font-mono font-bold px-1.5 py-0.5 rounded shrink-0', isOnline ? 'bg-green-500/15 text-green-500' : 'bg-red-500/15 text-red-500')}>
+            <span className={cn('text-xxs font-mono font-bold px-1.5 py-0.5 rounded shrink-0', isOnline ? 'bg-success/15 text-success' : 'bg-destructive/15 text-destructive')}>
               {isOnline ? t('status.online') : t('status.offline')}
             </span>
           )}
@@ -123,12 +161,12 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
             <span className="text-xxs font-mono font-bold px-1.5 py-0.5 rounded bg-primary/15 text-primary shrink-0">[{node.group}]</span>
           )}
           {node.hidden && (
-            <span className="text-xxs font-mono font-bold px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-500 shrink-0">
+            <span className="text-xxs font-mono font-bold px-1.5 py-0.5 rounded bg-warning/15 text-warning shrink-0">
               {t('node.hidden')}
             </span>
           )}
           {node.ipv6 && (
-            <span className="text-xxs font-mono font-bold px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-500 shrink-0">
+            <span className="text-xxs font-mono font-bold px-1.5 py-0.5 rounded bg-chart-6/15 text-chart-6 shrink-0">
               IPv6
             </span>
           )}
@@ -154,7 +192,7 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
               <TooltipTrigger asChild>
                 <span className={cn(
                   'cursor-default',
-                  expiryStatus === 'expired' ? 'text-red-500' : expiryStatus === 'warning' ? 'text-yellow-500' : 'text-muted-foreground',
+                  expiryStatus === 'expired' ? 'text-destructive' : expiryStatus === 'warning' ? 'text-warning' : 'text-muted-foreground',
                 )}>
                   {formatExpiry(node.expired_at)}
                 </span>
@@ -181,7 +219,7 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
       {(() => {
         const tagList = node.tags ? node.tags.split(/[,;]/).map(t => t.trim()).filter(Boolean) : [];
         return tagList.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-1.5 mb-3">
+          <div className="flex flex-wrap items-center gap-1.5">
             {tagList.map((tag, i) => (
               <span key={i} className="text-xs font-mono text-muted-foreground/80 bg-muted/50 px-1.5 py-0.5 rounded-sm">
                 {tag}
@@ -193,21 +231,21 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
 
       {/* Public remark */}
       {node.public_remark && (
-        <div className="text-xs font-mono text-muted-foreground/70 mb-3 pl-2 border-l-2 border-primary/20">
+        <div className="text-xs text-muted-foreground/70 pl-2 border-l-2 border-primary/20 leading-relaxed">
           {node.public_remark}
         </div>
       )}
 
       {/* Private remark (admin only) */}
       {appConfig.isLoggedIn && node.remark && (
-        <div className="text-xs font-mono text-muted-foreground/50 mb-3 pl-2 border-l-2 border-yellow-500/30">
-          <span className="text-xxs font-bold text-yellow-500/60 uppercase mr-1.5">{t('label.privateRemark')}</span>
+        <div className="text-xs text-muted-foreground/50 pl-2 border-l-2 border-warning/30 leading-relaxed">
+          <span className="text-xxs font-mono font-bold text-warning/60 uppercase mr-1.5">{t('label.privateRemark')}</span>
           {node.remark}
         </div>
       )}
 
       {/* Row 2: System specs — CPU+GPU first row, System+Arch second row */}
-      <div className="grid grid-cols-2 gap-2 mb-4 pb-3 border-b border-border/30">
+      <div className="grid grid-cols-2 gap-2 pb-4 border-b border-border/30">
         {node.cpu_name && (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -280,9 +318,9 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
 
       {/* Row 3: Live stats — circular gauges + info cards */}
       {stats ? (
-        <>
+        <div className="flex flex-col gap-4">
           {/* Circular gauges row */}
-          <div className="grid grid-cols-3 gap-3 mb-3">
+          <div className="grid grid-cols-3 gap-3">
             <CircularGauge
               label={t('label.cpu')}
               value={cpuUsage}
@@ -307,7 +345,7 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
           </div>
 
           {/* Info cards row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div className="p-2.5 rounded bg-muted/15 border border-border/20">
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-1.5">
@@ -322,19 +360,19 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
                   <ExternalLink className="h-2.5 w-2.5" />
                 </Link>
               </div>
-              <div className="text-xs font-mono font-bold tabular-nums">
+              <div className="text-xs font-metric font-bold">
                 <span className="text-primary">↑</span> {formatSpeed(stats.network.up)}
               </div>
-              <div className="text-xs font-mono font-bold tabular-nums mt-0.5">
+              <div className="text-xs font-metric font-bold mt-0.5">
                 <span className="text-accent">↓</span> {formatSpeed(stats.network.down)}
               </div>
               {appConfig.isLoggedIn && (
                 <div className="flex items-center gap-2 mt-1.5 pt-1.5 border-t border-border/15">
                   <span className="text-xxs font-mono text-muted-foreground/60">{t('label.tcp')}</span>
-                  <span className="text-xxs font-mono font-bold tabular-nums">{stats.connections.tcp}</span>
+                  <span className="text-xxs font-metric font-bold">{stats.connections.tcp}</span>
                   <span className="text-xxs text-muted-foreground/20">|</span>
                   <span className="text-xxs font-mono text-muted-foreground/60">{t('label.udp')}</span>
-                  <span className="text-xxs font-mono font-bold tabular-nums">{stats.connections.udp}</span>
+                  <span className="text-xxs font-metric font-bold">{stats.connections.udp}</span>
                 </div>
               )}
             </div>
@@ -343,21 +381,21 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
                 <Activity className="h-3 w-3 text-muted-foreground" />
                 <span className="text-xs font-mono text-muted-foreground">{t('label.load')}</span>
               </div>
-              <div className="text-lg font-mono font-bold tabular-nums">
+              <div className="text-lg font-metric font-bold">
                 {stats.load.load1.toFixed(2)}
               </div>
               <div className="grid grid-cols-3 gap-1 mt-1.5 pt-1.5 border-t border-border/15">
                 <div>
                   <div className="text-xxs font-mono text-muted-foreground/60">{t('label.load1m')}</div>
-                  <div className="text-sm font-mono font-bold tabular-nums">{stats.load.load1.toFixed(2)}</div>
+                  <div className="text-sm font-metric font-bold">{stats.load.load1.toFixed(2)}</div>
                 </div>
                 <div>
                   <div className="text-xxs font-mono text-muted-foreground/60">{t('label.load5m')}</div>
-                  <div className="text-sm font-mono font-bold tabular-nums">{stats.load.load5.toFixed(2)}</div>
+                  <div className="text-sm font-metric font-bold">{stats.load.load5.toFixed(2)}</div>
                 </div>
                 <div>
                   <div className="text-xxs font-mono text-muted-foreground/60">{t('label.load15m')}</div>
-                  <div className="text-sm font-mono font-bold tabular-nums">{stats.load.load15.toFixed(2)}</div>
+                  <div className="text-sm font-metric font-bold">{stats.load.load15.toFixed(2)}</div>
                 </div>
               </div>
             </div>
@@ -366,7 +404,7 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
                 <Clock className="h-3 w-3 text-muted-foreground" />
                 <span className="text-xs font-mono text-muted-foreground">{t('label.uptime')}</span>
               </div>
-              <div className="text-lg font-mono font-bold tabular-nums">
+              <div className="text-lg font-metric font-bold">
                 {formatUptime(stats.uptime, 'minute')}
               </div>
             </div>
@@ -374,17 +412,17 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
 
           {/* Traffic limit bar */}
           {hasTraffic && (
-            <div className="mt-3 p-2.5 rounded bg-muted/15 border border-border/20">
+            <div className="p-2.5 rounded bg-muted/15 border border-border/20">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-mono text-muted-foreground">
                   {t('label.traffic')} ({formatTrafficType(node.traffic_limit_type!)})
                 </span>
                 <span className={cn(
-                  'text-xs font-mono font-bold tabular-nums',
+                  'text-xs font-metric font-bold',
                   (() => {
                     const used = calcTrafficUsage(stats.network.totalUp, stats.network.totalDown, node.traffic_limit_type as TrafficLimitType);
                     const pct = (used / node.traffic_limit!) * 100;
-                    return pct >= 90 ? 'text-red-500' : pct >= 70 ? 'text-yellow-500' : '';
+                    return pct >= 90 ? 'text-destructive' : pct >= 70 ? 'text-warning' : '';
                   })()
                 )}>
                   {formatBytes(calcTrafficUsage(stats.network.totalUp, stats.network.totalDown, node.traffic_limit_type as TrafficLimitType))} / {formatBytes(node.traffic_limit!)}
@@ -398,22 +436,23 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
                   return (
                     <div
                       className={cn(
-                        'h-full rounded-full transition-all duration-700',
-                        s === 'critical' ? 'bg-red-500' : s === 'warning' ? 'bg-yellow-500' : 'bg-primary',
+                        'h-full w-full origin-left rounded-full transition-transform duration-700 ease-out',
+                        s === 'critical' ? 'bg-destructive' : s === 'warning' ? 'bg-warning' : 'bg-primary',
                       )}
-                      style={{ width: `${Math.min(pct, 100)}%` }}
+                      style={{ transform: `scaleX(${Math.min(pct, 100) / 100})` }}
                     />
                   );
                 })()}
               </div>
             </div>
           )}
-        </>
+        </div>
       ) : (
-        <div className="flex items-center justify-center h-16 text-muted-foreground text-xs font-mono">
+        <div className="flex items-center justify-center min-h-[4.5rem] text-muted-foreground text-xs leading-relaxed px-2 text-center">
           {isOnline ? t('telemetry.waiting') : t('telemetry.nodeOffline')}
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -443,15 +482,16 @@ function NodeDetailRoute() {
   if (!uuid) return null;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
+    <div className="space-y-5 sm:space-y-6">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <Button
+          type="button"
           variant="ghost"
           size="sm"
           onClick={() => navigate('/')}
           className="h-7 px-2 text-xs font-mono hover:bg-primary/15 hover:text-primary"
         >
-          <ArrowLeft className="h-3.5 w-3.5 mr-1" />
+          <ArrowLeft className="h-3.5 w-3.5 mr-1" aria-hidden />
           {t('action.back')}
         </Button>
         <span className="text-xs font-mono text-muted-foreground">
@@ -463,7 +503,9 @@ function NodeDetailRoute() {
       {node && <NodeInfoPanel node={node} />}
 
       {/* Charts */}
-      <NodeCharts nodeUuid={uuid} nodeName={displayName} />
+      <Suspense fallback={<ChartsRouteFallback />}>
+        <NodeCharts nodeUuid={uuid} nodeName={displayName} />
+      </Suspense>
     </div>
   );
 }
@@ -476,7 +518,11 @@ function NodeNetworkRoute() {
   const { nodes } = useNodesContext();
   const node = nodes.find(n => n.uuid === uuid);
   if (!uuid) return null;
-  return <NodeNetwork nodeUuid={uuid} node={node} />;
+  return (
+    <Suspense fallback={<ViewLoadingFallback />}>
+      <NodeNetwork nodeUuid={uuid} node={node} />
+    </Suspense>
+  );
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -484,6 +530,7 @@ function NodeNetworkRoute() {
    ══════════════════════════════════════════════════════════════ */
 function Dashboard() {
   const { viewMode } = useContext(ViewModeContext);
+  const reduceMotion = useReducedMotion();
   const [chartModal, setChartModal] = useState<{ uuid: string; name: string } | null>(null);
   const navigate = useNavigate();
   const { nodes, loading, refreshNodes } = useNodesContext();
@@ -496,28 +543,53 @@ function Dashboard() {
     }
   };
 
+  const viewTransition = reduceMotion ? { duration: 0 } : { duration: 0.2, ease: [0.25, 1, 0.5, 1] as const };
+
   return (
     <>
-      {viewMode === 'globe' ? (
-        <GlobeView nodes={nodes} loading={loading} onViewCharts={handleViewCharts} />
-      ) : viewMode === 'uptime' ? (
-        <UptimeView nodes={nodes} />
-      ) : (
-        <NodeList
-          nodes={nodes}
-          loading={loading}
-          onRefresh={refreshNodes}
-          onViewCharts={handleViewCharts}
-          defaultView={viewMode === 'grid' ? 'grid' : 'table'}
-        />
-      )}
+      <Suspense fallback={<ViewLoadingFallback />}>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={viewMode}
+            initial={
+              reduceMotion
+                ? { opacity: 1, y: 0 }
+                : { opacity: 0, y: 10 }
+            }
+            animate={{ opacity: 1, y: 0 }}
+            exit={
+              reduceMotion
+                ? { opacity: 1, y: 0 }
+                : { opacity: 0, y: -8 }
+            }
+            transition={viewTransition}
+            className="min-w-0"
+          >
+            {viewMode === 'globe' ? (
+              <GlobeView nodes={nodes} loading={loading} onViewCharts={handleViewCharts} />
+            ) : viewMode === 'uptime' ? (
+              <UptimeView nodes={nodes} />
+            ) : (
+              <NodeList
+                nodes={nodes}
+                loading={loading}
+                onRefresh={refreshNodes}
+                onViewCharts={handleViewCharts}
+                defaultView={viewMode === 'grid' ? 'grid' : 'table'}
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </Suspense>
 
       {chartModal && (
-        <ChartModal
-          nodeUuid={chartModal.uuid}
-          nodeName={chartModal.name}
-          onClose={() => setChartModal(null)}
-        />
+        <Suspense fallback={null}>
+          <ChartModal
+            nodeUuid={chartModal.uuid}
+            nodeName={chartModal.name}
+            onClose={() => setChartModal(null)}
+          />
+        </Suspense>
       )}
     </>
   );
@@ -533,9 +605,9 @@ const ClockDisplay = memo(function ClockDisplay() {
     return () => clearInterval(timer);
   }, []);
   return (
-    <div className="flex items-center gap-2 px-1.5 py-0.5 rounded">
-      <Clock className="h-3 w-3" />
-      <span className="tabular-nums">{time.toLocaleTimeString()}</span>
+    <div className="flex items-center gap-2 px-1.5 py-0.5 rounded text-muted-foreground">
+      <Clock className="h-3 w-3 shrink-0 opacity-80" aria-hidden />
+      <span className="font-metric tabular-nums text-foreground/90">{time.toLocaleTimeString()}</span>
     </div>
   );
 });
@@ -616,8 +688,8 @@ function App() {
         if (publicSettings?.description) setSiteDescription(publicSettings.description as string);
         if (publicSettings?.custom_body) setCustomBody(publicSettings.custom_body as string);
         if (versionInfo?.version) setVersion(versionInfo.version);
-      } catch (e) {
-        console.error('Failed to fetch init data:', e);
+      } catch {
+        /* keep defaults when public API is unreachable */
       }
     };
     init();
@@ -675,36 +747,46 @@ function App() {
             <div className="header-neon-line" />
             <div className="container mx-auto px-3 sm:px-4 relative z-10">
               {/* Desktop: single row with everything */}
-              <div className="hidden sm:flex h-12 items-center justify-between gap-2">
-                <div className="flex items-center gap-3 min-w-0">
+              <div className="hidden sm:flex h-12 items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0 shrink">
                   <button
+                    type="button"
                     onClick={() => navigate('/')}
-                    className="text-xl font-bold font-display truncate hover:text-primary transition-colors cursor-pointer"
+                    className="text-xl font-bold font-display truncate rounded-sm hover:text-primary transition-colors duration-200 ease-out cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     title={siteDescription || siteName}
+                    aria-label={`${t('action.home')}: ${siteName}`}
                   >
                     {siteName}
                   </button>
                   {hasCriticalNode && (
-                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-xs font-mono text-red-500 animate-pulse threat-badge">
-                      <AlertTriangle className="h-3 w-3" />
-                      <span className="hidden lg:inline uppercase tracking-widest glitch-text">System Threat Detected</span>
-                      <span className="lg:hidden uppercase">Threat</span>
+                    <div
+                      className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-destructive/10 border border-destructive/20 text-xs font-mono text-destructive motion-safe:animate-pulse threat-badge"
+                      title={t('hud.criticalLoadBanner')}
+                    >
+                      <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden />
+                      <span className="hidden lg:inline uppercase tracking-widest glitch-text">{t('hud.criticalLoadBanner')}</span>
+                      <span className="lg:hidden uppercase">{t('hud.criticalLoadShort')}</span>
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5">
                   <div className="flex border border-border/50 rounded overflow-hidden">
                     {viewButtons.map(({ mode, icon: Icon, label }) => (
                       <button
                         key={mode}
+                        type="button"
+                        onMouseEnter={() => { if (mode !== viewMode) prefetchDashboardView(mode); }}
+                        onFocus={() => { if (mode !== viewMode) prefetchDashboardView(mode); }}
                         onClick={() => {
                           handleSetViewMode(mode);
                           if (!isDashboard) navigate('/');
                         }}
-                        className={`p-1.5 transition-colors cursor-pointer ${viewMode === mode ? 'bg-primary text-primary-foreground' : 'hover:bg-muted/50'}`}
+                        className={`min-h-9 min-w-9 flex items-center justify-center p-1.5 transition-colors duration-200 ease-out cursor-pointer focus-visible:outline-none focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/70 ${viewMode === mode ? 'bg-primary text-primary-foreground' : 'hover:bg-muted/50'}`}
                         title={label}
+                        aria-label={t('view.switchTo', { mode: label })}
+                        aria-pressed={viewMode === mode}
                       >
-                        <Icon className="h-3.5 w-3.5" />
+                        <Icon className="h-3.5 w-3.5" aria-hidden />
                       </button>
                     ))}
                   </div>
@@ -721,8 +803,10 @@ function App() {
                             'h-7 w-7 p-0 text-xs font-mono cursor-pointer',
                             privacyMode ? 'bg-primary/15 text-primary hover:bg-primary/25' : 'hover:bg-muted/50'
                           )}
+                          aria-label={t('privacy.label')}
+                          aria-pressed={privacyMode}
                         >
-                          <Fingerprint className={cn("h-3.5 w-3.5", privacyMode && "text-primary")} />
+                          <Fingerprint className={cn("h-3.5 w-3.5", privacyMode && "text-primary")} aria-hidden />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="bottom" className="text-xs font-mono">
@@ -737,8 +821,13 @@ function App() {
                         size="sm"
                         onClick={() => window.location.href = '/admin'}
                         className="h-7 w-7 p-0 text-xs font-mono hover:bg-primary/15 hover:text-primary cursor-pointer"
+                        aria-label={
+                          appConfig.isLoggedIn && appConfig.username
+                            ? `${t('action.admin')}: ${appConfig.username}`
+                            : t('action.admin')
+                        }
                       >
-                        {appConfig.isLoggedIn ? <User className="h-3.5 w-3.5" /> : <Settings className="h-3.5 w-3.5" />}
+                        {appConfig.isLoggedIn ? <User className="h-3.5 w-3.5" aria-hidden /> : <Settings className="h-3.5 w-3.5" aria-hidden />}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="text-xs font-mono">
@@ -751,33 +840,43 @@ function App() {
               {/* Mobile: Row 1 — title only */}
               <div className="sm:hidden flex items-center justify-between h-9 pt-1">
                 <button
+                  type="button"
                   onClick={() => navigate('/')}
-                  className="text-lg font-bold font-display truncate hover:text-primary transition-colors cursor-pointer"
+                  className="text-lg font-bold font-display truncate rounded-sm hover:text-primary transition-colors duration-200 ease-out cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   title={siteDescription || siteName}
+                  aria-label={`${t('action.home')}: ${siteName}`}
                 >
                   {siteName}
                 </button>
                 {hasCriticalNode && (
-                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-xs font-mono text-red-500 animate-pulse threat-badge shrink-0">
-                    <AlertTriangle className="h-3 w-3" />
-                    <span className="uppercase">Threat</span>
+                  <div
+                    className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-destructive/10 border border-destructive/20 text-xs font-mono text-destructive motion-safe:animate-pulse threat-badge shrink-0"
+                    title={t('hud.criticalLoadBanner')}
+                  >
+                    <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden />
+                    <span className="uppercase">{t('hud.criticalLoadShort')}</span>
                   </div>
                 )}
               </div>
               {/* Mobile: Row 2 — view switcher + controls */}
-              <div className="sm:hidden flex items-center justify-between pb-1.5">
+              <div className="sm:hidden flex items-center justify-between pb-2.5">
                 <div className="flex border border-border/50 rounded overflow-hidden">
                   {viewButtons.map(({ mode, icon: Icon, label }) => (
                     <button
                       key={mode}
+                      type="button"
+                      onMouseEnter={() => { if (mode !== viewMode) prefetchDashboardView(mode); }}
+                      onFocus={() => { if (mode !== viewMode) prefetchDashboardView(mode); }}
                       onClick={() => {
                         handleSetViewMode(mode);
                         if (!isDashboard) navigate('/');
                       }}
-                      className={`p-1.5 transition-colors cursor-pointer ${viewMode === mode ? 'bg-primary text-primary-foreground' : 'hover:bg-muted/50'}`}
+                      className={`min-h-9 min-w-9 flex items-center justify-center p-1.5 transition-colors duration-200 ease-out cursor-pointer focus-visible:outline-none focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/70 ${viewMode === mode ? 'bg-primary text-primary-foreground' : 'hover:bg-muted/50'}`}
                       title={label}
+                      aria-label={t('view.switchTo', { mode: label })}
+                      aria-pressed={viewMode === mode}
                     >
-                      <Icon className="h-3.5 w-3.5" />
+                      <Icon className="h-3.5 w-3.5" aria-hidden />
                     </button>
                   ))}
                 </div>
@@ -794,8 +893,10 @@ function App() {
                         privacyMode ? 'bg-primary/15 text-primary hover:bg-primary/25' : 'hover:bg-muted/50'
                       )}
                       title={privacyMode ? t('privacy.on') : t('privacy.off')}
+                      aria-label={t('privacy.label')}
+                      aria-pressed={privacyMode}
                     >
-                      <Fingerprint className={cn("h-3.5 w-3.5", privacyMode && "text-primary")} />
+                      <Fingerprint className={cn("h-3.5 w-3.5", privacyMode && "text-primary")} aria-hidden />
                     </Button>
                   )}
                   <Button
@@ -804,8 +905,13 @@ function App() {
                     onClick={() => window.location.href = '/admin'}
                     className="h-7 w-7 p-0 text-xs font-mono hover:bg-primary/15 hover:text-primary cursor-pointer"
                     title={appConfig.isLoggedIn ? (appConfig.username || t('action.admin')) : t('action.admin')}
+                    aria-label={
+                      appConfig.isLoggedIn && appConfig.username
+                        ? `${t('action.admin')}: ${appConfig.username}`
+                        : t('action.admin')
+                    }
                   >
-                    {appConfig.isLoggedIn ? <User className="h-3.5 w-3.5" /> : <Settings className="h-3.5 w-3.5" />}
+                    {appConfig.isLoggedIn ? <User className="h-3.5 w-3.5" aria-hidden /> : <Settings className="h-3.5 w-3.5" aria-hidden />}
                   </Button>
                 </div>
               </div>
@@ -813,7 +919,7 @@ function App() {
           </header>
 
           {/* ═══ Main Content ═══ */}
-          <main className="flex-1 container mx-auto px-3 sm:px-4 py-4 sm:py-6">
+          <main className="flex-1 container mx-auto px-3 sm:px-4 py-5 sm:py-7">
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/node/:uuid" element={<NodeDetailRoute />} />
@@ -830,7 +936,7 @@ function App() {
                 <span className="hidden sm:inline text-muted-foreground/30">|</span>
                 <span className="hidden sm:inline"><ClockDisplay /></span>
                 <span className="hidden sm:inline text-muted-foreground/60">|</span>
-                <div className="hidden sm:flex items-center gap-2">
+                <div className="hidden sm:flex items-center gap-2 font-metric tabular-nums">
                   <span>↑ {formatSpeed(networkStats.totalUp)}</span>
                   <span>↓ {formatSpeed(networkStats.totalDown)}</span>
                 </div>

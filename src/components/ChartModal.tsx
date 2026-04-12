@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import { HudSpinner } from './HudSpinner';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { apiService } from '@/services/api';
 import {
   CpuUsageLineChart,
@@ -48,6 +48,7 @@ const chartTabKeys: Record<ChartType, string> = {
 const modalChartClass = 'h-full w-full';
 
 export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
+  const reduceMotion = useReducedMotion();
   const { t } = useTranslation();
   const [loadData, setLoadData] = useState<LoadRecord[] | null>(null);
   const [pingData, setPingData] = useState<PingRecord[] | null>(null);
@@ -170,24 +171,33 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
     }
   };
 
+  const backdropTransition = reduceMotion ? { duration: 0 } : { duration: 0.2 };
+  const panelTransition = reduceMotion
+    ? { duration: 0 }
+    : { duration: 0.25, ease: [0.16, 1, 0.3, 1] as const };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
       <motion.div
         className="absolute inset-0 bg-background/60 backdrop-blur-sm"
-        initial={{ opacity: 0 }}
+        initial={{ opacity: reduceMotion ? 1 : 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.2 }}
+        transition={backdropTransition}
       />
       <motion.div
         className="relative w-[90vw] max-w-3xl overflow-hidden rounded-lg border border-border/50 bg-card/95 shadow-2xl backdrop-blur-xl commander-corners"
         onClick={e => e.stopPropagation()}
-        initial={{ opacity: 0, scale: 0.92, y: 20 }}
+        initial={
+          reduceMotion
+            ? { opacity: 1, scale: 1, y: 0 }
+            : { opacity: 0, scale: 0.92, y: 20 }
+        }
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+        transition={panelTransition}
       >
         <span className="corner-bottom" />
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border/50 px-4 py-2.5">
+        <div className="flex items-center justify-between border-b border-border/50 px-4 py-3">
           <div className="flex items-center gap-2">
             <span className="font-mono text-xs font-bold">{nodeName}</span>
             <span className="text-xxs font-mono text-muted-foreground">{t('chart.nodeMonitor')}</span>
@@ -217,7 +227,7 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
 
         {/* Chart tabs */}
         <div className="relative">
-          <div className="scrollbar-none flex items-center justify-between gap-0.5 overflow-x-auto border-b border-border/30 px-4 py-1.5">
+          <div className="scrollbar-none flex items-center justify-between gap-0.5 overflow-x-auto border-b border-border/30 px-4 py-2">
             <div className="flex items-center gap-0.5">
               {chartTabIds.map(id => (
                 <button
@@ -248,7 +258,7 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
                     smooth ? 'bg-primary shadow-[0_0_4px_var(--color-primary)]' : 'bg-muted-foreground/20'
                   }`}
                 />
-                <span>{smooth ? 'SMOOTH' : 'RAW'}</span>
+                <span>{smooth ? t('chart.smooth') : t('chart.raw')}</span>
               </button>
             )}
           </div>
@@ -256,7 +266,7 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
         </div>
 
         {/* Chart area */}
-        <div className="h-[300px] p-3 sm:h-[360px]">{renderChart()}</div>
+        <div className="h-[300px] p-4 sm:h-[360px] sm:p-5">{renderChart()}</div>
       </motion.div>
     </div>
   );

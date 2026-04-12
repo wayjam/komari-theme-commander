@@ -17,23 +17,26 @@ interface NodeCardProps {
 }
 
 function HudGauge({ label, value, unit = '%', status, total }: { label: string; value: number; unit?: string; status: 'normal' | 'warning' | 'critical'; total?: string }) {
-  const barColor = status === 'critical' ? 'bg-red-500' : status === 'warning' ? 'bg-yellow-500' : 'bg-primary';
-  const textColor = status === 'critical' ? 'text-red-500' : status === 'warning' ? 'text-yellow-500' : '';
+  const barColor = status === 'critical' ? 'bg-destructive' : status === 'warning' ? 'bg-warning' : 'bg-primary';
+  const textColor = status === 'critical' ? 'text-destructive' : status === 'warning' ? 'text-warning' : '';
   return (
     <div className="space-y-0.5">
       <div className="flex items-center justify-between">
         <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">{label}</span>
         <span className="flex items-center gap-1.5">
-          <span className={cn('text-xs font-mono font-bold tabular-nums', textColor)}>
+          <span className={cn('text-xs font-metric font-bold', textColor)}>
             {value.toFixed(1)}{unit}
           </span>
-          {total && <span className="text-xxs font-mono text-muted-foreground/60">{total}</span>}
+          {total && <span className="text-xxs font-metric text-muted-foreground/60">{total}</span>}
         </span>
       </div>
       <div className="h-[3px] w-full bg-muted/40 rounded-full overflow-hidden relative">
         <div
-          className={cn('h-full rounded-full transition-all duration-700', barColor)}
-          style={{ width: `${Math.min(value, 100)}%` }}
+          className={cn(
+            'h-full w-full origin-left rounded-full transition-transform duration-700 ease-out',
+            barColor,
+          )}
+          style={{ transform: `scaleX(${Math.min(value, 100) / 100})` }}
         />
         {/* Subtle segments for non-clean themes */}
         <div className="absolute inset-0 flex justify-between px-[10%] pointer-events-none opacity-20 [data-theme='clean']:hidden">
@@ -56,8 +59,8 @@ function TrafficBar({ totalUp, totalDown, limit, type, label }: { totalUp: numbe
       <div className="flex items-center justify-between">
         <span className="text-xs font-mono text-muted-foreground">{label} ({formatTrafficType(type)})</span>
         <span className={cn(
-          'text-xs font-mono font-bold tabular-nums',
-          status === 'critical' ? 'text-red-500' : status === 'warning' ? 'text-yellow-500' : '',
+          'text-xs font-metric font-bold',
+          status === 'critical' ? 'text-destructive' : status === 'warning' ? 'text-warning' : '',
         )}>
           {formatBytes(used)} / {formatBytes(limit)}
         </span>
@@ -65,10 +68,10 @@ function TrafficBar({ totalUp, totalDown, limit, type, label }: { totalUp: numbe
       <div className="h-[3px] w-full bg-muted/40 rounded-full overflow-hidden relative">
         <div
           className={cn(
-            'h-full rounded-full transition-all duration-700',
-            status === 'critical' ? 'bg-red-500' : status === 'warning' ? 'bg-yellow-500' : 'bg-primary',
+            'h-full w-full origin-left rounded-full transition-transform duration-700 ease-out',
+            status === 'critical' ? 'bg-destructive' : status === 'warning' ? 'bg-warning' : 'bg-primary',
           )}
-          style={{ width: `${Math.min(pct, 100)}%` }}
+          style={{ transform: `scaleX(${Math.min(pct, 100) / 100})` }}
         />
         {/* Subtle segments */}
         <div className="absolute inset-0 flex justify-between px-[10%] pointer-events-none opacity-20 [data-theme='clean']:hidden">
@@ -131,19 +134,19 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
       )} />
 
       {/* Header */}
-      <div className="p-3 pb-2 relative z-10">
-        <div className="min-w-0 space-y-1">
+      <div className="p-3 sm:p-4 relative z-10">
+        <div className="min-w-0 flex flex-col gap-2">
           {/* Node name row */}
           <div className="flex items-center gap-2">
             <span className={cn(
               'w-2 h-2 rounded-full flex-shrink-0',
-              isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500'
+              isOnline ? 'bg-success motion-safe:animate-pulse' : 'bg-destructive'
             )} />
             <span className="text-base flex-shrink-0">{node.region}</span>
             <h3
               className={cn(
                 "text-base font-display font-bold truncate cursor-pointer hover:text-primary transition-colors",
-                (cpuStatus === 'critical' || ramStatus === 'critical') && "text-red-500"
+                (cpuStatus === 'critical' || ramStatus === 'critical') && "text-destructive"
               )}
               onClick={() => navigate(`/node/${node.uuid}`)}
             >{node.name}</h3>
@@ -157,9 +160,9 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
                     <span className={cn(
                       'text-xxs leading-none font-mono px-1.5 py-0.5 rounded-sm flex-shrink-0 border cursor-default',
                       expiryStatus === 'expired'
-                        ? 'text-red-500 bg-red-500/10 border-red-500/20'
+                        ? 'text-destructive bg-destructive/10 border-destructive/20'
                         : expiryStatus === 'warning'
-                          ? 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20'
+                          ? 'text-warning bg-warning/10 border-warning/20'
                           : 'text-muted-foreground/60 bg-muted/20 border-border/20',
                     )}>
                       {formatExpiry(node.expired_at)}
@@ -178,7 +181,7 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
             })()}
 
             {(cpuStatus === 'critical' || ramStatus === 'critical') && (
-              <div className="flex items-center gap-1 text-xs font-mono text-red-500 font-bold animate-pulse ml-auto">
+              <div className="flex items-center gap-1 text-xs font-mono text-destructive font-bold motion-safe:animate-pulse ml-auto">
                 <AlertTriangle className="h-3 w-3" />
               </div>
             )}
@@ -208,7 +211,7 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
               </Tooltip>
             )}
             {node.hidden && (
-              <span className="text-xs font-mono text-yellow-500/80 bg-yellow-500/15 px-1.5 py-0.5 rounded-sm">
+              <span className="text-xs font-mono text-warning/80 bg-warning/15 px-1.5 py-0.5 rounded-sm">
                 {t('node.hidden')}
               </span>
             )}
@@ -227,7 +230,7 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
             </Tooltip>
           )}
           {node.public_remark && (
-            <p className="text-xs font-mono text-muted-foreground/70 ml-4 line-clamp-1">
+            <p className="text-xs text-muted-foreground/70 ml-4 line-clamp-1 leading-relaxed">
               {node.public_remark}
             </p>
           )}
@@ -235,7 +238,7 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
       </div>
 
       {/* Content */}
-      <div className="px-3 pb-3 relative z-10">
+      <div className="px-3 pb-3 sm:px-4 relative z-10">
         {stats ? (
           <div className="space-y-2">
             {/* Resource gauges */}
@@ -268,28 +271,28 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
             <div className="grid grid-cols-4 gap-1 pt-1">
               <div className="text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
                 <div className="text-xs font-mono text-muted-foreground">{t('label.load')}</div>
-                <div className="text-xs font-mono font-bold tabular-nums">{stats.load.load1.toFixed(2)}</div>
+                <div className="text-xs font-metric font-bold">{stats.load.load1.toFixed(2)}</div>
               </div>
               <div className="text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
                 <div className="text-xs font-mono text-muted-foreground">{t('label.netUp')}</div>
-                <div className="text-xs font-mono font-bold tabular-nums">{formatSpeed(stats.network.up).replace('/s','')}</div>
-                <div className="text-xxs font-mono text-muted-foreground/60">{formatBytes(stats.network.totalUp)}</div>
+                <div className="text-xs font-metric font-bold">{formatSpeed(stats.network.up).replace('/s','')}</div>
+                <div className="text-xxs font-metric text-muted-foreground/60">{formatBytes(stats.network.totalUp)}</div>
               </div>
               <div className="text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
                 <div className="text-xs font-mono text-muted-foreground">{t('label.netDown')}</div>
-                <div className="text-xs font-mono font-bold tabular-nums">{formatSpeed(stats.network.down).replace('/s','')}</div>
-                <div className="text-xxs font-mono text-muted-foreground/60">{formatBytes(stats.network.totalDown)}</div>
+                <div className="text-xs font-metric font-bold">{formatSpeed(stats.network.down).replace('/s','')}</div>
+                <div className="text-xxs font-metric text-muted-foreground/60">{formatBytes(stats.network.totalDown)}</div>
               </div>
               <div className="text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
                 <div className="text-xs font-mono text-muted-foreground">{t('label.up')}</div>
-                <div className="text-xs font-mono font-bold tabular-nums">{formatUptime(stats.uptime)}</div>
+                <div className="text-xs font-metric font-bold">{formatUptime(stats.uptime)}</div>
               </div>
             </div>
 
 
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-20 text-muted-foreground text-xs font-mono gap-1.5">
+          <div className="flex flex-col items-center justify-center h-20 text-muted-foreground text-xs gap-1.5">
             <span className="no-signal-pulse uppercase tracking-widest text-muted-foreground/60">{t('telemetry.noData')}</span>
           </div>
         )}

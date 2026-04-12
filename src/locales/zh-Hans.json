@@ -34,7 +34,7 @@
     "load1m": "1 分钟",
     "load5m": "5 分钟",
     "load15m": "15 分钟",
-    "lastReport": "上次上报",
+    "lastReport": "上次更新",
     "upload": "↑ 上传",
     "download": "↓ 下载",
     "totalUp": "总上传 ↑",
@@ -59,6 +59,7 @@
     "notSet": "未设置"
   },
   "action": {
+    "home": "返回仪表板",
     "back": "返回",
     "admin": "管理",
     "clear": "清除",
@@ -71,7 +72,8 @@
     "globe": "地球",
     "grid": "卡片",
     "table": "表格",
-    "uptime": "可用性"
+    "uptime": "可用性",
+    "switchTo": "切换到{{mode}}视图"
   },
   "filter": {
     "all": "全部",
@@ -79,23 +81,23 @@
     "tag": "标签",
     "status": "状态",
     "matched": "匹配",
-    "sortByActivity": "按活跃度排序"
+    "sortByActivity": "按网络流量排序"
   },
   "placeholder": {
-    "searchNodes": "搜索节点...",
-    "filterNodes": "筛选节点..."
+    "searchNodes": "按名称、分组、标签或区域搜索",
+    "filterNodes": "筛选列表…"
   },
   "node": {
     "hidden": "隐藏",
     "noNodesAvailable": "暂无节点",
-    "addFromAdmin": "从管理面板添加节点"
+    "addFromAdmin": "请在 Komari 管理后台添加服务器。"
   },
   "telemetry": {
     "acquiring": "信号捕获中...",
-    "waiting": "等待遥测数据...",
-    "nodeOffline": "节点离线 — 无遥测数据",
-    "nodeOfflineShort": "节点离线 — 无遥测",
-    "noData": "无遥测数据"
+    "waiting": "正在等待实时指标…",
+    "nodeOffline": "节点离线 — 暂无实时数据",
+    "nodeOfflineShort": "节点离线 — 无数据",
+    "noData": "暂无指标数据"
   },
   "chart": {
     "cpuUsage": "CPU 使用率",
@@ -118,7 +120,7 @@
     "noPingData": "无 Ping 数据",
     "noData": "无数据",
     "nodeMonitor": "节点监控",
-    "ewmaTooltip": "EWMA 平滑：开启后曲线经过指数加权移动平均处理，展示的是平滑趋势线而非原始数据点。",
+    "ewmaTooltip": "对 Ping 曲线做移动平均平滑。关闭可查看原始采样点。",
     "timeRange": "时间范围",
     "latencyOverview": "延迟概览",
     "taskName": "任务",
@@ -134,7 +136,7 @@
     "checkInterval": "检测间隔",
     "checkType": "类型",
     "sampleCount": "样本数量",
-    "lossDisclaimer": "丢包率计算算法并不准确，谨慎参考。波动：延迟的拖尾波动，数值越高波动越大，计算方法：(P99 - P50) / max(min(P50, 50), 10)。"
+    "lossDisclaimer": "丢包率为估算值，仅供参考。波动表示延迟起伏（数值越大越不稳定）。公式：(P99 − P50) ÷ max(min(P50, 50), 10)。"
   },
   "theme": {
     "lumina": "光明",
@@ -146,9 +148,9 @@
   },
   "privacy": {
     "label": "隐私模式",
-    "on": "隐私模式已开启 — 节点名称已隐藏",
-    "off": "隐私模式已关闭",
-    "toggle": "切换隐私模式"
+    "on": "已开启 — 节点名称已隐藏",
+    "off": "已关闭 — 名称正常显示",
+    "toggle": "隐藏或显示界面上的节点名称"
   },
   "ws": {
     "connecting": "连接中",
@@ -178,7 +180,7 @@
     "monitor": "可用性监控",
     "loading": "加载可用性数据...",
     "allSystemsOperational": "所有系统运行正常",
-    "averageDesc": "过去 {{period}} 平均可用性 {{value}}",
+    "averageDesc": "所选范围（{{period}}）平均可用性 {{value}}",
     "degradedPerformance": "性能下降",
     "noDataAvailable": "无可用性数据"
   },
@@ -190,14 +192,17 @@
     "name": "Komari 监控"
   },
   "lang": {
-    "title": "语言"
+    "title": "语言",
+    "select": "选择语言"
   },
   "hud": {
     "labMonitor": "实验室监控",
     "orbitalMonitoring": "轨道监控",
     "globalTelemetry": "全球遥测",
-    "activeThreats": "发现活跃威胁",
+    "activeThreats": "高负载节点",
     "criticalLoad": "负载严重",
+    "criticalLoadBanner": "一个或多个节点 CPU 或内存占用过高",
+    "criticalLoadShort": "高负载",
     "noSignal": "无信号",
     "tableMode": "表格模式 :: 数据流 Alpha-4",
     "parityOk": "校验：正常",

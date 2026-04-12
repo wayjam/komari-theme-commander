@@ -34,8 +34,13 @@ export function WebSocketStatus() {
 
   if (isConnecting) {
     return (
-      <button className="flex items-center gap-1.5 text-yellow-500 font-mono text-xs cursor-pointer">
-        <HudSpinner size="sm" className="text-yellow-500" />
+      <button
+        type="button"
+        disabled
+        className="flex items-center gap-1.5 text-warning font-mono text-xs cursor-default opacity-90"
+        aria-busy="true"
+      >
+        <HudSpinner size="sm" className="text-warning" />
         <span>{t('ws.connecting')}</span>
       </button>
     );
@@ -43,10 +48,10 @@ export function WebSocketStatus() {
 
   if (isConnected) {
     return (
-      <div className="flex items-center gap-1.5 text-green-500 font-mono text-xs">
-        <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+      <div className="flex items-center gap-1.5 text-success font-mono text-xs" role="status" aria-live="polite">
+        <span className="relative flex h-2 w-2" aria-hidden>
+          <span className="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-success/70 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
         </span>
         <span>{t('ws.live')}</span>
       </div>
@@ -55,10 +60,11 @@ export function WebSocketStatus() {
 
   return (
     <button
+      type="button"
       onClick={handleReconnect}
-      className="flex items-center gap-1.5 text-red-500 font-mono text-xs hover:text-red-400 transition-colors cursor-pointer"
+      className="flex items-center gap-1.5 rounded-sm text-destructive font-mono text-xs hover:text-destructive/90 transition-colors duration-200 ease-out cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
-      <WifiOff className="h-3 w-3" />
+      <WifiOff className="h-3 w-3 shrink-0" aria-hidden />
       <span>{t('ws.offline')}</span>
     </button>
   );

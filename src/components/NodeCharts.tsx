@@ -87,8 +87,8 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
 
   if (error) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl">
-        <div className="mb-3 font-mono text-sm text-red-500">{error}</div>
+      <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl px-4">
+        <div className="font-mono text-sm text-destructive text-center">{error}</div>
         <button
           type="button"
           onClick={fetchLoadData}
@@ -101,7 +101,7 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
   }
 
   return (
-    <div className="w-full space-y-4 overflow-hidden">
+    <div className="w-full space-y-5 overflow-hidden">
       <div className="overflow-hidden rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
@@ -135,7 +135,7 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
         </div>
       </div>
 
-      <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="grid w-full grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-2">
         <Card className={chartCardClass}>
           <CardHeader className="px-4 pt-3 pb-2">
             <CardTitle className="flex items-center gap-2 text-sm font-semibold">

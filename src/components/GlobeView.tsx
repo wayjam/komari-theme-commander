@@ -106,7 +106,7 @@ export function GlobeView({ nodes, loading = false, onViewCharts }: GlobeViewPro
   }, [logLines]);
 
   return (
-    <div className="relative z-10 flex flex-col lg:flex-row gap-4 w-full h-[calc(100vh-theme(spacing.10)-theme(spacing.8)-theme(spacing.9)-2rem)] sm:h-[calc(100vh-theme(spacing.12)-theme(spacing.9)-3rem)]">
+    <div className="relative z-10 flex flex-col lg:flex-row gap-4 lg:gap-5 w-full h-[calc(100vh-theme(spacing.10)-theme(spacing.8)-theme(spacing.9)-2rem)] sm:h-[calc(100vh-theme(spacing.12)-theme(spacing.9)-3rem)]">
       {/* Globe — Main */}
       <div className="flex-1 flex items-center justify-center min-h-0 relative commander-corners z-30">
         <span className="corner-bottom" />
@@ -128,7 +128,7 @@ export function GlobeView({ nodes, loading = false, onViewCharts }: GlobeViewPro
                 {logLines.map(line => (
                   <div
                     key={line.id}
-                    className={`whitespace-nowrap transition-opacity duration-500 ${line.critical ? 'text-red-400/50' : 'text-primary/30'}`}
+                    className={`whitespace-nowrap transition-opacity duration-500 ${line.critical ? 'text-destructive/50' : 'text-primary/30'}`}
                   >
                     {line.text}
                   </div>
@@ -160,7 +160,7 @@ export function GlobeView({ nodes, loading = false, onViewCharts }: GlobeViewPro
                 {logLines.map(line => (
                   <div
                     key={line.id}
-                    className={`whitespace-nowrap transition-opacity duration-500 ${line.critical ? 'text-red-500/40' : 'text-primary/35'}`}
+                    className={`whitespace-nowrap transition-opacity duration-500 ${line.critical ? 'text-destructive/40' : 'text-primary/35'}`}
                   >
                     {line.text}
                   </div>
@@ -207,18 +207,18 @@ export function GlobeView({ nodes, loading = false, onViewCharts }: GlobeViewPro
           (n.stats ? (n.stats.ram.used / n.stats.ram.total) > 0.95 : false)
         )) && (
           <div className="absolute top-4 right-4 z-20 pointer-events-none text-right">
-            <div className="text-xs font-mono text-red-500/60 uppercase tracking-[0.2em] mb-2 flex items-center gap-2 justify-end">
+            <div className="text-xs font-mono text-destructive/60 uppercase tracking-[0.2em] mb-2 flex items-center gap-2 justify-end">
               {t('hud.activeThreats')}
-              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <div className="w-2 h-2 rounded-full bg-destructive motion-safe:animate-pulse" />
             </div>
             <div className="space-y-1">
               {nodes.filter(n => n.status === 'online' && (
                 (n.stats?.cpu.usage ?? 0) > 90 || 
                 (n.stats ? (n.stats.ram.used / n.stats.ram.total) > 0.95 : false)
               )).slice(0, 3).map(node => (
-                <div key={node.uuid} className="text-xxs font-mono text-red-400/50 flex gap-2 items-center justify-end">
-                  <span className="animate-pulse">{t('hud.criticalLoad')}{" << "}</span>
-                  <span className="bg-red-500/10 px-1 border border-red-500/20">{node.name.substring(0, 10)}</span>
+                <div key={node.uuid} className="text-xxs font-mono text-destructive/50 flex gap-2 items-center justify-end">
+                  <span className="motion-safe:animate-pulse">{t('hud.criticalLoad')}{" << "}</span>
+                  <span className="bg-destructive/10 px-1 border border-destructive/20">{node.name.substring(0, 10)}</span>
                 </div>
               ))}
             </div>
@@ -234,9 +234,9 @@ export function GlobeView({ nodes, loading = false, onViewCharts }: GlobeViewPro
 
         {/* Loading overlay */}
         {loading && nodes.length === 0 && (
-          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-background/30 backdrop-blur-sm">
+          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-background/30 backdrop-blur-sm">
             <HudSpinner size="lg" />
-            <div className="mt-4 text-xs font-mono text-primary/60 uppercase tracking-[0.15em]">
+            <div className="text-xs font-mono text-primary/60 uppercase tracking-[0.15em]">
               {t('telemetry.acquiring')}
             </div>
           </div>

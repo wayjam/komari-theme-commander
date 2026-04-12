@@ -27,14 +27,14 @@ interface NodeTableProps {
 }
 
 const borderColor: Record<string, string> = {
-  critical: 'border-red-500/70',
-  warning: 'border-yellow-500/70',
+  critical: 'border-destructive/70',
+  warning: 'border-warning/70',
   normal: 'border-transparent',
 };
 
 const textColor: Record<string, string> = {
-  critical: 'text-red-500',
-  warning: 'text-yellow-500',
+  critical: 'text-destructive',
+  warning: 'text-warning',
   normal: '',
 };
 
@@ -44,9 +44,9 @@ function UsageCell({ value, status }: { value: number; status: string }) {
       <Progress
         value={Math.min(value, 100)}
         className="h-5 bg-muted/20 rounded"
-        indicatorClassName="rounded transition-all duration-500 bg-primary/60"
+        indicatorClassName="rounded transition-transform duration-500 ease-out bg-primary/60"
       />
-      <span className="absolute inset-0 flex items-center justify-center text-xs font-mono font-bold tabular-nums text-foreground">
+      <span className="absolute inset-0 flex items-center justify-center text-xs font-metric font-bold text-foreground">
         {value.toFixed(1)}%
       </span>
     </div>
@@ -84,11 +84,11 @@ export function NodeTable({ nodes }: NodeTableProps) {
           <div className="flex items-center gap-1.5">
             <span className={cn(
               'w-1.5 h-1.5 rounded-full',
-              isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500'
+              isOnline ? 'bg-success motion-safe:animate-pulse' : 'bg-destructive'
             )} />
             <span className={cn(
               'text-xs font-mono font-bold',
-              isOnline ? 'text-green-500' : 'text-red-500'
+              isOnline ? 'text-success' : 'text-destructive'
             )}>
               {isOnline ? t('status.on') : t('status.off')}
             </span>
@@ -144,7 +144,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
                 </Tooltip>
               )}
               {node.hidden && (
-                <span className="text-xs font-mono text-yellow-500/80 bg-yellow-500/15 px-1.5 py-0.5 rounded-sm shrink-0">
+                <span className="text-xs font-mono text-warning/80 bg-warning/15 px-1.5 py-0.5 rounded-sm shrink-0">
                   {t('node.hidden')}
                 </span>
               )}
@@ -166,8 +166,8 @@ export function NodeTable({ nodes }: NodeTableProps) {
             <div className="flex items-center gap-3">
               {hasTraffic && node.stats && (
                 <span className={cn(
-                  'text-xs font-mono',
-                  trafficPct >= 90 ? 'text-red-500' : trafficPct >= 70 ? 'text-yellow-500' : 'text-muted-foreground/40',
+                  'text-xs font-metric',
+                  trafficPct >= 90 ? 'text-destructive' : trafficPct >= 70 ? 'text-warning' : 'text-muted-foreground/40',
                 )}>
                   {formatTrafficType(node.traffic_limit_type!)} {formatBytes(trafficUsed)}/{formatBytes(node.traffic_limit!)}
                 </span>
@@ -176,8 +176,8 @@ export function NodeTable({ nodes }: NodeTableProps) {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className={cn(
-                      'text-xs font-mono cursor-default',
-                      expiryStatus === 'expired' ? 'text-red-500' : expiryStatus === 'warning' ? 'text-yellow-500' : 'text-muted-foreground/40',
+                      'text-xs font-metric cursor-default',
+                      expiryStatus === 'expired' ? 'text-destructive' : expiryStatus === 'warning' ? 'text-warning' : 'text-muted-foreground/40',
                     )}>
                       {formatExpiry(node.expired_at)}
                     </span>
@@ -212,7 +212,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
         enableSorting: true,
         cell: ({ row }) => {
           const stats = row.original.stats;
-          if (!stats) return <span className="text-xs font-mono text-muted-foreground/30">—</span>;
+          if (!stats) return <span className="text-xs font-metric text-muted-foreground/30">—</span>;
           const val = stats.cpu.usage;
           return <UsageCell value={val} status={getUsageStatus(val, { warning: 60, critical: 80 })} />;
         },
@@ -228,7 +228,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
         enableSorting: true,
         cell: ({ row }) => {
           const stats = row.original.stats;
-          if (!stats) return <span className="text-xs font-mono text-muted-foreground/30">—</span>;
+          if (!stats) return <span className="text-xs font-metric text-muted-foreground/30">—</span>;
           const val = (stats.ram.used / stats.ram.total) * 100;
           return <UsageCell value={val} status={getUsageStatus(val, { warning: 70, critical: 85 })} />;
         },
@@ -244,7 +244,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
         enableSorting: true,
         cell: ({ row }) => {
           const stats = row.original.stats;
-          if (!stats) return <span className="text-xs font-mono text-muted-foreground/30">—</span>;
+          if (!stats) return <span className="text-xs font-metric text-muted-foreground/30">—</span>;
           const val = (stats.disk.used / stats.disk.total) * 100;
           return <UsageCell value={val} status={getUsageStatus(val, { warning: 75, critical: 90 })} />;
         },
@@ -260,10 +260,10 @@ export function NodeTable({ nodes }: NodeTableProps) {
         enableSorting: true,
         cell: ({ row }) => {
           const stats = row.original.stats;
-          if (!stats) return <span className="text-sm font-mono text-muted-foreground/30">—</span>;
+          if (!stats) return <span className="text-sm font-metric text-muted-foreground/30">—</span>;
           return (
-            <div className="text-xs font-mono tabular-nums leading-tight">
-              <div><span className="text-green-500/70">↑</span>{formatSpeed(stats.network.up)}</div>
+            <div className="text-xs font-metric leading-tight">
+              <div><span className="text-success/70">↑</span>{formatSpeed(stats.network.up)}</div>
               <div><span className="text-primary/70">↓</span>{formatSpeed(stats.network.down)}</div>
             </div>
           );
@@ -280,8 +280,8 @@ export function NodeTable({ nodes }: NodeTableProps) {
         enableSorting: true,
         cell: ({ row }) => {
           const stats = row.original.stats;
-          if (!stats) return <span className="text-xs font-mono text-muted-foreground/30">—</span>;
-          return <span className="text-xs font-mono tabular-nums">{formatUptime(stats.uptime)}</span>;
+          if (!stats) return <span className="text-xs font-metric text-muted-foreground/30">—</span>;
+          return <span className="text-xs font-metric">{formatUptime(stats.uptime)}</span>;
         },
       }
     ),
@@ -295,8 +295,8 @@ export function NodeTable({ nodes }: NodeTableProps) {
         enableSorting: true,
         cell: ({ row }) => {
           const stats = row.original.stats;
-          if (!stats) return <span className="text-xs font-mono text-muted-foreground/30">—</span>;
-          return <span className="text-xs font-mono tabular-nums">{stats.load.load1.toFixed(2)}</span>;
+          if (!stats) return <span className="text-xs font-metric text-muted-foreground/30">—</span>;
+          return <span className="text-xs font-metric">{stats.load.load1.toFixed(2)}</span>;
         },
       }
     ),
@@ -331,7 +331,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
       <span className="corner-bottom" />
       
       {/* Console Header Decoration */}
-      <div className="console-header-decoration flex items-center justify-between px-3 py-1 border-b border-border/30 bg-muted/10 text-xxs font-mono text-muted-foreground/40 uppercase tracking-[0.2em] relative z-10">
+      <div className="console-header-decoration flex items-center justify-between px-3 py-1.5 border-b border-border/30 bg-muted/10 text-xxs font-mono text-muted-foreground/40 uppercase tracking-[0.2em] relative z-10">
         <div className="flex items-center gap-2">
           <div className="w-1.5 h-1.5 rounded-full bg-primary/30" />
           <span>{t('hud.tableMode')}</span>
@@ -387,7 +387,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
                     'transition-colors hover:bg-primary/8 group relative',
                     idx !== table.getRowModel().rows.length - 1 && 'border-b border-border/20',
                     !isOnline && 'opacity-45',
-                    isCritical && 'bg-red-500/5 hover:bg-red-500/10 animate-pulse-subtle'
+                    isCritical && 'bg-destructive/5 hover:bg-destructive/10 motion-safe:animate-pulse-subtle'
                   )}
                 >
                   {row.getVisibleCells().map((cell, cellIdx) => (
@@ -399,7 +399,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
                       )}
                     >
                       {cellIdx === 0 && isCritical && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-3/4 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-3/4 bg-destructive shadow-[0_0_8px_color-mix(in_oklch,var(--destructive)_65%,transparent)]" />
                       )}
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
@@ -426,16 +426,16 @@ export function NodeTable({ nodes }: NodeTableProps) {
             <div
               key={row.id}
               className={cn(
-                'px-3 py-2.5 space-y-1.5 transition-colors hover:bg-primary/8',
+                'px-3 py-3 space-y-2 transition-colors hover:bg-primary/8',
                 idx !== table.getRowModel().rows.length - 1 && 'border-b border-border/20',
                 !isOnline && 'opacity-45'
               )}
             >
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className={cn(
                     'w-1.5 h-1.5 rounded-full flex-shrink-0',
-                    isOnline ? 'bg-green-500' : 'bg-red-500'
+                    isOnline ? 'bg-success' : 'bg-destructive'
                   )} />
                   <span
                     className="text-base font-display font-bold truncate cursor-pointer hover:text-primary transition-colors"
@@ -468,7 +468,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
                       </Tooltip>
                     )}
                     {node.hidden && (
-                      <span className="text-xs font-mono text-yellow-500/80 bg-yellow-500/15 px-1.5 py-0.5 rounded-sm">
+                      <span className="text-xs font-mono text-warning/80 bg-warning/15 px-1.5 py-0.5 rounded-sm">
                         {t('node.hidden')}
                       </span>
                     )}
@@ -476,11 +476,11 @@ export function NodeTable({ nodes }: NodeTableProps) {
                 )}
               </div>
               {stats && (
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono text-muted-foreground ml-3.5">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-metric text-muted-foreground ml-3.5">
                   <span className={textColor[getUsageStatus(cpuUsage, { warning: 60, critical: 80 })]}>{t('label.cpu')} {cpuUsage.toFixed(0)}%</span>
                   <span className={textColor[getUsageStatus(ramUsage, { warning: 70, critical: 85 })]}>{t('label.ram')} {ramUsage.toFixed(0)}%</span>
                   <span className={textColor[getUsageStatus(diskUsage, { warning: 75, critical: 90 })]}>{t('label.disk')} {diskUsage.toFixed(0)}%</span>
-                  <span><span className="text-green-500/70">↑</span>{formatSpeed(stats.network.up)}</span>
+                  <span><span className="text-success/70">↑</span>{formatSpeed(stats.network.up)}</span>
                     <span><span className="text-primary/70">↓</span>{formatSpeed(stats.network.down)}</span>
                   <span>{formatUptime(stats.uptime)}</span>
                 </div>

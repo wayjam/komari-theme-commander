@@ -6,17 +6,20 @@
 /** A single row of chart data — `time` is always present, other keys are numeric task/metric values */
 export type ChartDataRow = { time: string; [key: string]: string | number | null };
 
-// HUD-style neon color palette
+/**
+ * Metric / ping series colors — `--chart-1`…`--chart-9` in `index.css` (per theme).
+ * Order: CPU, load, RAM, disk, TCP, UDP, net in, net out, swap; ping lines cycle the same tokens.
+ */
 export const chartColors = [
-  "oklch(0.75 0.18 195)",  // Cyan — CPU
-  "oklch(0.75 0.2 145)",   // Neon Green — Load
-  "oklch(0.7 0.22 330)",   // Magenta — RAM
-  "oklch(0.8 0.18 85)",    // Amber — Disk
-  "oklch(0.65 0.25 15)",   // Red — TCP
-  "oklch(0.65 0.15 195)",  // Teal — UDP
-  "oklch(0.7 0.22 330)",   // Magenta — Net In
-  "oklch(0.75 0.2 145)",   // Green — Net Out
-  "oklch(0.65 0.15 260)",  // Indigo — SWAP
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+  "var(--chart-6)",
+  "var(--chart-7)",
+  "var(--chart-8)",
+  "var(--chart-9)",
 ] as const;
 
 export interface LoadRecord {

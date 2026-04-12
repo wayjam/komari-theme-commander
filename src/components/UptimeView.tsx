@@ -16,6 +16,14 @@ import {
   type LoadRecord,
 } from '@/lib/uptime-utils';
 
+/** Short date for shared uptime axis — same window for all rows (see computeUptime rangeStart). */
+function formatUptimeAxisShort(ts: number): string {
+  const d = new Date(ts);
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${m}/${day}`;
+}
+
 /* ══════════════════════════════════════════════════════════════
    Lazy-load hook — triggers when element enters viewport
    ══════════════════════════════════════════════════════════════ */
@@ -49,7 +57,6 @@ function useLazyVisible(rootMargin = '200px') {
    ══════════════════════════════════════════════════════════════ */
 function UptimeBar({ slots }: { slots: UptimeSlot[] }) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
-  const { t } = useTranslation();
 
   const fmtDate = (ts: number) => {
     const d = new Date(ts);
@@ -57,45 +64,31 @@ function UptimeBar({ slots }: { slots: UptimeSlot[] }) {
       ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   };
 
-  const fmtShort = (ts: number) => {
-    const d = new Date(ts);
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${m}/${day}`;
-  };
-
   return (
     <div className="relative group">
-      <div className="flex gap-[1px] h-6 rounded overflow-hidden relative">
-        {slots.map((slot, i) => (
-          <div
-            key={i}
-            className={cn(
-              'flex-1 min-w-[2px] transition-opacity',
-              slot.status === 'online' && 'bg-green-500',
-              slot.status === 'offline' && 'bg-red-500',
-              slot.status === 'unknown' && 'bg-muted/30',
-              hoveredIdx !== null && hoveredIdx !== i && 'opacity-40',
-            )}
-            onMouseEnter={() => setHoveredIdx(i)}
-            onMouseLeave={() => setHoveredIdx(null)}
-          />
-        ))}
-        {/* Inline time labels */}
-        <span className="absolute left-1.5 inset-y-0 flex items-center text-xs font-mono pointer-events-none uptime-bar-label">
-          {slots.length > 0 && fmtShort(slots[0].start)}
-        </span>
-        <span className="absolute right-1.5 inset-y-0 flex items-center text-xs font-mono pointer-events-none uptime-bar-label">
-          {t('time.now')}
-        </span>
-      </div>
-
-      {/* Tooltip */}
-      {hoveredIdx !== null && slots[hoveredIdx] && (
-        <div className="absolute -top-9 left-1/2 -translate-x-1/2 px-2 py-1 rounded bg-popover border border-border text-xxs font-mono text-popover-foreground whitespace-nowrap z-10 pointer-events-none shadow-lg">
-          {fmtDate(slots[hoveredIdx].start)} — {slots[hoveredIdx].status.toUpperCase()}
+      <div className="relative">
+        <div className="flex gap-[1px] h-6 rounded overflow-hidden">
+          {slots.map((slot, i) => (
+            <div
+              key={i}
+              className={cn(
+                'flex-1 min-w-[2px] transition-opacity',
+                slot.status === 'online' && 'uptime-bar-online',
+                slot.status === 'offline' && 'bg-destructive',
+                slot.status === 'unknown' && 'bg-muted/30',
+                hoveredIdx !== null && hoveredIdx !== i && 'opacity-40',
+              )}
+              onMouseEnter={() => setHoveredIdx(i)}
+              onMouseLeave={() => setHoveredIdx(null)}
+            />
+          ))}
         </div>
-      )}
+        {hoveredIdx !== null && slots[hoveredIdx] && (
+          <div className="absolute -top-9 left-1/2 z-10 -translate-x-1/2 px-2 py-1 rounded border border-border bg-popover text-xxs font-mono text-popover-foreground whitespace-nowrap pointer-events-none shadow-lg">
+            {fmtDate(slots[hoveredIdx].start)} — {slots[hoveredIdx].status.toUpperCase()}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -117,9 +110,9 @@ function NodeRow({ node, uptime, loading, onNavigate }: NodeRowProps) {
 
   const pctColor = pct === null
     ? 'text-muted-foreground'
-    : pct >= 99 ? 'text-green-500'
-    : pct >= 95 ? 'text-yellow-500'
-    : 'text-red-500';
+    : pct >= 99 ? 'text-success uptime-accent-soft'
+    : pct >= 95 ? 'text-warning'
+    : 'text-destructive';
 
   return (
     <div
@@ -127,12 +120,18 @@ function NodeRow({ node, uptime, loading, onNavigate }: NodeRowProps) {
     >
       <div className="commander-scanner-effect opacity-0 group-hover:opacity-100 transition-opacity" />
       <span className="corner-bottom" />
+      <div className="relative z-10 flex flex-col gap-2">
       {/* Top: name + status + uptime % — clickable */}
       <div
-        className="flex items-center gap-2 mb-1.5 relative z-10 cursor-pointer"
+        className="flex items-center gap-2 cursor-pointer"
         onClick={() => onNavigate(node.uuid)}
       >
-        <span className={cn('w-2 h-2 rounded-full flex-shrink-0', isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500')} />
+        <span
+          className={cn(
+            'w-2 h-2 rounded-full flex-shrink-0',
+            isOnline ? 'uptime-status-dot bg-success motion-safe:animate-pulse' : 'bg-destructive',
+          )}
+        />
         <span className="text-sm font-display font-bold truncate group-hover:text-primary transition-colors">{node.name}</span>
         {node.region && (
           <span className="text-xs font-mono text-muted-foreground/60">{node.region}</span>
@@ -144,7 +143,7 @@ function NodeRow({ node, uptime, loading, onNavigate }: NodeRowProps) {
           {loading ? (
             <HudSpinner size="sm" className="text-muted-foreground" />
           ) : pct !== null ? (
-            <span className={cn('text-sm font-mono font-bold tabular-nums px-2 py-0.5 rounded bg-muted/20 border border-border/30', pctColor)}>
+            <span className={cn('text-sm font-metric font-bold px-2 py-0.5 rounded bg-muted/20 border border-border/30', pctColor)}>
               {pct.toFixed(1)}%
             </span>
           ) : (
@@ -155,16 +154,17 @@ function NodeRow({ node, uptime, loading, onNavigate }: NodeRowProps) {
       </div>
 
       {/* Uptime bar */}
-      <div className="relative z-10">
+      <div className="relative">
         {uptime ? (
           <UptimeBar slots={uptime.slots} />
         ) : loading ? (
-          <div className="h-6 rounded bg-muted/20 animate-pulse border border-border/20" />
+          <div className="h-6 rounded bg-muted/20 motion-safe:animate-pulse border border-border/20" />
         ) : (
           <div className="h-6 rounded bg-muted/10 flex items-center justify-center border border-dashed border-border/40">
-            <span className="text-xs font-mono text-muted-foreground">{t('uptime.noData')}</span>
+            <span className="text-xs text-muted-foreground">{t('uptime.noData')}</span>
           </div>
         )}
+      </div>
       </div>
     </div>
   );
@@ -408,7 +408,7 @@ export function UptimeView({ nodes }: UptimeViewProps) {
   }, []);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5 sm:space-y-6 uptime-view">
       {/* ═══ Header bar ═══ */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="flex items-center gap-3">
@@ -419,16 +419,16 @@ export function UptimeView({ nodes }: UptimeViewProps) {
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 sm:ml-auto">
           {/* Summary badges */}
           <div className="flex items-center gap-2 text-xs font-mono">
-            <span className="flex items-center gap-1">
-              <ShieldCheck className="h-3.5 w-3.5 text-green-500" />
+            <span className="flex items-center gap-1 font-metric">
+              <ShieldCheck className="h-3.5 w-3.5 text-success uptime-accent-soft" />
               {onlineCount}/{totalCount}
             </span>
             {avgUptime !== null && (
               <>
                 <span className="text-muted-foreground/40">|</span>
                 <span className={cn(
-                  'font-bold tabular-nums',
-                  avgUptime >= 99 ? 'text-green-500' : avgUptime >= 95 ? 'text-yellow-500' : 'text-red-500',
+                  'font-metric font-bold',
+                  avgUptime >= 99 ? 'text-success uptime-accent-soft' : avgUptime >= 95 ? 'text-warning' : 'text-destructive',
                 )}>
                   {t('label.avg')} {avgUptime.toFixed(1)}%
                 </span>
@@ -460,13 +460,23 @@ export function UptimeView({ nodes }: UptimeViewProps) {
             className="p-1.5 rounded hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground"
             title={t('action.refresh')}
           >
-            <RefreshCw className={cn('h-3.5 w-3.5', isLoading && 'animate-spin')} />
+            <RefreshCw className={cn('h-3.5 w-3.5', isLoading && 'motion-safe:animate-spin')} />
           </button>
         </div>
       </div>
 
+      {/* Shared timeline axis — one window for all rows (same as computeUptime: now − rangeHours → now) */}
+      {sortedNodes.length > 0 && (
+        <div className="flex justify-between gap-3 px-3 sm:px-4 text-xxs font-metric text-muted-foreground tabular-nums">
+          <span className="min-w-0 truncate">
+            {formatUptimeAxisShort(Date.now() - range.hours * 3600_000)}
+          </span>
+          <span className="shrink-0">{t('time.now')}</span>
+        </div>
+      )}
+
       {/* ═══ All-systems summary ═══ */}
-      <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl p-4 flex items-center gap-3">
+      <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl p-4 sm:p-5 flex items-center gap-3 sm:gap-4">
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm font-mono text-muted-foreground">
             <HudSpinner size="md" />
@@ -474,20 +484,20 @@ export function UptimeView({ nodes }: UptimeViewProps) {
           </div>
         ) : avgUptime !== null && avgUptime >= 99 ? (
           <>
-            <ShieldCheck className="h-6 w-6 text-green-500" />
+            <ShieldCheck className="h-6 w-6 text-success uptime-accent-soft" />
             <div>
-              <div className="text-sm font-semibold text-green-500">{t('uptime.allSystemsOperational')}</div>
-              <div className="text-xs font-mono text-muted-foreground">
+              <div className="text-sm font-semibold text-success uptime-accent-soft">{t('uptime.allSystemsOperational')}</div>
+              <div className="text-xs text-muted-foreground leading-relaxed">
                 {t('uptime.averageDesc', { value: avgUptime.toFixed(2) + '%', period: range.label.toLowerCase() })}
               </div>
             </div>
           </>
         ) : avgUptime !== null ? (
           <>
-            <ShieldX className="h-6 w-6 text-yellow-500" />
+            <ShieldX className="h-6 w-6 text-warning" />
             <div>
-              <div className="text-sm font-semibold text-yellow-500">{t('uptime.degradedPerformance')}</div>
-              <div className="text-xs font-mono text-muted-foreground">
+              <div className="text-sm font-semibold text-warning">{t('uptime.degradedPerformance')}</div>
+              <div className="text-xs text-muted-foreground leading-relaxed">
                 {t('uptime.averageDesc', { value: avgUptime.toFixed(2) + '%', period: range.label.toLowerCase() })}
               </div>
             </div>
@@ -495,13 +505,13 @@ export function UptimeView({ nodes }: UptimeViewProps) {
         ) : (
           <>
             <Shield className="h-6 w-6 text-muted-foreground" />
-            <div className="text-sm font-mono text-muted-foreground">{t('uptime.noDataAvailable')}</div>
+            <div className="text-sm text-muted-foreground">{t('uptime.noDataAvailable')}</div>
           </>
         )}
       </div>
 
       {/* ═══ Node rows ═══ */}
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         {sortedNodes.map(node => (
           <LazyNodeRow
             key={node.uuid}

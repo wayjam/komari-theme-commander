@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ArrowLeft, Cpu, HardDrive, MemoryStick, Network, BarChart3, ExternalLink, Server, Layers, Search, X, Activity } from 'lucide-react';
 import type { NodeWithStatus } from '@/services/api';
@@ -25,8 +25,8 @@ interface SidebarProps {
 
 const statusColorMap: Record<'normal' | 'warning' | 'critical', string> = {
   normal: '',
-  warning: 'bg-yellow-500',
-  critical: 'bg-red-500',
+  warning: 'bg-warning',
+  critical: 'bg-destructive',
 };
 
 // ── Threshold: switch to virtualizer when node count exceeds this ──
@@ -47,6 +47,11 @@ function NodeRowContent({
   const stats = node.stats;
   const cpuUsage = stats?.cpu?.usage ?? 0;
   const ramUsage = stats ? (stats.ram.used / stats.ram.total) * 100 : 0;
+  const sidebarCpuLine = `${t('label.cpu')} ${cpuUsage.toFixed(0)}%`;
+  const sidebarRamLine = `${t('label.ram')} ${ramUsage.toFixed(0)}%`;
+  const sidebarNetLine = stats
+    ? `↑${formatSpeed(stats.network.up)} ↓${formatSpeed(stats.network.down)}`
+    : '';
   const emoji = extractRegionEmoji(node.region);
 
   const tagList = node.tags ? node.tags.split(/[,;]/).map(t => t.trim()).filter(Boolean) : [];
@@ -70,8 +75,8 @@ function NodeRowContent({
         <span
           className={cn(
             'w-1.5 h-1.5 rounded-full flex-shrink-0',
-            isOnline ? 'bg-green-500' : 'bg-red-500',
-            isOnline && 'animate-pulse'
+            isOnline ? 'bg-success' : 'bg-destructive',
+            isOnline && 'motion-safe:animate-pulse'
           )}
         />
         <div className="flex-1 min-w-0">
@@ -113,29 +118,41 @@ function NodeRowContent({
           </Tooltip>
         )}
         {node.hidden && (
-          <span className="text-xs font-mono text-yellow-500/80 bg-yellow-500/15 px-1.5 py-0.5 rounded-sm flex-shrink-0">
+          <span className="text-xs font-mono text-warning/80 bg-warning/15 px-1.5 py-0.5 rounded-sm flex-shrink-0">
             {t('node.hidden')}
           </span>
         )}
       </div>
       {isOnline && stats && (
-        <div className="flex items-center gap-2.5 mt-1.5 ml-3.5 text-xs font-mono text-muted-foreground sidebar-node-stats">
-          <span className={cn(
-            'sidebar-stat-cell',
-            cpuUsage >= 80 ? 'text-red-500' : cpuUsage >= 60 ? 'text-yellow-500' : ''
-          )}>
-            {t('label.cpu')} {cpuUsage.toFixed(0)}%
+        <div
+          className="mt-1 ml-3.5 flex min-w-0 items-center gap-1 text-xxs font-metric text-muted-foreground sm:text-xs"
+          title={[sidebarCpuLine, sidebarRamLine, sidebarNetLine].filter(Boolean).join(' · ')}
+        >
+          <span
+            className={cn(
+              'shrink-0 whitespace-nowrap tabular-nums',
+              cpuUsage >= 80 ? 'text-destructive' : cpuUsage >= 60 ? 'text-warning' : '',
+            )}
+          >
+            {sidebarCpuLine}
           </span>
-          <span className="text-border/60">│</span>
-          <span className={cn(
-            'sidebar-stat-cell',
-            ramUsage >= 85 ? 'text-red-500' : ramUsage >= 70 ? 'text-yellow-500' : ''
-          )}>
-            {t('label.ram')} {ramUsage.toFixed(0)}%
+          <span className="shrink-0 text-border/60 select-none" aria-hidden>
+            │
           </span>
-          <span className="text-border/60">│</span>
-          <span className="sidebar-stat-cell">↑{formatSpeed(stats.network.up)}</span>
-          <span className="sidebar-stat-cell">↓{formatSpeed(stats.network.down)}</span>
+          <span
+            className={cn(
+              'shrink-0 whitespace-nowrap tabular-nums',
+              ramUsage >= 85 ? 'text-destructive' : ramUsage >= 70 ? 'text-warning' : '',
+            )}
+          >
+            {sidebarRamLine}
+          </span>
+          <span className="shrink-0 text-border/60 select-none" aria-hidden>
+            │
+          </span>
+          <span className="min-w-0 truncate tabular-nums" title={sidebarNetLine}>
+            {sidebarNetLine}
+          </span>
         </div>
       )}
       {/* HUD hover scan line */}
@@ -155,6 +172,7 @@ function NodeListView({
   selectedNodeId: string | null;
   onSelectNode: (uuid: string) => void;
 }) {
+  const reduceMotion = useReducedMotion();
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortByActive, _setSortByActive] = useState(() => {
@@ -297,9 +315,9 @@ function NodeListView({
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs font-mono">
-            <span className="text-green-500">{onlineCount} {t('status.on')}</span>
+            <span className="text-success"><span className="font-metric">{onlineCount}</span> {t('status.on')}</span>
             <span className="text-muted-foreground/50">|</span>
-            <span className="text-red-500">{nodes.length - onlineCount} {t('status.off')}</span>
+            <span className="text-destructive"><span className="font-metric">{nodes.length - onlineCount}</span> {t('status.off')}</span>
           </div>
         </div>
       </div>
@@ -324,7 +342,7 @@ function NodeListView({
             )}>
               <Activity className="h-3 w-3" />
               {sortByActive && (
-                <span className="absolute -top-0.5 -right-0.5 w-1 h-1 rounded-full bg-primary animate-pulse" />
+                <span className="absolute -top-0.5 -right-0.5 w-1 h-1 rounded-full bg-primary motion-safe:animate-pulse" />
               )}
             </div>
             <span className={cn(
@@ -370,7 +388,10 @@ function NodeListView({
         </div>
         {searchQuery && (
           <div className="text-xxs font-mono text-muted-foreground/50 mt-1 px-1">
-            {sortedAndFiltered.length} / {nodes.length} {t('filter.matched')}
+            <span className="font-metric">{sortedAndFiltered.length}</span>
+            {' / '}
+            <span className="font-metric">{nodes.length}</span>
+            {' '}{t('filter.matched')}
           </div>
         )}
       </div>
@@ -391,22 +412,22 @@ function NodeListView({
                 style={{ animationDelay: `${i * 80}ms` }}
               >
                 <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-muted/30 animate-pulse" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-muted/30 motion-safe:animate-pulse" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-2">
-                      <div className="h-4 rounded bg-muted/25 animate-pulse" style={{ width: `${40 + Math.random() * 35}%` }} />
-                      <div className="h-3 rounded bg-muted/15 animate-pulse" style={{ width: `${15 + Math.random() * 20}%` }} />
+                      <div className="h-4 rounded bg-muted/25 motion-safe:animate-pulse" style={{ width: `${40 + Math.random() * 35}%` }} />
+                      <div className="h-3 rounded bg-muted/15 motion-safe:animate-pulse" style={{ width: `${15 + Math.random() * 20}%` }} />
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 mt-1.5 ml-3.5">
-                  <div className="h-4 w-12 rounded-sm bg-primary/8 animate-pulse" />
-                  <div className="h-4 w-10 rounded-sm bg-muted/15 animate-pulse" />
+                  <div className="h-4 w-12 rounded-sm bg-primary/8 motion-safe:animate-pulse" />
+                  <div className="h-4 w-10 rounded-sm bg-muted/15 motion-safe:animate-pulse" />
                 </div>
                 <div className="flex items-center gap-2.5 mt-1.5 ml-3.5">
-                  <div className="h-3 w-14 rounded bg-muted/15 animate-pulse" />
+                  <div className="h-3 w-14 rounded bg-muted/15 motion-safe:animate-pulse" />
                   <div className="h-3 w-px bg-border/30" />
-                  <div className="h-3 w-14 rounded bg-muted/15 animate-pulse" />
+                  <div className="h-3 w-14 rounded bg-muted/15 motion-safe:animate-pulse" />
                 </div>
                 {/* Scanning line */}
                 <div className="absolute inset-x-0 pointer-events-none overflow-hidden" style={{ top: 0, bottom: 0 }}>
@@ -460,27 +481,34 @@ function NodeListView({
       <AnimatePresence>
         {showMoreIndicator && (
           <motion.div 
-            initial={{ opacity: 0, y: 10 }}
+            initial={reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
+            exit={reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+            transition={{ duration: reduceMotion ? 0 : 0.2 }}
             className="absolute bottom-0 left-0 right-0 h-8 flex items-center justify-center pointer-events-none bg-gradient-to-t from-background/80 via-background/40 to-transparent z-20"
           >
             <div className="flex gap-1.5">
-              {[1, 2, 3].map(i => (
-                <motion.div 
-                  key={i} 
-                  animate={{ 
-                    opacity: [0.2, 0.8, 0.2],
-                    scale: [1, 1.2, 1]
-                  }}
-                  transition={{ 
-                    duration: 1.5, 
-                    repeat: Infinity, 
-                    delay: i * 0.2 
-                  }}
-                  className="w-1 h-1 rounded-full bg-primary"
-                />
-              ))}
+              {reduceMotion ? (
+                [1, 2, 3].map(i => (
+                  <div key={i} className="h-1 w-1 rounded-full bg-primary/70" />
+                ))
+              ) : (
+                [1, 2, 3].map(i => (
+                  <motion.div 
+                    key={i} 
+                    animate={{ 
+                      opacity: [0.2, 0.8, 0.2],
+                      scale: [1, 1.2, 1]
+                    }}
+                    transition={{ 
+                      duration: 1.5, 
+                      repeat: Infinity, 
+                      delay: i * 0.2 
+                    }}
+                    className="w-1 h-1 rounded-full bg-primary"
+                  />
+                ))
+              )}
             </div>
           </motion.div>
         )}
@@ -528,7 +556,7 @@ function NodeDetailView({
           <div className="flex items-center gap-1.5">
             <span className={cn(
               'w-1.5 h-1.5 rounded-full',
-              isOnline ? 'bg-green-500' : 'bg-red-500'
+              isOnline ? 'bg-success' : 'bg-destructive'
             )} />
             {isOnline && stats?.updated_at ? (
               <Tooltip>
@@ -562,8 +590,8 @@ function NodeDetailView({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className={cn(
-                        'text-xs font-mono cursor-default',
-                        expiryStatus === 'expired' ? 'text-red-500' : expiryStatus === 'warning' ? 'text-yellow-500' : 'text-muted-foreground/60',
+                        'text-xs font-metric cursor-default',
+                        expiryStatus === 'expired' ? 'text-destructive' : expiryStatus === 'warning' ? 'text-warning' : 'text-muted-foreground/60',
                       )}>
                         {formatExpiry(node.expired_at)}
                       </span>
@@ -613,16 +641,16 @@ function NodeDetailView({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+      <div className="flex-1 overflow-y-auto p-3 space-y-4">
         {!isOnline ? (
-          <div className="flex items-center justify-center h-24 text-muted-foreground text-xs font-mono">
+          <div className="flex items-center justify-center h-24 text-muted-foreground text-xs leading-relaxed px-2 text-center">
             {t('telemetry.nodeOfflineShort')}
           </div>
         ) : stats ? (
           <>
             {/* System Info Panel */}
-            <div className="space-y-1.5 p-2.5 rounded-md bg-muted/20 border border-border/30">
-              <div className="flex items-center gap-1.5 mb-2">
+            <div className="flex flex-col gap-2 p-2.5 rounded-md bg-muted/20 border border-border/30">
+              <div className="flex items-center gap-1.5">
                 <Server className="h-3 w-3 text-primary" />
                 <span className="text-xs font-display font-bold text-muted-foreground uppercase">{t('info.system')}</span>
               </div>
@@ -670,9 +698,9 @@ function NodeDetailView({
                     <Cpu className="h-3.5 w-3.5 text-primary" />
                     <span className="text-xs font-mono font-bold">{t('label.cpu')}</span>
                   </div>
-                  <span className={cn('text-xs font-mono font-bold', {
-                    'text-red-500': cpuStatus === 'critical',
-                    'text-yellow-500': cpuStatus === 'warning',
+                  <span className={cn('text-xs font-metric font-bold', {
+                    'text-destructive': cpuStatus === 'critical',
+                    'text-warning': cpuStatus === 'warning',
                   })}>
                     {cpuUsage.toFixed(1)}%
                   </span>
@@ -686,13 +714,13 @@ function NodeDetailView({
                   <div className="flex items-center gap-1.5">
                     <MemoryStick className="h-3.5 w-3.5 text-primary" />
                     <span className="text-xs font-mono font-bold">{t('label.ram')}</span>
-                    <span className="text-xs text-muted-foreground font-mono">
+                    <span className="text-xs text-muted-foreground font-metric">
                       {prettyBytes(stats.ram.used)}/{prettyBytes(stats.ram.total)}
                     </span>
                   </div>
-                  <span className={cn('text-xs font-mono font-bold', {
-                    'text-red-500': ramStatus === 'critical',
-                    'text-yellow-500': ramStatus === 'warning',
+                  <span className={cn('text-xs font-metric font-bold', {
+                    'text-destructive': ramStatus === 'critical',
+                    'text-warning': ramStatus === 'warning',
                   })}>
                     {ramUsage.toFixed(1)}%
                   </span>
@@ -707,11 +735,11 @@ function NodeDetailView({
                     <div className="flex items-center gap-1.5">
                       <Layers className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="text-xs font-mono font-bold">{t('label.swap')}</span>
-                    <span className="text-xs text-muted-foreground font-mono">
+                    <span className="text-xs text-muted-foreground font-metric">
                         {prettyBytes(stats.swap.used)}/{prettyBytes(stats.swap.total)}
                     </span>
                     </div>
-                    <span className="text-xs font-mono font-bold">
+                    <span className="text-xs font-metric font-bold">
                       {swapUsage.toFixed(1)}%
                     </span>
                   </div>
@@ -725,13 +753,13 @@ function NodeDetailView({
                   <div className="flex items-center gap-1.5">
                     <HardDrive className="h-3.5 w-3.5 text-primary" />
                     <span className="text-xs font-mono font-bold">{t('label.disk')}</span>
-                    <span className="text-xs text-muted-foreground font-mono">
+                    <span className="text-xs text-muted-foreground font-metric">
                       {prettyBytes(stats.disk.used)}/{prettyBytes(stats.disk.total)}
                     </span>
                   </div>
-                  <span className={cn('text-xs font-mono font-bold', {
-                    'text-red-500': diskStatus === 'critical',
-                    'text-yellow-500': diskStatus === 'warning',
+                  <span className={cn('text-xs font-metric font-bold', {
+                    'text-destructive': diskStatus === 'critical',
+                    'text-warning': diskStatus === 'warning',
                   })}>
                     {diskUsage.toFixed(1)}%
                   </span>
@@ -749,15 +777,15 @@ function NodeDetailView({
               <div className="grid grid-cols-3 gap-1.5">
                 <div className="text-center">
                   <div className="text-xs font-mono text-muted-foreground">{t('label.load1m')}</div>
-                  <div className="text-sm font-mono font-bold">{stats.load.load1.toFixed(2)}</div>
+                  <div className="text-sm font-metric font-bold">{stats.load.load1.toFixed(2)}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-xs font-mono text-muted-foreground">{t('label.load5m')}</div>
-                  <div className="text-sm font-mono font-bold">{stats.load.load5.toFixed(2)}</div>
+                  <div className="text-sm font-metric font-bold">{stats.load.load5.toFixed(2)}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-xs font-mono text-muted-foreground">{t('label.load15m')}</div>
-                  <div className="text-sm font-mono font-bold">{stats.load.load15.toFixed(2)}</div>
+                  <div className="text-sm font-metric font-bold">{stats.load.load15.toFixed(2)}</div>
                 </div>
               </div>
             </div>
@@ -771,21 +799,21 @@ function NodeDetailView({
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <div className="text-xs font-mono text-muted-foreground">{t('label.upload')}</div>
-                  <div className="text-sm font-mono font-bold">{formatSpeed(stats.network.up)}</div>
+                  <div className="text-sm font-metric font-bold">{formatSpeed(stats.network.up)}</div>
                 </div>
                 <div className="text-right">
                   <div className="text-xs font-mono text-muted-foreground">{t('label.download')}</div>
-                  <div className="text-sm font-mono font-bold">{formatSpeed(stats.network.down)}</div>
+                  <div className="text-sm font-metric font-bold">{formatSpeed(stats.network.down)}</div>
                 </div>
                 <div>
                   <div className="text-xs font-mono text-muted-foreground">{t('label.totalUp')}</div>
-                  <div className="text-sm font-mono font-bold">
+                  <div className="text-sm font-metric font-bold">
                     {stats.network.totalUp ? formatBytes(stats.network.totalUp) : t('label.na')}
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="text-xs font-mono text-muted-foreground">{t('label.totalDown')}</div>
-                  <div className="text-sm font-mono font-bold">
+                  <div className="text-sm font-metric font-bold">
                     {stats.network.totalDown ? formatBytes(stats.network.totalDown) : t('label.na')}
                   </div>
                 </div>
@@ -793,11 +821,11 @@ function NodeDetailView({
                   <>
                     <div>
                       <div className="text-xs font-mono text-muted-foreground">{t('label.tcp')}</div>
-                      <div className="text-sm font-mono font-bold">{stats.connections.tcp}</div>
+                      <div className="text-sm font-metric font-bold">{stats.connections.tcp}</div>
                     </div>
                     <div className="text-right">
                       <div className="text-xs font-mono text-muted-foreground">{t('label.udp')}</div>
-                      <div className="text-sm font-mono font-bold">{stats.connections.udp}</div>
+                      <div className="text-sm font-metric font-bold">{stats.connections.udp}</div>
                     </div>
                   </>
                 )}
@@ -809,12 +837,12 @@ function NodeDetailView({
               {isLoggedIn && (
                 <div className="p-2 rounded-md bg-muted/20 border border-border/30 text-center">
                   <div className="text-xs font-mono text-muted-foreground">{t('label.proc')}</div>
-                  <div className="text-sm font-mono font-bold">{stats.process}</div>
+                  <div className="text-sm font-metric font-bold">{stats.process}</div>
                 </div>
               )}
               <div className="p-2 rounded-md bg-muted/20 border border-border/30 text-center">
                 <div className="text-xs font-mono text-muted-foreground">{t('label.uptime')}</div>
-                <div className="text-sm font-mono font-bold">{formatUptime(stats.uptime)}</div>
+                <div className="text-sm font-metric font-bold">{formatUptime(stats.uptime)}</div>
               </div>
             </div>
 
@@ -824,11 +852,11 @@ function NodeDetailView({
                 <div className="flex items-center justify-between text-xs font-mono">
                   <span className="text-muted-foreground">{t('label.traffic')} ({formatTrafficType(node.traffic_limit_type as TrafficLimitType)})</span>
                   <span className={cn(
-                    'font-bold',
+                    'font-metric font-bold',
                     (() => {
                       const used = calcTrafficUsage(stats.network.totalUp, stats.network.totalDown, node.traffic_limit_type as TrafficLimitType);
                       const pct = (used / node.traffic_limit!) * 100;
-                      return pct >= 90 ? 'text-red-500' : pct >= 70 ? 'text-yellow-500' : '';
+                      return pct >= 90 ? 'text-destructive' : pct >= 70 ? 'text-warning' : '';
                     })()
                   )}>
                     {formatBytes(calcTrafficUsage(stats.network.totalUp, stats.network.totalDown, node.traffic_limit_type as TrafficLimitType))} / {formatBytes(node.traffic_limit)}
@@ -839,7 +867,7 @@ function NodeDetailView({
                   className="h-1.5"
                   indicatorClassName={(() => {
                     const pct = (calcTrafficUsage(stats.network.totalUp, stats.network.totalDown, node.traffic_limit_type as TrafficLimitType) / node.traffic_limit) * 100;
-                    return pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-yellow-500' : '';
+                    return pct >= 90 ? 'bg-destructive' : pct >= 70 ? 'bg-warning' : '';
                   })()}
                 />
               </div>
@@ -847,7 +875,7 @@ function NodeDetailView({
 
             {/* Remark */}
             {node.public_remark && (
-              <div className="text-xs font-mono text-muted-foreground/60 px-2.5 border-l-2 border-primary/20">
+              <div className="text-xs text-muted-foreground/60 px-2.5 border-l-2 border-primary/20 leading-relaxed">
                 {node.public_remark}
               </div>
             )}
@@ -881,6 +909,7 @@ function NodeDetailView({
 }
 
 export function Sidebar({ nodes, loading, selectedNodeId, onSelectNode, onViewCharts, className }: SidebarProps) {
+  const reduceMotion = useReducedMotion();
   const [view, setView] = useState<'list' | 'detail'>('list');
 
   const selectedNode = useMemo(
@@ -916,10 +945,10 @@ export function Sidebar({ nodes, loading, selectedNodeId, onSelectNode, onViewCh
         {view === 'list' ? (
           <motion.div
             key="list"
-            initial={{ x: -20, opacity: 0 }}
+            initial={reduceMotion ? { x: 0, opacity: 1 } : { x: -20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -20, opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            exit={reduceMotion ? { x: 0, opacity: 1 } : { x: -20, opacity: 0 }}
+            transition={{ duration: reduceMotion ? 0 : 0.2 }}
             className="flex-1 overflow-hidden flex flex-col"
           >
             <NodeListView
@@ -932,10 +961,10 @@ export function Sidebar({ nodes, loading, selectedNodeId, onSelectNode, onViewCh
         ) : (
           <motion.div
             key="detail"
-            initial={{ x: 20, opacity: 0 }}
+            initial={reduceMotion ? { x: 0, opacity: 1 } : { x: 20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 20, opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            exit={reduceMotion ? { x: 0, opacity: 1 } : { x: 20, opacity: 0 }}
+            transition={{ duration: reduceMotion ? 0 : 0.2 }}
             className="flex-1 overflow-hidden flex flex-col"
           >
             {selectedNode ? (

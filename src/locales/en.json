@@ -34,7 +34,7 @@
     "load1m": "1 min",
     "load5m": "5 min",
     "load15m": "15 min",
-    "lastReport": "Last report",
+    "lastReport": "Last updated",
     "upload": "↑ UPLOAD",
     "download": "↓ DOWNLOAD",
     "totalUp": "TOTAL ↑",
@@ -59,6 +59,7 @@
     "notSet": "Not Set"
   },
   "action": {
+    "home": "Go to dashboard",
     "back": "BACK",
     "admin": "ADMIN",
     "clear": "CLEAR",
@@ -71,7 +72,8 @@
     "globe": "GLOBE",
     "grid": "GRID",
     "table": "TABLE",
-    "uptime": "UPTIME"
+    "uptime": "UPTIME",
+    "switchTo": "Switch to {{mode}} view"
   },
   "filter": {
     "all": "ALL",
@@ -79,23 +81,23 @@
     "tag": "TAG",
     "status": "STATUS",
     "matched": "matched",
-    "sortByActivity": "Sort by Activity"
+    "sortByActivity": "Sort by network traffic"
   },
   "placeholder": {
-    "searchNodes": "search nodes...",
-    "filterNodes": "filter nodes..."
+    "searchNodes": "Search by name, group, tag, or region",
+    "filterNodes": "Filter list…"
   },
   "node": {
     "hidden": "HIDDEN",
     "noNodesAvailable": "NO NODES AVAILABLE",
-    "addFromAdmin": "Add nodes from admin panel"
+    "addFromAdmin": "Add servers in the Komari admin panel."
   },
   "telemetry": {
     "acquiring": "ACQUIRING SIGNAL...",
-    "waiting": "WAITING FOR TELEMETRY...",
-    "nodeOffline": "NODE OFFLINE — NO TELEMETRY DATA",
-    "nodeOfflineShort": "NODE OFFLINE — NO TELEMETRY",
-    "noData": "NO TELEMETRY DATA"
+    "waiting": "Waiting for live metrics…",
+    "nodeOffline": "NODE OFFLINE — NO LIVE METRICS",
+    "nodeOfflineShort": "NODE OFFLINE — NO DATA",
+    "noData": "NO METRICS YET"
   },
   "chart": {
     "cpuUsage": "CPU USAGE",
@@ -118,7 +120,7 @@
     "noPingData": "NO PING DATA",
     "noData": "NO DATA",
     "nodeMonitor": "NODE MONITOR",
-    "ewmaTooltip": "EWMA Smoothing: When enabled, curves are processed with Exponential Weighted Moving Average, showing smoothed trend lines instead of raw data points.",
+    "ewmaTooltip": "Smooths the ping line with a moving average. Turn off to see raw samples.",
     "timeRange": "TIME RANGE",
     "latencyOverview": "LATENCY OVERVIEW",
     "taskName": "Task",
@@ -134,7 +136,7 @@
     "checkInterval": "Interval",
     "checkType": "Type",
     "sampleCount": "Samples",
-    "lossDisclaimer": "Packet loss calculation is not precise — use as reference only. Jitter: trailing latency fluctuation, higher means more volatile. Formula: (P99 - P50) / max(min(P50, 50), 10)."
+    "lossDisclaimer": "Packet loss is approximate—use as a guide only. Jitter measures latency swing (higher = less stable). Formula: (P99 − P50) ÷ max(min(P50, 50), 10)."
   },
   "theme": {
     "lumina": "LUMINA",
@@ -145,10 +147,10 @@
     "title": "THEME"
   },
   "privacy": {
-    "label": "Privacy Mode",
-    "on": "Privacy mode is on — node names are masked",
-    "off": "Privacy mode is off",
-    "toggle": "Toggle privacy mode"
+    "label": "Privacy mode",
+    "on": "On — node names are hidden",
+    "off": "Off — names visible",
+    "toggle": "Hide or show node names on screen"
   },
   "ws": {
     "connecting": "CONNECTING",
@@ -178,7 +180,7 @@
     "monitor": "UPTIME MONITOR",
     "loading": "LOADING UPTIME DATA...",
     "allSystemsOperational": "ALL SYSTEMS OPERATIONAL",
-    "averageDesc": "Average uptime {{value}} over the past {{period}}",
+    "averageDesc": "Average uptime {{value}} for the selected period ({{period}})",
     "degradedPerformance": "DEGRADED PERFORMANCE",
     "noDataAvailable": "NO UPTIME DATA AVAILABLE"
   },
@@ -190,14 +192,17 @@
     "name": "Komari Monitor"
   },
   "lang": {
-    "title": "LANGUAGE"
+    "title": "LANGUAGE",
+    "select": "Select language"
   },
   "hud": {
     "labMonitor": "Lab Monitor",
     "orbitalMonitoring": "Orbital Monitoring",
     "globalTelemetry": "Global Telemetry",
-    "activeThreats": "Active Threats Identified",
+    "activeThreats": "High-load nodes",
     "criticalLoad": "CRITICAL LOAD",
+    "criticalLoadBanner": "High CPU or memory on one or more nodes",
+    "criticalLoadShort": "High load",
     "noSignal": "NO SIGNAL",
     "tableMode": "Table View Mode :: Data Stream Alpha-4",
     "parityOk": "PARITY: OK",

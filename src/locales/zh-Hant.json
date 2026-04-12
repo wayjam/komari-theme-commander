@@ -34,7 +34,7 @@
     "load1m": "1 分鐘",
     "load5m": "5 分鐘",
     "load15m": "15 分鐘",
-    "lastReport": "上次上報",
+    "lastReport": "上次更新",
     "upload": "↑ 上傳",
     "download": "↓ 下載",
     "totalUp": "總上傳 ↑",
@@ -59,6 +59,7 @@
     "notSet": "未設定"
   },
   "action": {
+    "home": "返回儀表板",
     "back": "返回",
     "admin": "管理",
     "clear": "清除",
@@ -71,7 +72,8 @@
     "globe": "地球",
     "grid": "卡片",
     "table": "表格",
-    "uptime": "可用性"
+    "uptime": "可用性",
+    "switchTo": "切換到{{mode}}檢視"
   },
   "filter": {
     "all": "全部",
@@ -79,23 +81,23 @@
     "tag": "標籤",
     "status": "狀態",
     "matched": "匹配",
-    "sortByActivity": "按活躍度排序"
+    "sortByActivity": "依網路流量排序"
   },
   "placeholder": {
-    "searchNodes": "搜尋節點...",
-    "filterNodes": "篩選節點..."
+    "searchNodes": "依名稱、群組、標籤或區域搜尋",
+    "filterNodes": "篩選列表…"
   },
   "node": {
     "hidden": "隱藏",
     "noNodesAvailable": "暫無節點",
-    "addFromAdmin": "從管理面板新增節點"
+    "addFromAdmin": "請在 Komari 管理後台新增伺服器。"
   },
   "telemetry": {
     "acquiring": "訊號擷取中...",
-    "waiting": "等待遙測資料...",
-    "nodeOffline": "節點離線 — 無遙測資料",
-    "nodeOfflineShort": "節點離線 — 無遙測",
-    "noData": "無遙測資料"
+    "waiting": "正在等待即時指標…",
+    "nodeOffline": "節點離線 — 暫無即時資料",
+    "nodeOfflineShort": "節點離線 — 無資料",
+    "noData": "暫無指標資料"
   },
   "chart": {
     "cpuUsage": "CPU 使用率",
@@ -118,7 +120,7 @@
     "noPingData": "無 Ping 資料",
     "noData": "無資料",
     "nodeMonitor": "節點監控",
-    "ewmaTooltip": "EWMA 平滑：開啟後曲線經過指數加權移動平均處理，展示的是平滑趨勢線而非原始資料點。",
+    "ewmaTooltip": "對 Ping 曲線做移動平均平滑。關閉可檢視原始採樣點。",
     "timeRange": "時間範圍",
     "latencyOverview": "延遲概覽",
     "taskName": "任務",
@@ -134,7 +136,7 @@
     "checkInterval": "檢測間隔",
     "checkType": "類型",
     "sampleCount": "樣本數量",
-    "lossDisclaimer": "丟包率計算演算法並不準確，謹慎參考。波動：延遲的拖尾波動，數值越高波動越大，計算方法：(P99 - P50) / max(min(P50, 50), 10)。"
+    "lossDisclaimer": "丟包率為估算值，僅供參考。波動表示延遲起伏（數值越大越不穩定）。公式：(P99 − P50) ÷ max(min(P50, 50), 10)。"
   },
   "theme": {
     "lumina": "光明",
@@ -146,9 +148,9 @@
   },
   "privacy": {
     "label": "隱私模式",
-    "on": "隱私模式已開啟 — 節點名稱已隱藏",
-    "off": "隱私模式已關閉",
-    "toggle": "切換隱私模式"
+    "on": "已開啟 — 節點名稱已隱藏",
+    "off": "已關閉 — 名稱正常顯示",
+    "toggle": "隱藏或顯示畫面上的節點名稱"
   },
   "ws": {
     "connecting": "連線中",
@@ -178,7 +180,7 @@
     "monitor": "可用性監控",
     "loading": "載入可用性資料...",
     "allSystemsOperational": "所有系統運行正常",
-    "averageDesc": "過去 {{period}} 平均可用性 {{value}}",
+    "averageDesc": "所選範圍（{{period}}）平均可用性 {{value}}",
     "degradedPerformance": "效能下降",
     "noDataAvailable": "無可用性資料"
   },
@@ -190,14 +192,17 @@
     "name": "Komari 監控"
   },
   "lang": {
-    "title": "語言"
+    "title": "語言",
+    "select": "選擇語言"
   },
   "hud": {
     "labMonitor": "實驗室監控",
     "orbitalMonitoring": "軌道監控",
     "globalTelemetry": "全球遙測",
-    "activeThreats": "發現活躍威脅",
+    "activeThreats": "高負載節點",
     "criticalLoad": "負載嚴重",
+    "criticalLoadBanner": "一個或多個節點 CPU 或記憶體占用過高",
+    "criticalLoadShort": "高負載",
     "noSignal": "無訊號",
     "tableMode": "表格模式 :: 資料流 Alpha-4",
     "parityOk": "校驗：正常",

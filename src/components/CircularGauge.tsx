@@ -27,16 +27,16 @@ export function CircularGauge({
 
   const strokeColor =
     status === 'critical'
-      ? 'stroke-red-500'
+      ? 'stroke-destructive'
       : status === 'warning'
-        ? 'stroke-yellow-500'
+        ? 'stroke-warning'
         : 'stroke-primary';
 
   const textColor =
     status === 'critical'
-      ? 'text-red-500'
+      ? 'text-destructive'
       : status === 'warning'
-        ? 'text-yellow-500'
+        ? 'text-warning'
         : 'text-primary';
 
   const glowColor =
@@ -76,7 +76,7 @@ export function CircularGauge({
             cy={size / 2}
             r={radius}
             fill="none"
-            className={cn(strokeColor, 'transition-all duration-700 ease-out')}
+            className={cn(strokeColor, 'transition-[stroke-dashoffset] duration-700 ease-out')}
             strokeWidth={strokeWidth}
             strokeLinecap="round"
             strokeDasharray={circumference}
@@ -85,19 +85,19 @@ export function CircularGauge({
         </svg>
         {/* Center text */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className={cn('text-lg font-mono font-bold tabular-nums leading-none', textColor)}>
+          <span className={cn('text-lg font-metric font-bold leading-none', textColor)}>
             {clampedValue.toFixed(1)}
           </span>
-          <span className={cn('text-xxs font-mono tabular-nums', textColor)}>%</span>
+          <span className={cn('text-xxs font-metric', textColor)}>%</span>
         </div>
       </div>
       {detail && (
-        <div className="text-xs font-mono text-muted-foreground text-center leading-tight">
+        <div className="text-xs font-metric text-muted-foreground text-center leading-tight">
           {detail}
         </div>
       )}
       {subDetail && (
-        <div className="text-xxs font-mono text-muted-foreground/60 text-center leading-tight">
+        <div className="text-xxs font-metric text-muted-foreground/60 text-center leading-tight">
           {subDetail}
         </div>
       )}

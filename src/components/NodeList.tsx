@@ -27,36 +27,60 @@ function FilterDropdown({
   options: { value: string; label: string }[];
   onChange: (v: string) => void;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const current = options.find(o => o.value === value);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+
+  const currentLabel = current?.label ?? t('filter.all');
 
   return (
     <div className="relative">
       <button
+        type="button"
         onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-label={`${label}: ${currentLabel}`}
         className={cn(
           'flex items-center gap-1.5 h-7 px-2.5 rounded text-xs font-mono transition-colors cursor-pointer',
           'border border-border/40 hover:border-primary/40 hover:text-primary',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
           value !== 'all'
             ? 'bg-primary/10 border-primary/30 text-primary'
             : 'bg-muted/30 text-muted-foreground'
         )}
       >
         <span className="text-muted-foreground/60">{label}:</span>
-        <span className="font-bold">{current?.label || 'ALL'}</span>
-        <ChevronDown className="h-3 w-3 opacity-50" />
+        <span className="font-bold">{currentLabel}</span>
+        <ChevronDown className="h-3 w-3 opacity-50 shrink-0" aria-hidden />
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute top-full left-0 mt-1 z-50 min-w-[140px] py-1 rounded-md border border-border/50 bg-popover backdrop-blur-none shadow-lg commander-dropdown">
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
+          <div
+            role="listbox"
+            className="absolute top-full left-0 mt-1 z-50 min-w-[140px] py-1 rounded-md border border-border/50 bg-popover backdrop-blur-none shadow-lg commander-dropdown"
+          >
             {options.map(opt => (
               <button
                 key={opt.value}
+                type="button"
+                role="option"
+                aria-selected={value === opt.value}
                 onClick={() => { onChange(opt.value); setOpen(false); }}
                 className={cn(
                   'w-full px-3 py-1.5 text-left text-xs font-mono transition-colors cursor-pointer',
                   'hover:bg-primary/10 hover:text-primary',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset',
                   value === opt.value && 'text-primary bg-primary/5 font-bold'
                 )}
               >
@@ -130,7 +154,7 @@ function VirtualGrid({ nodes, onViewCharts }: { nodes: NodeWithStatus[]; onViewC
               style={{ transform: `translateY(${virtualRow.start - (virtualizer.options.scrollMargin ?? 0)}px)` }}
             >
               <div
-                className="grid gap-4 pb-4"
+                className="grid gap-4 sm:gap-5 pb-4 sm:pb-5"
                 style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
               >
                 {rowNodes.map(node => (
@@ -217,17 +241,14 @@ export function NodeList({ nodes = [], loading = false, onRefresh, onViewCharts,
 
   if (loading) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-4 sm:space-y-5">
         {/* Skeleton command bar */}
         <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl overflow-hidden commander-corners relative">
           <span className="corner-bottom" />
-          <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/30 bg-muted/15 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-primary/30 to-transparent animate-pulse" />
-            <div className="flex items-center gap-3 text-xs font-mono">
-              <span className="text-muted-foreground/60">$</span>
-              <span className="font-display font-bold text-xs tracking-wider">{t('fleet.title')}</span>
-              <span className="text-muted-foreground/50">|</span>
-              <div className="h-3 w-12 rounded bg-muted/30 animate-pulse" />
+          <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/30 bg-muted/15">
+            <div className="flex items-center gap-2 text-xs font-mono min-w-0">
+              <span className="font-display font-bold text-xs tracking-wider shrink-0">{t('fleet.title')}</span>
+              <div className="h-3 w-24 rounded bg-muted/30 motion-safe:animate-pulse" />
             </div>
           </div>
         </div>
@@ -243,8 +264,8 @@ export function NodeList({ nodes = [], loading = false, onRefresh, onViewCharts,
               >
                 {/* Skeleton header */}
                 <div className="flex items-center gap-2.5 px-3 py-2 border-b border-border/30 bg-muted/10">
-                  <div className="w-2 h-2 rounded-full bg-muted/40 animate-pulse" />
-                  <div className="h-3.5 rounded bg-muted/25 animate-pulse" style={{ width: `${50 + Math.random() * 30}%` }} />
+                  <div className="w-2 h-2 rounded-full bg-muted/40 motion-safe:animate-pulse" />
+                  <div className="h-3.5 rounded bg-muted/25 motion-safe:animate-pulse" style={{ width: `${50 + Math.random() * 30}%` }} />
                 </div>
                 {/* Skeleton content */}
                 <div className="px-3 py-3 space-y-2.5">
@@ -252,12 +273,12 @@ export function NodeList({ nodes = [], loading = false, onRefresh, onViewCharts,
                   {[0.7, 0.5, 0.6].map((w, j) => (
                     <div key={j} className="space-y-1">
                       <div className="flex justify-between">
-                        <div className="h-2.5 w-8 rounded bg-muted/20 animate-pulse" />
-                        <div className="h-2.5 w-10 rounded bg-muted/20 animate-pulse" />
+                        <div className="h-2.5 w-8 rounded bg-muted/20 motion-safe:animate-pulse" />
+                        <div className="h-2.5 w-10 rounded bg-muted/20 motion-safe:animate-pulse" />
                       </div>
                       <div className="h-1.5 rounded-full bg-muted/15 overflow-hidden">
                         <div
-                          className="h-full rounded-full bg-primary/15 animate-pulse hud-skeleton-bar"
+                          className="h-full rounded-full bg-primary/15 motion-safe:animate-pulse hud-skeleton-bar"
                           style={{ width: `${w * 100}%`, animationDelay: `${(i * 3 + j) * 150}ms` }}
                         />
                       </div>
@@ -267,15 +288,11 @@ export function NodeList({ nodes = [], loading = false, onRefresh, onViewCharts,
                   <div className="grid grid-cols-4 gap-1 pt-1">
                     {[0, 1, 2, 3].map(j => (
                       <div key={j} className="text-center p-1.5 rounded bg-muted/10 border border-border/15">
-                        <div className="h-2 w-6 mx-auto rounded bg-muted/20 animate-pulse mb-1" />
-                        <div className="h-3 w-10 mx-auto rounded bg-muted/15 animate-pulse" />
+                        <div className="h-2 w-6 mx-auto rounded bg-muted/20 motion-safe:animate-pulse mb-1" />
+                        <div className="h-3 w-10 mx-auto rounded bg-muted/15 motion-safe:animate-pulse" />
                       </div>
                     ))}
                   </div>
-                </div>
-                {/* Scanning overlay */}
-                <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                  <div className="hud-skeleton-scan absolute w-full h-8 bg-gradient-to-b from-transparent via-primary/[0.04] to-transparent" />
                 </div>
               </div>
             ))}
@@ -293,30 +310,26 @@ export function NodeList({ nodes = [], loading = false, onRefresh, onViewCharts,
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4 sm:space-y-5">
       {/* Terminal-style command bar */}
       <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl overflow-visible commander-corners relative z-40">
         <span className="corner-bottom" />
         {/* Top status line */}
-        <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/30 bg-muted/15 relative overflow-hidden">
-          {/* Subtle animated light bar */}
-          <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-primary/30 to-transparent animate-pulse" />
-          
-          <div className="flex items-center gap-3 text-xs font-mono">
-            <span className="text-muted-foreground/60">$</span>
-            <span className="font-display font-bold text-xs tracking-wider">{t('fleet.title')}</span>
-            <span className="text-muted-foreground/50">|</span>
-            <span className="text-green-500">{onlineCount}</span>
-            <span className="text-muted-foreground/40">/</span>
-            <span className="text-red-500">{nodes.length - onlineCount}</span>
-            <span className="text-muted-foreground/50">|</span>
-            <span className="text-muted-foreground">
+        <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/30 bg-muted/15 gap-2">
+          <div className="flex items-center gap-2 text-xs font-mono min-w-0 flex-wrap">
+            <span className="font-display font-bold text-xs tracking-wider shrink-0">{t('fleet.title')}</span>
+            <span className="text-muted-foreground/40 shrink-0" aria-hidden>·</span>
+            <span className="text-success font-metric">{onlineCount}</span>
+            <span className="text-muted-foreground/50">/</span>
+            <span className="text-destructive font-metric">{nodes.length - onlineCount}</span>
+            <span className="text-muted-foreground/40 shrink-0" aria-hidden>·</span>
+            <span className="text-muted-foreground truncate">
               {sortedNodes.length === nodes.length
                 ? `${nodes.length} ${t('label.nodes')}`
                 : `${sortedNodes.length}/${nodes.length} ${t('filter.matched')}`}
             </span>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 shrink-0">
             {hasFilters && (
               <button
                 onClick={() => { setGroupFilter('all'); setTagFilter('all'); setStatusFilter('all'); setSearchQuery(''); }}
@@ -329,16 +342,15 @@ export function NodeList({ nodes = [], loading = false, onRefresh, onViewCharts,
               <button
                 onClick={handleRefresh}
                 className={cn(
-                  'fleet-refresh-btn group relative flex items-center gap-1.5 h-6 px-2 rounded text-xs font-mono border transition-all duration-200 cursor-pointer overflow-hidden',
+                  'fleet-refresh-btn flex items-center gap-1.5 h-6 px-2 rounded text-xs font-mono border transition-colors duration-200 cursor-pointer',
                   isRefreshing
                     ? 'border-primary/40 text-primary bg-primary/10'
                     : 'border-border/30 text-muted-foreground/70 hover:border-primary/50 hover:text-primary hover:bg-primary/5'
                 )}
                 title={t('action.refresh')}
               >
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5" />
-                <RefreshCw className={cn('h-3 w-3 relative z-10 transition-transform', isRefreshing && 'animate-spin')} />
-                <span className="relative z-10 uppercase tracking-wider text-xxs font-bold hidden sm:inline">{t('action.refresh')}</span>
+                <RefreshCw className={cn('h-3 w-3 transition-transform', isRefreshing && 'motion-safe:animate-spin')} />
+                <span className="uppercase tracking-wider text-xxs font-bold hidden sm:inline">{t('action.refresh')}</span>
               </button>
             )}
           </div>
@@ -366,8 +378,6 @@ export function NodeList({ nodes = [], loading = false, onRefresh, onViewCharts,
             )}
           </div>
 
-          <span className="text-border/60 hidden sm:inline">|</span>
-
           {/* Filter dropdowns */}
           <FilterDropdown label={t('filter.group')} value={groupFilter} options={groupOptions} onChange={setGroupFilter} />
           <FilterDropdown label={t('filter.tag')} value={tagFilter} options={tagOptions} onChange={setTagFilter} />
@@ -377,14 +387,11 @@ export function NodeList({ nodes = [], loading = false, onRefresh, onViewCharts,
 
       {/* Node list content */}
       {nodes.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-64 rounded-lg border border-dashed border-border/50 bg-card/80 backdrop-blur-xl relative overflow-hidden">
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="w-32 h-32 rounded-full border border-primary/10 animate-ping" style={{ animationDuration: '3s' }} />
-          </div>
-          <div className="relative z-10 flex flex-col items-center gap-1.5">
+        <div className="flex flex-col items-center justify-center h-64 rounded-lg border border-dashed border-border/50 bg-card/80 backdrop-blur-xl px-4 text-center">
+          <div className="flex flex-col items-center gap-2 max-w-sm">
             <span className="text-sm font-display font-bold text-muted-foreground/60 uppercase tracking-widest no-signal-pulse">{t('hud.noSignal')}</span>
-            <div className="text-xs font-mono text-muted-foreground">{t('node.noNodesAvailable')}</div>
-            <div className="text-xs font-mono text-muted-foreground/60 mt-1">{t('node.addFromAdmin')}</div>
+            <div className="text-xs text-muted-foreground">{t('node.noNodesAvailable')}</div>
+            <div className="text-xs text-muted-foreground/60">{t('node.addFromAdmin')}</div>
           </div>
         </div>
       ) : defaultView === 'grid' ? (

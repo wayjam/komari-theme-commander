@@ -385,7 +385,9 @@ export class WebSocketService {
     if (rpc2Client.state === 'disconnected') {
       rpc2Client.connect().catch(() => {});
     }
-    console.log('WebSocket (RPC2) connected');
+    if (import.meta.env.DEV) {
+      console.info('[Komari] WebSocket (RPC2) connected');
+    }
     // Initial data fetch
     this.fetchLatestStatus();
   }

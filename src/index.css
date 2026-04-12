@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700;800&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -27,6 +27,9 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  /* Semantic status — use instead of raw green/red/yellow utilities */
+  --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -35,6 +38,10 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --color-chart-8: var(--chart-8);
+  --color-chart-9: var(--chart-9);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -44,6 +51,9 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --font-family-display: 'Orbitron', sans-serif;
+  /* UI body — system stack (keep Orbitron for .font-display only) */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
   /* Custom font sizes — base 16px */
   --text-xxs: 0.625rem;     /* 10px — decorative/auxiliary text only */
   --text-xxs--line-height: 0.875rem;
@@ -56,29 +66,38 @@
    ══════════════════════════════════════════════════════════════ */
 :root {
   --radius: 0.625rem;
-  --background: oklch(0.97 0.01 220);
-  --foreground: oklch(0.18 0.02 240);
-  --card: oklch(0.99 0.005 220 / 80%);
-  --card-foreground: oklch(0.18 0.02 240);
-  --popover: oklch(0.98 0.008 220);
-  --popover-foreground: oklch(0.18 0.02 240);
+  /* Slightly richer cool neutrals — ties UI to teal primary */
+  --background: oklch(0.97 0.012 218);
+  --foreground: oklch(0.18 0.022 240);
+  --card: oklch(0.99 0.008 220 / 82%);
+  --card-foreground: oklch(0.18 0.022 240);
+  --popover: oklch(0.98 0.01 220);
+  --popover-foreground: oklch(0.18 0.022 240);
   --primary: oklch(0.65 0.15 195);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.93 0.02 230);
+  --secondary: oklch(0.93 0.022 228);
   --secondary-foreground: oklch(0.25 0.02 235);
-  --muted: oklch(0.94 0.015 225);
-  --muted-foreground: oklch(0.5 0.02 230);
+  --muted: oklch(0.94 0.018 225);
+  --muted-foreground: oklch(0.48 0.022 230);
   --accent: oklch(0.7 0.18 170);
   --accent-foreground: oklch(0.2 0.02 175);
-  --destructive: oklch(0.6 0.2 25);
+  --destructive: oklch(0.58 0.19 22);
+  /* Lumina — semantic: cool-lab “instrument OK” (teal, not leaf green) */
+  --success: oklch(0.46 0.118 188);
+  --warning: oklch(0.56 0.14 72);
   --border: oklch(0.88 0.015 220 / 60%);
   --input: oklch(0.9 0.015 220);
   --ring: oklch(0.65 0.15 195);
+  /* Charts — same family as UI: teal primary, emerald accent, cool secondaries */
   --chart-1: oklch(0.65 0.15 195);
   --chart-2: oklch(0.7 0.18 170);
-  --chart-3: oklch(0.55 0.12 220);
-  --chart-4: oklch(0.75 0.14 145);
-  --chart-5: oklch(0.6 0.16 260);
+  --chart-3: oklch(0.54 0.11 248);
+  --chart-4: oklch(0.62 0.13 75);
+  --chart-5: oklch(0.58 0.19 24);
+  --chart-6: oklch(0.56 0.12 205);
+  --chart-7: oklch(0.6 0.14 200);
+  --chart-8: oklch(0.64 0.15 175);
+  --chart-9: oklch(0.57 0.13 285);
   --sidebar: oklch(0.96 0.01 220 / 85%);
   --sidebar-foreground: oklch(0.18 0.02 240);
   --sidebar-primary: oklch(0.65 0.15 195);
@@ -94,66 +113,84 @@
    DeepSpace Theme
    ══════════════════════════════════════════════════════════════ */
 [data-theme="deepspace"] {
-  --background: oklch(0.08 0.02 265);
-  --foreground: oklch(0.92 0.01 210);
-  --card: oklch(0.12 0.025 265 / 80%);
-  --card-foreground: oklch(0.92 0.01 210);
-  --popover: oklch(0.14 0.025 265);
-  --popover-foreground: oklch(0.92 0.01 210);
-  --primary: oklch(0.75 0.18 195);
-  --primary-foreground: oklch(0.08 0.02 265);
-  --secondary: oklch(0.18 0.025 275);
-  --secondary-foreground: oklch(0.85 0.01 220);
-  --muted: oklch(0.2 0.02 270);
-  --muted-foreground: oklch(0.58 0.015 220);
-  --accent: oklch(0.7 0.22 330);
-  --accent-foreground: oklch(0.95 0.01 330);
-  --destructive: oklch(0.65 0.25 15);
-  --border: oklch(0.32 0.04 270 / 60%);
-  --input: oklch(0.2 0.025 270);
-  --ring: oklch(0.75 0.18 195);
-  --chart-1: oklch(0.75 0.18 195);
-  --chart-2: oklch(0.7 0.22 330);
-  --chart-3: oklch(0.75 0.2 145);
-  --chart-4: oklch(0.8 0.18 85);
-  --chart-5: oklch(0.65 0.15 260);
-  --sidebar: oklch(0.1 0.022 265 / 90%);
-  --sidebar-foreground: oklch(0.92 0.01 210);
-  --sidebar-primary: oklch(0.75 0.18 195);
-  --sidebar-primary-foreground: oklch(0.08 0.02 265);
-  --sidebar-accent: oklch(0.18 0.025 275);
-  --sidebar-accent-foreground: oklch(0.85 0.01 220);
-  --sidebar-border: oklch(0.32 0.04 270 / 60%);
-  --sidebar-ring: oklch(0.75 0.18 195);
+  /* Near-black HUD — raised surfaces + brighter secondaries for small text / axes */
+  --background: oklch(0.08 0.022 265);
+  --foreground: oklch(0.94 0.014 215);
+  --card: oklch(0.14 0.032 265 / 88%);
+  --card-foreground: oklch(0.94 0.014 215);
+  --popover: oklch(0.16 0.032 265);
+  --popover-foreground: oklch(0.94 0.014 215);
+  --primary: oklch(0.78 0.17 195);
+  --primary-foreground: oklch(0.07 0.022 265);
+  --secondary: oklch(0.2 0.03 275);
+  --secondary-foreground: oklch(0.9 0.018 220);
+  --muted: oklch(0.22 0.028 270);
+  /* Was ~L0.6 — too dim for 12px labels on starfield; HUD chrome reads clearer ~L0.76 */
+  --muted-foreground: oklch(0.76 0.03 220);
+  --accent: oklch(0.72 0.22 330);
+  --accent-foreground: oklch(0.98 0.02 330);
+  --destructive: oklch(0.74 0.21 20);
+  /* DeepSpace — semantic: HUD “link up” (readable mint on void) */
+  --success: oklch(0.84 0.15 192);
+  --warning: oklch(0.88 0.13 82);
+  --border: oklch(0.4 0.055 270 / 72%);
+  --input: oklch(0.22 0.03 270);
+  --ring: oklch(0.78 0.17 195);
+  /* Charts — same neon story, +L on strokes so 1–2px lines read on #0a0a12 */
+  --chart-1: oklch(0.82 0.17 195);
+  --chart-2: oklch(0.78 0.22 330);
+  --chart-3: oklch(0.83 0.18 138);
+  --chart-4: oklch(0.86 0.15 82);
+  --chart-5: oklch(0.76 0.21 22);
+  --chart-6: oklch(0.8 0.15 212);
+  --chart-7: oklch(0.8 0.2 318);
+  --chart-8: oklch(0.84 0.14 200);
+  --chart-9: oklch(0.76 0.17 278);
+  --sidebar: oklch(0.11 0.025 265 / 92%);
+  --sidebar-foreground: oklch(0.94 0.012 215);
+  --sidebar-primary: oklch(0.78 0.17 195);
+  --sidebar-primary-foreground: oklch(0.07 0.022 265);
+  --sidebar-accent: oklch(0.2 0.03 275);
+  --sidebar-accent-foreground: oklch(0.9 0.018 220);
+  --sidebar-border: oklch(0.4 0.055 270 / 72%);
+  --sidebar-ring: oklch(0.78 0.17 195);
 }
 
 /* ══════════════════════════════════════════════════════════════
    Clean Theme
    ══════════════════════════════════════════════════════════════ */
 [data-theme="clean"] {
-  --background: oklch(0.995 0 0);
-  --foreground: oklch(0.15 0 0);
+  --background: oklch(0.995 0.004 250);
+  --foreground: oklch(0.16 0.01 250);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.15 0 0);
-  --popover: oklch(0.995 0 0);
-  --popover-foreground: oklch(0.15 0 0);
+  --card-foreground: oklch(0.16 0.01 250);
+  --popover: oklch(0.995 0.004 250);
+  --popover-foreground: oklch(0.16 0.01 250);
   --primary: oklch(0.45 0.12 250);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.95 0 0);
-  --secondary-foreground: oklch(0.25 0 0);
-  --muted: oklch(0.96 0 0);
-  --muted-foreground: oklch(0.45 0 0);
+  --secondary: oklch(0.95 0.006 250);
+  --secondary-foreground: oklch(0.25 0.01 250);
+  --muted: oklch(0.96 0.006 250);
+  --muted-foreground: oklch(0.44 0.01 250);
   --accent: oklch(0.93 0.04 250);
   --accent-foreground: oklch(0.2 0.02 250);
-  --destructive: oklch(0.55 0.2 25);
+  --destructive: oklch(0.52 0.19 25);
+  /* Clean — semantic: restrained teal “passed” (low chroma, office-safe) */
+  --success: oklch(0.42 0.095 195);
+  --warning: oklch(0.52 0.13 70);
   --border: oklch(0.9 0 0);
   --input: oklch(0.96 0 0);
   --ring: oklch(0.45 0.12 250);
+  /* Charts — muted indigo anchor + slate / plum / amber / coral (equal chroma ladder) */
   --chart-1: oklch(0.55 0.15 250);
-  --chart-2: oklch(0.55 0.15 160);
-  --chart-3: oklch(0.55 0.15 20);
-  --chart-4: oklch(0.55 0.15 300);
-  --chart-5: oklch(0.55 0.15 70);
+  --chart-2: oklch(0.48 0.1 200);
+  --chart-3: oklch(0.45 0.09 280);
+  --chart-4: oklch(0.5 0.11 65);
+  --chart-5: oklch(0.52 0.16 25);
+  --chart-6: oklch(0.46 0.09 230);
+  --chart-7: oklch(0.5 0.11 220);
+  --chart-8: oklch(0.48 0.1 175);
+  --chart-9: oklch(0.46 0.09 300);
   --sidebar: oklch(0.98 0 0);
   --sidebar-foreground: oklch(0.15 0 0);
   --sidebar-primary: oklch(0.45 0.12 250);
@@ -194,7 +231,14 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    text-rendering: optimizeLegibility;
+  }
+  /* Dark HUD themes: slightly looser line-height improves long labels on screen */
+  :root[data-theme="deepspace"] body {
+    line-height: 1.55;
   }
 }
 
@@ -206,9 +250,26 @@
     scroll-behavior: smooth;
   }
 
-  /* Display font class for titles */
+  /* Display / HUD headings — Orbitron only here, never for long paragraphs */
   .font-display {
     font-family: var(--font-family-display);
+  }
+
+  /*
+   * Typography roles:
+   * - font-mono: HUD chrome — menus, inputs, tags, column headers, UUIDs (no tabular figure forcing)
+   * - font-metric: live numbers — speeds, bytes, %, load, counts, table numerics (tabular lining)
+   * - (no class): long prose / disclaimers — use body sans + leading-relaxed
+   */
+  .font-mono {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  /* Tabular lining numerals — use only on metrics, not on full sentences */
+  .font-metric {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
   }
 }
 
@@ -300,15 +361,15 @@
   }
 
   .status-indicator-online {
-    background-color: hsl(142, 76%, 36%);
+    background-color: var(--success);
   }
 
   .status-indicator-offline {
-    background-color: hsl(0, 84%, 60%);
+    background-color: var(--destructive);
   }
 
   .status-indicator-connecting {
-    background-color: hsl(38, 92%, 50%);
+    background-color: var(--warning);
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
@@ -708,11 +769,11 @@
   @keyframes hud-pulse {
     0%, 100% {
       opacity: 1;
-      box-shadow: 0 0 4px oklch(0.75 0.2 145 / 60%);
+      box-shadow: 0 0 4px color-mix(in oklch, var(--success) 55%, transparent);
     }
     50% {
       opacity: 0.7;
-      box-shadow: 0 0 12px oklch(0.75 0.2 145 / 90%);
+      box-shadow: 0 0 12px color-mix(in oklch, var(--success) 75%, transparent);
     }
   }
 
@@ -795,6 +856,27 @@
   }
 
   /* ════════════════════════════════════════════════════════════
+     Uptime monitor — DeepSpace: all-online = solid success; soften for eye comfort
+     ════════════════════════════════════════════════════════════ */
+
+  .uptime-bar-online {
+    background-color: var(--success);
+  }
+
+  [data-theme="deepspace"] .uptime-view .uptime-bar-online {
+    background-color: color-mix(in oklch, var(--success) 26%, var(--muted));
+  }
+
+  [data-theme="deepspace"] .uptime-view .uptime-accent-soft {
+    color: color-mix(in oklch, var(--success) 38%, var(--foreground));
+  }
+
+  [data-theme="deepspace"] .uptime-view .uptime-status-dot {
+    animation: none !important;
+    background-color: color-mix(in oklch, var(--success) 34%, var(--muted)) !important;
+  }
+
+  /* ════════════════════════════════════════════════════════════
      DeepSpace Theme — Nebula Background (stars via Canvas)
      ════════════════════════════════════════════════════════════ */
 
@@ -816,28 +898,6 @@
   [data-theme="deepspace"] footer {
     background: oklch(0.08 0.02 265 / 80%) !important;
     border-top-color: oklch(0.75 0.18 195 / 15%) !important;
-  }
-
-  /* ════════════════════════════════════════════════════════════
-     Uptime Bar — inline time label colors per theme
-     ════════════════════════════════════════════════════════════ */
-
-  /* Lumina (default): dark text with subtle shadow for contrast on green/red */
-  .uptime-bar-label {
-    color: oklch(0.15 0 0 / 70%);
-    text-shadow: 0 0 3px oklch(1 0 0 / 50%);
-  }
-
-  /* DeepSpace: bright white with neon glow */
-  [data-theme="deepspace"] .uptime-bar-label {
-    color: oklch(0.95 0.01 210 / 85%);
-    text-shadow: 0 0 4px oklch(0.08 0.02 265 / 80%);
-  }
-
-  /* Clean: dark crisp text, no glow */
-  [data-theme="clean"] .uptime-bar-label {
-    color: oklch(1 0 0 / 80%);
-    text-shadow: 0 0 2px oklch(0 0 0 / 40%);
   }
 
   /* ════════════════════════════════════════════════════════════
@@ -1319,5 +1379,36 @@
   @keyframes hud-clean-spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Accessibility — prefers-reduced-motion
+   (Motion also uses useReducedMotion() in ChartModal, Sidebar, Dashboard.)
+   ══════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /*
+   * Globe HUD: conic-gradient sweep behind cobe — the universal * rule above
+   * would freeze it after one frame. Keep a slow infinite rotation for a11y
+   * (ambient, non-attention-grabbing) instead of stopping entirely.
+   */
+  .radar-scan {
+    animation-name: radar-rotate !important;
+    animation-duration: 32s !important;
+    animation-timing-function: linear !important;
+    animation-iteration-count: infinite !important;
   }
 }
