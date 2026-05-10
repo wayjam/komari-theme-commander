@@ -125,27 +125,17 @@ create_package() {
     # Read version from package.json
     VERSION=$(node -p "require('./package.json').version")
 
-    # Create a temporary directory for the package
-    rm -rf theme-package
-    mkdir -p theme-package
-
-    # Copy required files
-    cp preview.png theme-package/
-    cp komari-theme.json theme-package/
-    cp -r dist/ theme-package/
-
-    # Create zip file with version
+    # Create zip file with version (same approach as GitHub Actions)
     ZIP_NAME="komari-theme-commander@${VERSION}.zip"
 
-    cd theme-package
-    zip -r "../dist/${ZIP_NAME}" .
-    cd ..
+    # Remove old zip if exists
+    rm -f "${ZIP_NAME}"
 
-    # Clean up
-    rm -rf theme-package
+    # Zip directly from project root, matching GitHub Actions behavior
+    zip -r "${ZIP_NAME}" dist/ komari-theme.json preview.png
 
     print_success "Created package: ${ZIP_NAME}"
-    ls -la "dist/${ZIP_NAME}"
+    ls -la "${ZIP_NAME}"
 }
 
 # Main execution
