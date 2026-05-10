@@ -23,7 +23,6 @@ import dayjs from 'dayjs';
 
 interface NodeTableProps {
   nodes: NodeWithStatus[];
-  onViewCharts?: (nodeUuid: string, nodeName: string) => void;
 }
 
 const borderColor: Record<string, string> = {

@@ -536,13 +536,13 @@ function Dashboard() {
   const navigate = useNavigate();
   const { nodes, loading, refreshNodes } = useNodesContext();
 
-  const handleViewCharts = (uuid: string, name: string) => {
+  const handleViewCharts = useCallback((uuid: string, name: string) => {
     if (viewMode === 'globe') {
       setChartModal({ uuid, name });
     } else {
       navigate(`/node/${uuid}`);
     }
-  };
+  }, [viewMode, navigate]);
 
   const viewTransition = reduceMotion ? { duration: 0 } : { duration: 0.2, ease: [0.25, 1, 0.5, 1] as const };
 
@@ -575,7 +575,6 @@ function Dashboard() {
                 nodes={nodes}
                 loading={loading}
                 onRefresh={refreshNodes}
-                onViewCharts={handleViewCharts}
                 defaultView={viewMode === 'grid' ? 'grid' : 'table'}
               />
             )}

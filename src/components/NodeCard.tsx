@@ -13,7 +13,6 @@ import dayjs from 'dayjs';
 
 interface NodeCardProps {
   node: NodeWithStatus;
-  onViewCharts?: (nodeUuid: string, nodeName: string) => void;
 }
 
 function HudGauge({ label, value, unit = '%', status, total }: { label: string; value: number; unit?: string; status: 'normal' | 'warning' | 'critical'; total?: string }) {

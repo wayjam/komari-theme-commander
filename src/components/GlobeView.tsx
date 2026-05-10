@@ -32,13 +32,18 @@ export function GlobeView({ nodes, loading = false, onViewCharts }: GlobeViewPro
   const { theme } = useTheme();
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
-  // Rolling log stream state
+  // Rolling log stream state — only the deepspace / lumina themes render the
+  // feed (it lives inside `hidden xl:flex` containers anyway). The `clean`
+  // theme has no panel, so we skip the diff loop entirely there.
+  const showLogFeed = theme === 'deepspace' || theme === 'lumina';
   const [logLines, setLogLines] = useState<LogLine[]>([]);
   const prevSnapshotRef = useRef<Map<string, { status: string; cpu: number; ramPct: number; netUp: number; netDown: number }>>(new Map());
   const logIdRef = useRef(0);
   const feedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!showLogFeed) return;
+
     const prev = prevSnapshotRef.current;
     const newLines: LogLine[] = [];
     const now = new Date();
@@ -93,17 +98,28 @@ export function GlobeView({ nodes, loading = false, onViewCharts }: GlobeViewPro
       prev.set(node.uuid, { status: 'online', cpu, ramPct, netUp, netDown });
     }
 
-    if (newLines.length > 0) {
-      setLogLines(lines => [...lines, ...newLines].slice(-MAX_LOG_LINES));
-    }
-  }, [nodes]);
+    if (newLines.length === 0) return; // Skip the setState when nothing changed.
 
-  // Auto-scroll to bottom
+    setLogLines(lines => {
+      // Allocate the trimmed array directly to avoid an intermediate concat.
+      const total = lines.length + newLines.length;
+      if (total <= MAX_LOG_LINES) return lines.concat(newLines);
+      const drop = total - MAX_LOG_LINES;
+      return lines.slice(drop).concat(newLines);
+    });
+  }, [nodes, showLogFeed]);
+
+  // Auto-scroll to bottom — schedule on rAF so we batch with React's commit
+  // and avoid forced layout when many feed updates arrive in quick succession.
   useEffect(() => {
-    if (feedRef.current) {
-      feedRef.current.scrollTop = feedRef.current.scrollHeight;
-    }
-  }, [logLines]);
+    if (!showLogFeed) return;
+    const el = feedRef.current;
+    if (!el) return;
+    const id = requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+    return () => cancelAnimationFrame(id);
+  }, [logLines, showLogFeed]);
 
   return (
     <div className="relative z-10 flex flex-col lg:flex-row gap-4 lg:gap-5 w-full h-[calc(100vh-theme(spacing.10)-theme(spacing.8)-theme(spacing.9)-2rem)] sm:h-[calc(100vh-theme(spacing.12)-theme(spacing.9)-3rem)]">

@@ -1,4 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700;800&display=swap');
+/* Orbitron is loaded asynchronously via <link> in index.html to avoid
+   blocking the critical CSS path. Browsers fall back to system-ui until
+   it's ready, governed by `font-display: swap` in the @font-face. */
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -478,10 +480,23 @@
     );
     opacity: 0.03;
     animation: scanner-loop 8s linear infinite;
+    /* Promote to its own compositor layer so the looping animation
+       doesn't repaint the parent card every frame. */
+    will-change: top;
   }
 
   [data-theme="clean"] .commander-scanner-effect {
     display: none;
+  }
+
+  /* Respect users who prefer reduced motion: stop the looping scanner / pulse /
+     radar animations entirely. Keeps the static gradient overlay in place. */
+  @media (prefers-reduced-motion: reduce) {
+    .commander-scanner-effect::after,
+    .animate-pulse-subtle,
+    .radar-scan {
+      animation: none !important;
+    }
   }
 
   @keyframes scanner-loop {

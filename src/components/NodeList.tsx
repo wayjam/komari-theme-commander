@@ -12,7 +12,6 @@ interface NodeListProps {
   nodes?: NodeWithStatus[];
   loading?: boolean;
   onRefresh?: () => void;
-  onViewCharts?: (nodeUuid: string, nodeName: string) => void;
   defaultView?: 'grid' | 'table';
 }
 
@@ -97,7 +96,7 @@ function FilterDropdown({
 /* ══════════════════════════════════════════════════════════════
    VirtualGrid — virtualized grid using @tanstack/react-virtual
    ══════════════════════════════════════════════════════════════ */
-function VirtualGrid({ nodes, onViewCharts }: { nodes: NodeWithStatus[]; onViewCharts?: (uuid: string, name: string) => void }) {
+function VirtualGrid({ nodes }: { nodes: NodeWithStatus[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [cols, setCols] = useState(3);
 
@@ -158,7 +157,7 @@ function VirtualGrid({ nodes, onViewCharts }: { nodes: NodeWithStatus[]; onViewC
                 style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
               >
                 {rowNodes.map(node => (
-                  <NodeCard key={node.uuid} node={node} onViewCharts={onViewCharts} />
+                  <NodeCard key={node.uuid} node={node} />
                 ))}
               </div>
             </div>
@@ -169,7 +168,7 @@ function VirtualGrid({ nodes, onViewCharts }: { nodes: NodeWithStatus[]; onViewC
   );
 }
 
-export function NodeList({ nodes = [], loading = false, onRefresh, onViewCharts, defaultView = 'grid' }: NodeListProps) {
+export function NodeList({ nodes = [], loading = false, onRefresh, defaultView = 'grid' }: NodeListProps) {
   const { t } = useTranslation();
   const [groupFilter, setGroupFilter] = useState<string>('all');
   const [tagFilter, setTagFilter] = useState<string>('all');
@@ -395,9 +394,9 @@ export function NodeList({ nodes = [], loading = false, onRefresh, onViewCharts,
           </div>
         </div>
       ) : defaultView === 'grid' ? (
-        <VirtualGrid nodes={sortedNodes} onViewCharts={onViewCharts} />
+        <VirtualGrid nodes={sortedNodes} />
       ) : (
-        <NodeTable nodes={sortedNodes} onViewCharts={onViewCharts} />
+        <NodeTable nodes={sortedNodes} />
       )}
     </div>
   );

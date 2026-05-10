@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Languages } from 'lucide-react';
 import { Button } from './ui/button';
-import { supportedLanguages, type SupportedLanguage } from '../i18n';
+import { supportedLanguages, type SupportedLanguage, changeLanguage } from '../i18n';
 import { cn } from '@/lib/utils';
 
 function resolveLanguage(lang: string): SupportedLanguage {
@@ -85,7 +85,7 @@ export function LanguageSwitcher() {
                   role="menuitemradio"
                   aria-checked={isActive}
                   onClick={() => {
-                    i18n.changeLanguage(lang.code);
+                    void changeLanguage(lang.code);
                     setDropdownOpen(false);
                   }}
                   className={cn(

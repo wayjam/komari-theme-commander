@@ -3,6 +3,7 @@ import fs from "fs"
 import { defineConfig, loadEnv, type Plugin } from "vite"
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react-swc"
+import { worldCountriesFilter } from "./scripts/vite-plugin-world-countries-filter"
 
 /**
  * 本地开发时，拦截对 /themes/Commander/komari-theme.json 的请求，
@@ -48,6 +49,15 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       localKomariThemePlugin(),
+      // Strip the unused fields from `world-countries` so the globe chunk only
+      // ships what we actually read at runtime. Mode `"merge"` = auto-detect
+      // referenced fields + the explicit `fields` list below. To pin extra
+      // fields without touching code, append them here; to opt out of the
+      // scanner entirely, switch to `mode: "manual"`.
+      worldCountriesFilter({
+        mode: "merge",
+        fields: ["flag", "latlng"],
+      }),
       tailwindcss(),
       react(),
     ],
