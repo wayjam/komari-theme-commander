@@ -1,5 +1,6 @@
 import { ThemeSwitcher } from './components/ThemeSwitcher'
 import { LanguageSwitcher } from './components/LanguageSwitcher'
+import { ViewTabs, type ViewTab } from './components/ViewTabs'
 import { WebSocketStatus } from './components/WebSocketStatus'
 import { EffectsOverlay } from './components/EffectsOverlay'
 import { Starfield } from './components/Starfield'
@@ -722,8 +723,8 @@ function App() {
     });
   }, [nodes]);
 
-  const viewButtons = useMemo<{ mode: ViewMode; icon: typeof Globe; label: string }[]>(() => {
-    const all: { mode: ViewMode; icon: typeof Globe; label: string }[] = [
+  const viewButtons = useMemo<ViewTab<ViewMode>[]>(() => {
+    const all: ViewTab<ViewMode>[] = [
       { mode: 'globe', icon: Globe, label: t('view.globe') },
       { mode: 'grid', icon: LayoutGrid, label: t('view.grid') },
       { mode: 'table', icon: List, label: t('view.table') },
@@ -735,6 +736,21 @@ function App() {
       return true;
     });
   }, [t, themeConfig]);
+
+  const handleViewTabChange = useCallback(
+    (mode: ViewMode) => {
+      handleSetViewMode(mode);
+      if (!isDashboard) navigate('/');
+    },
+    [handleSetViewMode, isDashboard, navigate],
+  );
+
+  const handleViewTabHover = useCallback(
+    (mode: ViewMode) => {
+      if (mode !== viewMode) prefetchDashboardView(mode);
+    },
+    [viewMode],
+  );
 
   return (
     <NodesContext.Provider value={{ nodes: maskedNodes, loading, refreshNodes }}>
@@ -769,71 +785,60 @@ function App() {
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-2.5">
-                  <div className="flex border border-border/50 rounded overflow-hidden">
-                    {viewButtons.map(({ mode, icon: Icon, label }) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        onMouseEnter={() => { if (mode !== viewMode) prefetchDashboardView(mode); }}
-                        onFocus={() => { if (mode !== viewMode) prefetchDashboardView(mode); }}
-                        onClick={() => {
-                          handleSetViewMode(mode);
-                          if (!isDashboard) navigate('/');
-                        }}
-                        className={`min-h-9 min-w-9 flex items-center justify-center p-1.5 transition-colors duration-200 ease-out cursor-pointer focus-visible:outline-none focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/70 ${viewMode === mode ? 'bg-primary text-primary-foreground' : 'hover:bg-muted/50'}`}
-                        title={label}
-                        aria-label={t('view.switchTo', { mode: label })}
-                        aria-pressed={viewMode === mode}
-                      >
-                        <Icon className="h-3.5 w-3.5" aria-hidden />
-                      </button>
-                    ))}
-                  </div>
-                  <LanguageSwitcher />
-                  <ThemeSwitcher />
-                  {appConfig.isLoggedIn && (
+                <div className="flex items-center gap-3">
+                  <ViewTabs
+                    tabs={viewButtons}
+                    value={viewMode}
+                    onChange={handleViewTabChange}
+                    onHoverIntent={handleViewTabHover}
+                    labelBreakpoint="md"
+                  />
+                  <div className="flex items-center gap-1">
+                    <LanguageSwitcher />
+                    <ThemeSwitcher />
+                    {appConfig.isLoggedIn && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={togglePrivacyMode}
+                            className={cn(
+                              'h-7 w-7 p-0 text-xs font-mono cursor-pointer',
+                              privacyMode ? 'bg-primary/15 text-primary hover:bg-primary/25' : 'hover:bg-muted/50'
+                            )}
+                            aria-label={t('privacy.label')}
+                            aria-pressed={privacyMode}
+                          >
+                            <Fingerprint className={cn("h-3.5 w-3.5", privacyMode && "text-primary")} aria-hidden />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-xs font-mono">
+                          {privacyMode ? t('privacy.on') : t('privacy.off')}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={togglePrivacyMode}
-                          className={cn(
-                            'h-7 w-7 p-0 text-xs font-mono cursor-pointer',
-                            privacyMode ? 'bg-primary/15 text-primary hover:bg-primary/25' : 'hover:bg-muted/50'
-                          )}
-                          aria-label={t('privacy.label')}
-                          aria-pressed={privacyMode}
+                          onClick={() => window.location.href = '/admin'}
+                          className="h-7 w-7 p-0 text-xs font-mono hover:bg-primary/15 hover:text-primary cursor-pointer"
+                          aria-label={
+                            appConfig.isLoggedIn && appConfig.username
+                              ? `${t('action.admin')}: ${appConfig.username}`
+                              : t('action.admin')
+                          }
                         >
-                          <Fingerprint className={cn("h-3.5 w-3.5", privacyMode && "text-primary")} aria-hidden />
+                          {appConfig.isLoggedIn ? <User className="h-3.5 w-3.5" aria-hidden /> : <Settings className="h-3.5 w-3.5" aria-hidden />}
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="bottom" className="text-xs font-mono">
-                        {privacyMode ? t('privacy.on') : t('privacy.off')}
+                        {appConfig.isLoggedIn ? (appConfig.username || t('action.admin')) : t('action.admin')}
                       </TooltipContent>
                     </Tooltip>
-                  )}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => window.location.href = '/admin'}
-                        className="h-7 w-7 p-0 text-xs font-mono hover:bg-primary/15 hover:text-primary cursor-pointer"
-                        aria-label={
-                          appConfig.isLoggedIn && appConfig.username
-                            ? `${t('action.admin')}: ${appConfig.username}`
-                            : t('action.admin')
-                        }
-                      >
-                        {appConfig.isLoggedIn ? <User className="h-3.5 w-3.5" aria-hidden /> : <Settings className="h-3.5 w-3.5" aria-hidden />}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="text-xs font-mono">
-                      {appConfig.isLoggedIn ? (appConfig.username || t('action.admin')) : t('action.admin')}
-                    </TooltipContent>
-                  </Tooltip>
+                  </div>
                 </div>
               </div>
 
@@ -860,27 +865,14 @@ function App() {
               </div>
               {/* Mobile: Row 2 — view switcher + controls */}
               <div className="sm:hidden flex items-center justify-between pb-2.5">
-                <div className="flex border border-border/50 rounded overflow-hidden">
-                  {viewButtons.map(({ mode, icon: Icon, label }) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onMouseEnter={() => { if (mode !== viewMode) prefetchDashboardView(mode); }}
-                      onFocus={() => { if (mode !== viewMode) prefetchDashboardView(mode); }}
-                      onClick={() => {
-                        handleSetViewMode(mode);
-                        if (!isDashboard) navigate('/');
-                      }}
-                      className={`min-h-9 min-w-9 flex items-center justify-center p-1.5 transition-colors duration-200 ease-out cursor-pointer focus-visible:outline-none focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/70 ${viewMode === mode ? 'bg-primary text-primary-foreground' : 'hover:bg-muted/50'}`}
-                      title={label}
-                      aria-label={t('view.switchTo', { mode: label })}
-                      aria-pressed={viewMode === mode}
-                    >
-                      <Icon className="h-3.5 w-3.5" aria-hidden />
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-1.5">
+                <ViewTabs
+                  tabs={viewButtons}
+                  value={viewMode}
+                  onChange={handleViewTabChange}
+                  onHoverIntent={handleViewTabHover}
+                  labelBreakpoint="never"
+                />
+                <div className="flex items-center gap-1">
                   <LanguageSwitcher />
                   <ThemeSwitcher />
                   {appConfig.isLoggedIn && (

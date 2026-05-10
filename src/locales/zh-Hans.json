@@ -73,7 +73,8 @@
     "grid": "卡片",
     "table": "表格",
     "uptime": "可用性",
-    "switchTo": "切换到{{mode}}视图"
+    "switchTo": "切换到{{mode}}视图",
+    "tablistLabel": "视图模式"
   },
   "filter": {
     "all": "全部",
@@ -143,6 +144,7 @@
     "deepspace": "深空",
     "clean": "简洁",
     "currentSwitch": "当前：{{label}}。点击切换。",
+    "cycleTo": "切换到「{{next}}」主题",
     "select": "选择主题",
     "title": "主题"
   },

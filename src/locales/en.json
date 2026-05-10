@@ -73,7 +73,8 @@
     "grid": "GRID",
     "table": "TABLE",
     "uptime": "UPTIME",
-    "switchTo": "Switch to {{mode}} view"
+    "switchTo": "Switch to {{mode}} view",
+    "tablistLabel": "View mode"
   },
   "filter": {
     "all": "ALL",
@@ -143,6 +144,7 @@
     "deepspace": "DEEPSPACE",
     "clean": "CLEAN",
     "currentSwitch": "Current: {{label}}. Click to switch.",
+    "cycleTo": "Switch to {{next}} theme",
     "select": "Select theme",
     "title": "THEME"
   },
