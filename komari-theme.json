@@ -44,9 +44,9 @@
                 "key": "default_theme",
                 "name": "Default Theme",
                 "type": "select",
-                "options": "lumina,deepspace,clean",
-                "default": "lumina",
-                "help": "Default color theme for first-time visitors"
+                "options": "lumina,deepspace,clean,auto",
+                "default": "clean",
+                "help": "Default color theme for first-time visitors. 'auto' follows the user's system color scheme (light → lumina, dark → deepspace)."
             },
             {
                 "key": "custom_footer",

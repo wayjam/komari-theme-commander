@@ -143,6 +143,7 @@
     "lumina": "LUMINA",
     "deepspace": "DEEPSPACE",
     "clean": "CLEAN",
+    "auto": "AUTO",
     "currentSwitch": "Current: {{label}}. Click to switch.",
     "cycleTo": "Switch to {{next}} theme",
     "select": "Select theme",

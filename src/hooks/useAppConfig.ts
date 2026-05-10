@@ -6,7 +6,7 @@ export interface ThemeConfig {
   default_view: 'globe' | 'grid' | 'table' | 'uptime';
   enable_globe: boolean;
   enable_uptime: boolean;
-  default_theme: 'lumina' | 'deepspace' | 'clean';
+  default_theme: 'lumina' | 'deepspace' | 'clean' | 'auto';
   custom_footer: string;
   enable_privacy_mode: boolean;
 }
@@ -15,7 +15,7 @@ const defaultThemeConfig: ThemeConfig = {
   default_view: 'globe',
   enable_globe: true,
   enable_uptime: true,
-  default_theme: 'lumina',
+  default_theme: 'clean',
   custom_footer: '',
   enable_privacy_mode: false,
 };
@@ -71,7 +71,7 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
           if (typeof publicSettings.enable_uptime === 'boolean') tc.enable_uptime = publicSettings.enable_uptime;
           if (publicSettings.enable_uptime === 'true') tc.enable_uptime = true;
           if (publicSettings.enable_uptime === 'false') tc.enable_uptime = false;
-          if (typeof publicSettings.default_theme === 'string' && ['lumina', 'deepspace', 'clean'].includes(publicSettings.default_theme as string)) {
+          if (typeof publicSettings.default_theme === 'string' && ['lumina', 'deepspace', 'clean', 'auto'].includes(publicSettings.default_theme as string)) {
             tc.default_theme = publicSettings.default_theme as ThemeConfig['default_theme'];
           }
           if (typeof publicSettings.custom_footer === 'string') tc.custom_footer = publicSettings.custom_footer as string;

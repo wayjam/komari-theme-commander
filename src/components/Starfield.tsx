@@ -182,7 +182,7 @@ function StarfieldInner() {
 }
 
 export const Starfield = memo(function Starfield() {
-  const { theme } = useTheme();
-  if (theme !== 'deepspace') return null;
+  const { resolvedTheme } = useTheme();
+  if (resolvedTheme !== 'deepspace') return null;
   return <StarfieldInner />;
 });

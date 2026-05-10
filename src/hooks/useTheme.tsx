@@ -1,14 +1,21 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useMemo, type ReactNode } from 'react';
 
-export type Theme = 'lumina' | 'deepspace' | 'clean';
+/** Visual themes that map to actual CSS styling */
+export type VisualTheme = 'lumina' | 'deepspace' | 'clean';
+
+/** User-selectable appearance preference (includes "auto" which follows system) */
+export type Theme = VisualTheme | 'auto';
 
 interface ThemeContextType {
+  /** The user's stored preference (may be "auto") */
   theme: Theme;
+  /** The actually-applied visual theme (never "auto") */
+  resolvedTheme: VisualTheme;
   setTheme: (theme: Theme) => void;
 }
 
 const STORAGE_KEY = 'appearance';
-const VALID_THEMES: Theme[] = ['lumina', 'deepspace', 'clean'];
+const VALID_THEMES: Theme[] = ['lumina', 'deepspace', 'clean', 'auto'];
 
 function getInitialTheme(): Theme {
   try {
@@ -23,13 +30,33 @@ function getInitialTheme(): Theme {
   } catch {
     // localStorage not available
   }
-  return 'lumina';
+  return 'clean';
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
+  const [systemDark, setSystemDark] = useState<boolean>(() =>
+    typeof window !== 'undefined'
+      ? window.matchMedia('(prefers-color-scheme: dark)').matches
+      : false,
+  );
+
+  // Listen for system color-scheme changes (only relevant when theme === 'auto')
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = (e: MediaQueryListEvent) => setSystemDark(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  const resolvedTheme: VisualTheme = useMemo(() => {
+    if (theme === 'auto') {
+      return systemDark ? 'deepspace' : 'lumina';
+    }
+    return theme;
+  }, [theme, systemDark]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -38,10 +65,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.removeAttribute('data-theme');
     root.classList.remove('dark');
 
-    if (theme === 'deepspace') {
+    if (resolvedTheme === 'deepspace') {
       root.setAttribute('data-theme', 'deepspace');
       root.classList.add('dark');
-    } else if (theme === 'clean') {
+    } else if (resolvedTheme === 'clean') {
       root.setAttribute('data-theme', 'clean');
     }
     // lumina uses default :root, no attribute needed
@@ -54,10 +81,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     } catch {
       // ignore
     }
-  }, [theme]);
+  }, [theme, resolvedTheme]);
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
+    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );

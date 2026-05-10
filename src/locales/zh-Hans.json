@@ -143,6 +143,7 @@
     "lumina": "光明",
     "deepspace": "深空",
     "clean": "简洁",
+    "auto": "自动",
     "currentSwitch": "当前：{{label}}。点击切换。",
     "cycleTo": "切换到「{{next}}」主题",
     "select": "选择主题",

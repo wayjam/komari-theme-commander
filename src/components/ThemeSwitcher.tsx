@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { useTheme, type Theme } from '../hooks/useTheme';
+import { useTheme, type VisualTheme } from '../hooks/useTheme';
 import { Sun, Moon, Cloud, Check, ChevronDown } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { cn } from '@/lib/utils';
 
-const themeOrder: Theme[] = ['lumina', 'deepspace', 'clean'];
+/** The cycle order only contains the three visual themes — "auto" is backend config only */
+const themeOrder: VisualTheme[] = ['lumina', 'deepspace', 'clean'];
 
-const themeIcons: Record<Theme, typeof Sun> = {
+const themeIcons: Record<VisualTheme, typeof Sun> = {
   lumina: Sun,
   deepspace: Moon,
   clean: Cloud,
@@ -25,20 +26,20 @@ const menuItemClass = cn(
  */
 export function ThemeSwitcher() {
   const { t } = useTranslation();
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const reduceMotion = useReducedMotion();
   const menuId = useId();
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Pre-compute next theme in the cycle
-  const currentIndex = themeOrder.indexOf(theme);
+  // Cycle is based on the resolved (actually displayed) theme
+  const currentIndex = themeOrder.indexOf(resolvedTheme);
   const nextTheme = themeOrder[(currentIndex + 1) % themeOrder.length];
 
-  const Icon = themeIcons[theme];
+  const Icon = themeIcons[resolvedTheme];
   const NextIcon = themeIcons[nextTheme];
-  const label = t(`theme.${theme}` as const);
+  const label = t(`theme.${resolvedTheme}` as const);
   const nextLabel = t(`theme.${nextTheme}` as const);
 
   const cycleTheme = useCallback(() => {
@@ -94,7 +95,7 @@ export function ThemeSwitcher() {
             <span className="relative inline-flex h-3.5 w-3.5 items-center justify-center">
               <AnimatePresence mode="wait" initial={false}>
                 <motion.span
-                  key={theme}
+                  key={resolvedTheme}
                   className="absolute inset-0 flex items-center justify-center"
                   {...iconMotion}
                   transition={
@@ -180,7 +181,7 @@ export function ThemeSwitcher() {
               {themeOrder.map((th) => {
                 const TIcon = themeIcons[th];
                 const tLabel = t(`theme.${th}` as const);
-                const isActive = th === theme;
+                const isActive = th === resolvedTheme;
                 return (
                   <button
                     key={th}

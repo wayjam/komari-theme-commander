@@ -29,13 +29,13 @@ interface GlobeViewProps {
 
 export function GlobeView({ nodes, loading = false, onViewCharts }: GlobeViewProps) {
   const { t } = useTranslation();
-  const { theme } = useTheme();
+  const { resolvedTheme } = useTheme();
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   // Rolling log stream state — only the deepspace / lumina themes render the
   // feed (it lives inside `hidden xl:flex` containers anyway). The `clean`
   // theme has no panel, so we skip the diff loop entirely there.
-  const showLogFeed = theme === 'deepspace' || theme === 'lumina';
+  const showLogFeed = resolvedTheme === 'deepspace' || resolvedTheme === 'lumina';
   const [logLines, setLogLines] = useState<LogLine[]>([]);
   const prevSnapshotRef = useRef<Map<string, { status: string; cpu: number; ramPct: number; netUp: number; netDown: number }>>(new Map());
   const logIdRef = useRef(0);
@@ -128,7 +128,7 @@ export function GlobeView({ nodes, loading = false, onViewCharts }: GlobeViewPro
         <span className="corner-bottom" />
         
         {/* DeepSpace Visuals */}
-        {theme === 'deepspace' && (
+        {resolvedTheme === 'deepspace' && (
           <>
             <div className="deepspace-nebula" />
             <div className="deepspace-grid" />
@@ -155,7 +155,7 @@ export function GlobeView({ nodes, loading = false, onViewCharts }: GlobeViewPro
         )}
 
         {/* Lumina Lab Visuals */}
-        {theme === 'lumina' && (
+        {resolvedTheme === 'lumina' && (
           <>
             {/* Hex grid background */}
             <div className="lumina-hex-grid" />
@@ -200,7 +200,7 @@ export function GlobeView({ nodes, loading = false, onViewCharts }: GlobeViewPro
         {/* HUD Decorations — Top Left */}
         <div className="absolute top-4 left-4 z-20 pointer-events-none">
           <div className="text-xs font-mono text-primary/40 uppercase tracking-[0.2em] mb-1">
-            {theme === 'lumina' ? t('hud.labMonitor') : t('hud.orbitalMonitoring')}
+            {resolvedTheme === 'lumina' ? t('hud.labMonitor') : t('hud.orbitalMonitoring')}
           </div>
           <div className="flex gap-1">
             {[1, 2, 3, 4].map(i => (
@@ -243,7 +243,7 @@ export function GlobeView({ nodes, loading = false, onViewCharts }: GlobeViewPro
 
         <Globe
           nodes={nodes}
-          theme={theme}
+          theme={resolvedTheme}
           selectedNodeId={selectedNodeId}
           className="w-full h-full"
         />

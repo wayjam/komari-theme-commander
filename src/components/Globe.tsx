@@ -3,10 +3,11 @@ import createGlobe from 'cobe';
 import type { NodeWithStatus } from '@/services/api';
 import { extractRegionEmoji } from '@/lib/utils';
 import { getCoords } from '@/data/regionCoords';
+import type { VisualTheme } from '@/hooks/useTheme';
 
 interface GlobeProps {
   nodes: NodeWithStatus[];
-  theme: 'lumina' | 'deepspace' | 'clean';
+  theme: VisualTheme;
   className?: string;
   selectedNodeId?: string | null;
 }
