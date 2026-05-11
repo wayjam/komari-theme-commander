@@ -6,13 +6,16 @@ import { EffectsOverlay } from './components/EffectsOverlay'
 import { Starfield } from './components/Starfield'
 import { CircularGauge } from './components/CircularGauge'
 import { HudSpinner } from './components/HudSpinner'
+import { RegionFlag } from './components/RegionFlag'
+import { RemarkNote } from './components/RemarkNote'
 import { Button } from './components/ui/button'
 import { useNodes } from './hooks/useNodes'
 import { useEffects } from './hooks/useEffects'
 import { useAppConfig } from './hooks/useAppConfig'
 import { useTheme } from './hooks/useTheme'
 import { RecentStatsProvider } from './hooks/useRecentStats'
-import { ArrowLeft, Settings, Globe, LayoutGrid, List, Shield, Cpu, MemoryStick, HardDrive, Activity, Network, Clock, User, Monitor, Box, Layers, AlertTriangle, ExternalLink, Fingerprint } from 'lucide-react'
+import { ArrowLeft, Settings, Globe, LayoutGrid, List, Shield, Cpu, MemoryStick, HardDrive, Activity, Network, Clock, User, AlertTriangle, ExternalLink, Fingerprint } from 'lucide-react'
+import { SystemIcon } from '@/lib/systemIcon'
 import { useState, useEffect, useCallback, useMemo, memo, createContext, useContext, lazy, Suspense } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useTranslation } from 'react-i18next'
@@ -113,7 +116,6 @@ const ViewModeContext = createContext<ViewModeContextType>({
 function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
   const { t } = useTranslation();
   const appConfig = useAppConfig();
-  const { maskName } = usePrivacyMode();
   const isOnline = node.status === 'online';
   const stats = node.stats;
   const cpuUsage = stats?.cpu?.usage ?? 0;
@@ -122,98 +124,73 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
   const isFree = node.price === -1;
   const expiryStatus = (isFree || !appConfig.isLoggedIn) ? null : getExpiryStatus(node.expired_at);
   const hasTraffic = !!(node.traffic_limit && node.traffic_limit > 0 && node.traffic_limit_type && node.traffic_limit_type !== 'no_limit');
-  const displayName = maskName(node.uuid, node.name);
 
   return (
     <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl p-4 sm:p-5 commander-corners relative overflow-hidden">
       <div className="commander-scanner-effect" />
       <span className="corner-bottom" />
       <div className="flex flex-col gap-5">
-      {/* Row 1: Name + Status + System Info */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-        <div className="flex flex-wrap items-center gap-2 min-w-0">
-          <span className={cn('w-2.5 h-2.5 rounded-full shrink-0', isOnline ? 'bg-success motion-safe:animate-pulse' : 'bg-destructive')} />
-          <h2 className="text-base font-display font-bold truncate max-w-[60vw] sm:max-w-none">{displayName}</h2>
-          {isOnline && stats?.updated_at ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className={cn('text-xxs font-mono font-bold px-1.5 py-0.5 rounded cursor-default shrink-0', 'bg-success/15 text-success')}>
-                  {t('status.online')}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs font-mono">
-                {t('label.lastReport')}: {new Date(stats.updated_at).toLocaleString()}
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            <span className={cn('text-xxs font-mono font-bold px-1.5 py-0.5 rounded shrink-0', isOnline ? 'bg-success/15 text-success' : 'bg-destructive/15 text-destructive')}>
-              {isOnline ? t('status.online') : t('status.offline')}
-            </span>
-          )}
-          {appConfig.isLoggedIn && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="hidden sm:inline text-xxs font-mono text-muted-foreground/40 cursor-default select-all">{node.uuid}</span>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs font-mono">UUID: {node.uuid}</TooltipContent>
-            </Tooltip>
-          )}
-          {node.group && (
-            <span className="text-xxs font-mono font-bold px-1.5 py-0.5 rounded bg-primary/15 text-primary shrink-0">[{node.group}]</span>
-          )}
-          {node.hidden && (
-            <span className="text-xxs font-mono font-bold px-1.5 py-0.5 rounded bg-warning/15 text-warning shrink-0">
-              {t('node.hidden')}
-            </span>
-          )}
-          {node.ipv6 && (
-            <span className="text-xxs font-mono font-bold px-1.5 py-0.5 rounded bg-chart-6/15 text-chart-6 shrink-0">
-              IPv6
-            </span>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-mono text-muted-foreground sm:ml-auto">
-          {node.region && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="cursor-default">{node.region}</span>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="whitespace-pre-line text-xs">
-                {(() => {
-                  const emoji = extractRegionEmoji(node.region);
-                  const regionName = extractRegionText(node.region);
-                  const displayName = regionName || (emoji ? '' : node.region);
-                  return displayName ? `${emoji} ${displayName}` : emoji || node.region;
-                })()}
-              </TooltipContent>
-            </Tooltip>
-          )}
-          {expiryStatus && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className={cn(
-                  'cursor-default',
-                  expiryStatus === 'expired' ? 'text-destructive' : expiryStatus === 'warning' ? 'text-warning' : 'text-muted-foreground',
-                )}>
-                  {formatExpiry(node.expired_at)}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="whitespace-pre-line text-xs">
-                {appConfig.isLoggedIn
-                  ? t('label.expiryTooltipDetail', {
-                      date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
-                      cycle: node.billing_cycle ?? '-',
-                      renewal: node.auto_renewal ? t('label.yes') : t('label.no'),
-                      price: node.price === -1 ? t('label.free') : node.price === 0 ? t('label.notSet') : `${node.currency}${node.price}`,
-                    })
-                  : t('label.expiryTooltip', {
-                      date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
-                    })
-                }
-              </TooltipContent>
-            </Tooltip>
-          )}
-        </div>
+      {/* Metadata row — group / flags / region / expiry / uuid (status & name are in route header) */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs font-mono">
+        {node.group && (
+          <span className="text-xxs font-mono font-bold px-1.5 py-0.5 rounded bg-primary/15 text-primary shrink-0">[{node.group}]</span>
+        )}
+        {node.hidden && (
+          <span className="text-xxs font-mono font-bold px-1.5 py-0.5 rounded bg-warning/15 text-warning shrink-0">
+            {t('node.hidden')}
+          </span>
+        )}
+        {node.ipv6 && (
+          <span className="text-xxs font-mono font-bold px-1.5 py-0.5 rounded bg-chart-6/15 text-chart-6 shrink-0">
+            IPv6
+          </span>
+        )}
+        {node.region && (() => {
+          const regionText = extractRegionText(node.region);
+          const emoji = extractRegionEmoji(node.region);
+          // Region is already shown as a flag chip in the route header.
+          // Here we only render the textual part (or fall back to raw region
+          // when no emoji is present), keeping a flat mono label style
+          // consistent with the rest of the metadata row.
+          const display = regionText || (emoji ? '' : node.region);
+          if (!display) return null;
+          return (
+            <span className="text-muted-foreground">{display}</span>
+          );
+        })()}
+        {expiryStatus && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className={cn(
+                'cursor-default',
+                expiryStatus === 'expired' ? 'text-destructive' : expiryStatus === 'warning' ? 'text-warning' : 'text-muted-foreground',
+              )}>
+                {formatExpiry(node.expired_at)}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="whitespace-pre-line text-xs">
+              {appConfig.isLoggedIn
+                ? t('label.expiryTooltipDetail', {
+                    date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
+                    cycle: node.billing_cycle ?? '-',
+                    renewal: node.auto_renewal ? t('label.yes') : t('label.no'),
+                    price: node.price === -1 ? t('label.free') : node.price === 0 ? t('label.notSet') : `${node.currency}${node.price}`,
+                  })
+                : t('label.expiryTooltip', {
+                    date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
+                  })
+              }
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {appConfig.isLoggedIn && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="hidden sm:inline ml-auto text-xxs font-mono text-muted-foreground/40 cursor-default select-all">{node.uuid}</span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs font-mono">UUID: {node.uuid}</TooltipContent>
+          </Tooltip>
+        )}
       </div>
 
       {/* Tags row */}
@@ -231,19 +208,10 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
       })()}
 
       {/* Public remark */}
-      {node.public_remark && (
-        <div className="text-xs text-muted-foreground/70 pl-2 border-l-2 border-primary/20 leading-relaxed">
-          {node.public_remark}
-        </div>
-      )}
+      <RemarkNote text={node.public_remark} variant="public" />
 
       {/* Private remark (admin only) */}
-      {appConfig.isLoggedIn && node.remark && (
-        <div className="text-xs text-muted-foreground/50 pl-2 border-l-2 border-warning/30 leading-relaxed">
-          <span className="text-xxs font-mono font-bold text-warning/60 uppercase mr-1.5">{t('label.privateRemark')}</span>
-          {node.remark}
-        </div>
-      )}
+      {appConfig.isLoggedIn && <RemarkNote text={node.remark} variant="private" />}
 
       {/* Row 2: System specs — CPU+GPU first row, System+Arch second row */}
       <div className="grid grid-cols-2 gap-2 pb-4 border-b border-border/30">
@@ -251,7 +219,7 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex items-start gap-2 p-2 rounded bg-muted/10 border border-border/15 cursor-default">
-                <Cpu className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
+                <SystemIcon kind="cpu" value={node.cpu_name} className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
                 <div className="min-w-0">
                   <div className="text-xs font-mono text-muted-foreground/60 uppercase">{t('label.cpu')}</div>
                   <div className="text-xs font-mono text-foreground/80 truncate">{node.cpu_name} ({node.cpu_cores}C)</div>
@@ -267,7 +235,7 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex items-start gap-2 p-2 rounded bg-muted/10 border border-border/15 cursor-default">
-                <Box className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
+                <SystemIcon kind="gpu" value={node.gpu_name} className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
                 <div className="min-w-0">
                   <div className="text-xs font-mono text-muted-foreground/60 uppercase">{t('label.gpu')}</div>
                   <div className="text-xs font-mono text-foreground/80 truncate">{node.gpu_name}</div>
@@ -283,7 +251,7 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex items-start gap-2 p-2 rounded bg-muted/10 border border-border/15 cursor-default">
-                <Monitor className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
+                <SystemIcon kind="os" value={node.os} className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
                 <div className="min-w-0">
                   <div className="text-xs font-mono text-muted-foreground/60 uppercase">{t('label.system')}</div>
                   <div className="text-xs font-mono text-foreground/80 truncate">
@@ -301,7 +269,7 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex items-start gap-2 p-2 rounded bg-muted/10 border border-border/15 cursor-default">
-                <Layers className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
+                <SystemIcon kind="arch" value={node.arch} className="h-3.5 w-3.5 text-primary mt-0.5 flex-shrink-0" />
                 <div className="min-w-0">
                   <div className="text-xs font-mono text-muted-foreground/60 uppercase">{t('label.arch')}</div>
                   <div className="text-xs font-mono text-foreground/80 truncate">
@@ -323,12 +291,14 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
           {/* Circular gauges row */}
           <div className="grid grid-cols-3 gap-3">
             <CircularGauge
+              channel="cpu"
               label={t('label.cpu')}
               value={cpuUsage}
               icon={<Cpu className="h-3 w-3 text-muted-foreground" />}
               status={getUsageStatus(cpuUsage, { warning: 60, critical: 80 })}
             />
             <CircularGauge
+              channel="ram"
               label={t('label.ram')}
               value={ramUsage}
               icon={<MemoryStick className="h-3 w-3 text-muted-foreground" />}
@@ -337,6 +307,7 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
               subDetail={stats.swap.total > 0 ? `${t('label.swap')}: ${formatBytes(stats.swap.used)} / ${formatBytes(stats.swap.total)}` : undefined}
             />
             <CircularGauge
+              channel="disk"
               label={t('label.disk')}
               value={diskUsage}
               icon={<HardDrive className="h-3 w-3 text-muted-foreground" />}
@@ -347,106 +318,122 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
 
           {/* Info cards row */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-            <div className="p-2.5 rounded bg-muted/15 border border-border/20">
-              <div className="flex items-center justify-between mb-1">
+            <div className="p-2.5 rounded bg-muted/15 border border-border/20 flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <Network className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-xs font-mono text-muted-foreground">{t('label.network')}</span>
+                  <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">{t('label.network')}</span>
                 </div>
-                <Link
-                  to={`/node/${node.uuid}/network`}
-                  className="flex items-center gap-0.5 text-xxs font-mono text-primary hover:underline"
-                >
-                  {t('label.networkDetail')}
-                  <ExternalLink className="h-2.5 w-2.5" />
-                </Link>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      to={`/node/${node.uuid}/network`}
+                      aria-label={t('label.networkDetailHint')}
+                      className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-xxs font-mono font-bold uppercase tracking-wider text-primary ring-1 ring-primary/25 transition-colors hover:bg-primary/18 hover:ring-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                    >
+                      {t('label.networkDetail')}
+                      <ExternalLink className="h-2.5 w-2.5" aria-hidden />
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-xs text-xs">
+                    {t('label.networkDetailHint')}
+                  </TooltipContent>
+                </Tooltip>
               </div>
-              <div className="text-xs font-metric font-bold">
-                <span className="text-primary">↑</span> {formatSpeed(stats.network.up)}
-              </div>
-              <div className="text-xs font-metric font-bold mt-0.5">
-                <span className="text-accent">↓</span> {formatSpeed(stats.network.down)}
+              <div className="flex flex-col gap-0.5">
+                <div className="flex items-baseline gap-1.5 text-sm font-metric font-bold tabular-nums">
+                  <span className="text-chart-7">↑</span>
+                  <span>{formatSpeed(stats.network.up)}</span>
+                </div>
+                <div className="flex items-baseline gap-1.5 text-sm font-metric font-bold tabular-nums">
+                  <span className="text-chart-8">↓</span>
+                  <span>{formatSpeed(stats.network.down)}</span>
+                </div>
               </div>
               {appConfig.isLoggedIn && (
-                <div className="flex items-center gap-2 mt-1.5 pt-1.5 border-t border-border/15">
+                <div className="flex items-center gap-2 pt-1.5 border-t border-border/15">
                   <span className="text-xxs font-mono text-muted-foreground/60">{t('label.tcp')}</span>
-                  <span className="text-xxs font-metric font-bold">{stats.connections.tcp}</span>
+                  <span className="text-xxs font-metric font-bold tabular-nums">{stats.connections.tcp}</span>
                   <span className="text-xxs text-muted-foreground/20">|</span>
                   <span className="text-xxs font-mono text-muted-foreground/60">{t('label.udp')}</span>
-                  <span className="text-xxs font-metric font-bold">{stats.connections.udp}</span>
+                  <span className="text-xxs font-metric font-bold tabular-nums">{stats.connections.udp}</span>
                 </div>
               )}
             </div>
-            <div className="p-2.5 rounded bg-muted/15 border border-border/20">
-              <div className="flex items-center gap-1.5 mb-1">
+            <div className="p-2.5 rounded bg-muted/15 border border-border/20 flex flex-col gap-1.5">
+              <div className="flex items-center gap-1.5">
                 <Activity className="h-3 w-3 text-muted-foreground" />
-                <span className="text-xs font-mono text-muted-foreground">{t('label.load')}</span>
+                <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">{t('label.load')}</span>
               </div>
-              <div className="text-lg font-metric font-bold">
+              <div className="text-lg font-metric font-bold tabular-nums leading-none">
                 {stats.load.load1.toFixed(2)}
               </div>
-              <div className="grid grid-cols-3 gap-1 mt-1.5 pt-1.5 border-t border-border/15">
+              <div className="grid grid-cols-3 gap-1 pt-1.5 border-t border-border/15">
                 <div>
                   <div className="text-xxs font-mono text-muted-foreground/60">{t('label.load1m')}</div>
-                  <div className="text-sm font-metric font-bold">{stats.load.load1.toFixed(2)}</div>
+                  <div className="text-sm font-metric font-bold tabular-nums">{stats.load.load1.toFixed(2)}</div>
                 </div>
                 <div>
                   <div className="text-xxs font-mono text-muted-foreground/60">{t('label.load5m')}</div>
-                  <div className="text-sm font-metric font-bold">{stats.load.load5.toFixed(2)}</div>
+                  <div className="text-sm font-metric font-semibold tabular-nums text-foreground/85">{stats.load.load5.toFixed(2)}</div>
                 </div>
                 <div>
                   <div className="text-xxs font-mono text-muted-foreground/60">{t('label.load15m')}</div>
-                  <div className="text-sm font-metric font-bold">{stats.load.load15.toFixed(2)}</div>
+                  <div className="text-sm font-metric font-medium tabular-nums text-foreground/65">{stats.load.load15.toFixed(2)}</div>
                 </div>
               </div>
             </div>
-            <div className="p-2.5 rounded bg-muted/15 border border-border/20">
-              <div className="flex items-center gap-1.5 mb-1">
+            <div className="p-2.5 rounded bg-muted/15 border border-border/20 flex flex-col gap-1.5">
+              <div className="flex items-center gap-1.5">
                 <Clock className="h-3 w-3 text-muted-foreground" />
-                <span className="text-xs font-mono text-muted-foreground">{t('label.uptime')}</span>
+                <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">{t('label.uptime')}</span>
               </div>
-              <div className="text-lg font-metric font-bold">
+              <div className="flex flex-1 items-center text-lg font-metric font-bold tabular-nums leading-none">
                 {formatUptime(stats.uptime, 'minute')}
               </div>
             </div>
           </div>
 
-          {/* Traffic limit bar */}
-          {hasTraffic && (
-            <div className="p-2.5 rounded bg-muted/15 border border-border/20">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-mono text-muted-foreground">
-                  {t('label.traffic')} ({formatTrafficType(node.traffic_limit_type!)})
-                </span>
-                <span className={cn(
-                  'text-xs font-metric font-bold',
-                  (() => {
-                    const used = calcTrafficUsage(stats.network.totalUp, stats.network.totalDown, node.traffic_limit_type as TrafficLimitType);
-                    const pct = (used / node.traffic_limit!) * 100;
-                    return pct >= 90 ? 'text-destructive' : pct >= 70 ? 'text-warning' : '';
-                  })()
-                )}>
-                  {formatBytes(calcTrafficUsage(stats.network.totalUp, stats.network.totalDown, node.traffic_limit_type as TrafficLimitType))} / {formatBytes(node.traffic_limit!)}
-                </span>
+          {/* Traffic limit bar — uses unified .hud-gauge */}
+          {hasTraffic && (() => {
+            const used = calcTrafficUsage(stats.network.totalUp, stats.network.totalDown, node.traffic_limit_type as TrafficLimitType);
+            const pct = (used / node.traffic_limit!) * 100;
+            const s = getUsageStatus(pct, { warning: 70, critical: 90 });
+            const clamped = Math.min(Math.max(pct, 0), 100);
+            return (
+              <div
+                className="hud-gauge p-3 rounded bg-muted/15 border border-border/20 flex flex-col gap-1.5"
+                data-channel="traffic"
+                data-status={s}
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
+                    {t('label.traffic')} <span className="text-muted-foreground/60 normal-case">({formatTrafficType(node.traffic_limit_type!)})</span>
+                  </span>
+                  <span className={cn(
+                    'text-xs font-metric font-bold tabular-nums leading-none',
+                    s === 'critical' ? 'text-destructive' : s === 'warning' ? 'text-warning' : '',
+                  )}>
+                    {formatBytes(used)}
+                    <span className="text-muted-foreground/60 mx-1">/</span>
+                    <span className="text-muted-foreground/80">{formatBytes(node.traffic_limit!)}</span>
+                  </span>
+                </div>
+                <div className="hud-gauge__track-wrap">
+                  <div className="hud-gauge__ticks" aria-hidden="true">
+                    <span style={{ left: '25%' }} />
+                    <span style={{ left: '50%' }} />
+                    <span style={{ left: '75%' }} />
+                  </div>
+                  <div className="hud-gauge__track">
+                    <div className="hud-gauge__fill" style={{ width: `${clamped}%` }}>
+                      <span className="hud-gauge__cursor" aria-hidden="true" />
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="h-[4px] w-full bg-muted/40 rounded-full overflow-hidden">
-                {(() => {
-                  const used = calcTrafficUsage(stats.network.totalUp, stats.network.totalDown, node.traffic_limit_type as TrafficLimitType);
-                  const pct = (used / node.traffic_limit!) * 100;
-                  const s = getUsageStatus(pct, { warning: 70, critical: 90 });
-                  return (
-                    <div
-                      className={cn(
-                        'h-full w-full origin-left rounded-full transition-transform duration-700 ease-out',
-                        s === 'critical' ? 'bg-destructive' : s === 'warning' ? 'bg-warning' : 'bg-primary',
-                      )}
-                      style={{ transform: `scaleX(${Math.min(pct, 100) / 100})` }}
-                    />
-                  );
-                })()}
-              </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       ) : (
         <div className="flex items-center justify-center min-h-[4.5rem] text-muted-foreground text-xs leading-relaxed px-2 text-center">
@@ -479,12 +466,15 @@ function NodeDetailRoute() {
   }, [uuid, node]);
 
   const displayName = uuid ? maskName(uuid, nodeName) : nodeName;
+  const isOnline = node?.status === 'online';
+  const lastReport = node?.stats?.updated_at;
 
   if (!uuid) return null;
 
   return (
     <div className="space-y-5 sm:space-y-6">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      {/* Commander route header — back + breadcrumb + status */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <Button
           type="button"
           variant="ghost"
@@ -495,9 +485,44 @@ function NodeDetailRoute() {
           <ArrowLeft className="h-3.5 w-3.5 mr-1" aria-hidden />
           {t('action.back')}
         </Button>
-        <span className="text-xs font-mono text-muted-foreground">
-          / {displayName || uuid}
-        </span>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-xxs font-mono text-muted-foreground/50 uppercase tracking-[0.2em]">NODE</span>
+          <span className="text-xxs font-mono text-muted-foreground/30">/</span>
+          {node && (
+            <span
+              className={cn(
+                'w-2 h-2 rounded-full shrink-0',
+                isOnline ? 'bg-success motion-safe:animate-pulse' : 'bg-destructive',
+              )}
+              aria-hidden
+            />
+          )}
+          {node?.region && <RegionFlag region={node.region} size="lg" />}
+          <h1 className="text-sm sm:text-base font-display font-bold truncate max-w-[60vw] sm:max-w-md">
+            {displayName || uuid}
+          </h1>
+          {node && (
+            isOnline && lastReport ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-xxs font-mono font-bold px-1.5 py-0.5 rounded cursor-default shrink-0 bg-success/15 text-success">
+                    {t('status.online')}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs font-mono">
+                  {t('label.lastReport')}: {new Date(lastReport).toLocaleString()}
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <span className={cn(
+                'text-xxs font-mono font-bold px-1.5 py-0.5 rounded shrink-0',
+                isOnline ? 'bg-success/15 text-success' : 'bg-destructive/15 text-destructive',
+              )}>
+                {isOnline ? t('status.online') : t('status.offline')}
+              </span>
+            )
+          )}
+        </div>
       </div>
 
       {/* Node Info Panel */}

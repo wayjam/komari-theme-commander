@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Cpu, MemoryStick, HardDrive, Activity, Clock, ArrowUpDown, ExternalLink, Unplug } from 'lucide-react';
+import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
+import { Cpu, MemoryStick, HardDrive, Activity, Clock, ArrowUpDown, ExternalLink, Unplug, RotateCw, AlertTriangle } from 'lucide-react';
 import { HudSpinner } from './HudSpinner';
 import { apiService } from '../services/api';
 import { useAppConfig } from '@/hooks/useAppConfig';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { cn } from '@/lib/utils';
 import {
   CpuUsageLineChart,
   SystemLoadLineChart,
@@ -79,7 +81,8 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
+      <div className="flex h-64 items-center justify-center rounded-lg border border-border/50 bg-card/40 backdrop-blur-xl commander-corners commander-corners-soft relative overflow-hidden">
+        <span className="corner-bottom" />
         <HudSpinner size="lg" />
       </div>
     );
@@ -87,13 +90,16 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
 
   if (error) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl px-4">
-        <div className="font-mono text-sm text-destructive text-center">{error}</div>
+      <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-lg border border-destructive/40 bg-card/80 backdrop-blur-xl px-4 commander-corners relative overflow-hidden">
+        <span className="corner-bottom" />
+        <AlertTriangle className="h-6 w-6 text-destructive/80" aria-hidden />
+        <div className="font-mono text-sm text-destructive text-center max-w-md">{error}</div>
         <button
           type="button"
           onClick={fetchLoadData}
-          className="cursor-pointer rounded border border-primary/30 px-3 py-1.5 font-mono text-xs text-primary transition-colors hover:bg-primary/15"
+          className="cursor-pointer rounded border border-primary/30 px-3 py-1.5 font-mono text-xs text-primary transition-colors hover:bg-primary/15 inline-flex items-center gap-1.5"
         >
+          <RotateCw className="h-3 w-3" aria-hidden />
           {t('action.retry')}
         </button>
       </div>
@@ -101,37 +107,42 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
   }
 
   return (
-    <div className="w-full space-y-5 overflow-hidden">
-      <div className="overflow-hidden rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2">
-            <Clock className="h-3.5 w-3.5 text-primary" />
-            <span className="font-display text-xs font-bold tracking-wider text-muted-foreground uppercase">{t('chart.timeRange')}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            {timeRanges.map(tr => (
-              <button
-                key={tr.value}
-                type="button"
-                onClick={() => setTimeRange(tr.value)}
-                className={`cursor-pointer rounded px-2.5 py-1 font-mono text-xs transition-all duration-200 ${
-                  timeRange === tr.value
-                    ? 'border border-primary/30 bg-primary/15 text-primary'
-                    : 'text-muted-foreground hover:bg-muted/30 hover:text-foreground'
-                }`}
-              >
-                {tr.label}
-              </button>
-            ))}
-            <div className="mx-1 h-5 w-px bg-border/30" />
+    <div className="w-full space-y-4 overflow-hidden">
+      {/* Time range selector — segmented control, inline with refresh */}
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/40 bg-card/60 backdrop-blur-xl px-3 py-2 commander-corners commander-corners-soft relative overflow-hidden">
+        <span className="corner-bottom" />
+        <div className="flex items-center gap-2">
+          <Clock className="h-3.5 w-3.5 text-primary" aria-hidden />
+          <span className="font-display text-xxs font-bold tracking-[0.2em] text-muted-foreground uppercase">
+            {t('chart.timeRange')}
+          </span>
+        </div>
+        <div className="flex items-center gap-0.5 rounded-md border border-border/40 bg-background/40 p-0.5">
+          {timeRanges.map(tr => (
             <button
+              key={tr.value}
               type="button"
-              onClick={fetchLoadData}
-              className="cursor-pointer rounded px-2 py-1 font-mono text-xs text-muted-foreground transition-colors hover:bg-primary/15 hover:text-primary"
+              onClick={() => setTimeRange(tr.value)}
+              aria-pressed={timeRange === tr.value}
+              className={cn(
+                'cursor-pointer rounded px-2.5 py-1 font-mono text-xs tabular-nums transition-all duration-150',
+                timeRange === tr.value
+                  ? 'bg-primary/15 text-primary shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_30%,transparent)]'
+                  : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground',
+              )}
             >
-              ↻
+              {tr.label}
             </button>
-          </div>
+          ))}
+          <div className="mx-0.5 h-4 w-px bg-border/40" />
+          <button
+            type="button"
+            onClick={fetchLoadData}
+            aria-label={t('action.retry')}
+            className="cursor-pointer rounded p-1.5 text-muted-foreground transition-colors hover:bg-primary/15 hover:text-primary"
+          >
+            <RotateCw className="h-3 w-3" aria-hidden />
+          </button>
         </div>
       </div>
 
@@ -139,7 +150,7 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
         <Card className={chartCardClass}>
           <CardHeader className="px-4 pt-3 pb-2">
             <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <Cpu className="h-4 w-4 text-primary" />
+              <Cpu className="h-4 w-4 text-chart-1" />
               {t('chart.cpuUsage')}
             </CardTitle>
           </CardHeader>
@@ -157,7 +168,7 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
         <Card className={chartCardClass}>
           <CardHeader className="px-4 pt-3 pb-2">
             <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <Activity className="h-4 w-4 text-primary" />
+              <Activity className="h-4 w-4 text-chart-2" />
               {t('chart.systemLoad')}
             </CardTitle>
           </CardHeader>
@@ -169,7 +180,7 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
         <Card className={chartCardClass}>
           <CardHeader className="px-4 pt-3 pb-2">
             <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <MemoryStick className="h-4 w-4 text-primary" />
+              <MemoryStick className="h-4 w-4 text-chart-3" />
               {t('chart.memory')}
             </CardTitle>
           </CardHeader>
@@ -187,7 +198,7 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
         <Card className={chartCardClass}>
           <CardHeader className="px-4 pt-3 pb-2">
             <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <HardDrive className="h-4 w-4 text-primary" />
+              <HardDrive className="h-4 w-4 text-chart-4" />
               {t('chart.diskUsage')}
             </CardTitle>
           </CardHeader>
@@ -206,7 +217,7 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
           <Card className={chartCardClass}>
             <CardHeader className="px-4 pt-3 pb-2">
               <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                <Unplug className="h-4 w-4 text-primary" />
+                <Unplug className="h-4 w-4 text-chart-5" />
                 {t('chart.connections')}
               </CardTitle>
             </CardHeader>
@@ -220,13 +231,24 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
           <CardHeader className="px-4 pt-3 pb-2">
             <CardTitle className="flex items-center justify-between text-sm font-semibold">
               <div className="flex items-center gap-2">
-                <ArrowUpDown className="h-4 w-4 text-primary" />
+                <ArrowUpDown className="h-4 w-4 text-chart-7" />
                 {t('chart.networkTraffic')}
               </div>
-              <Link to={`/node/${nodeUuid}/network`} className="flex items-center gap-1 font-normal text-xxs font-mono text-primary hover:underline">
-                {t('label.viewNetworkTraffic')}
-                <ExternalLink className="h-2.5 w-2.5" />
-              </Link>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    to={`/node/${nodeUuid}/network`}
+                    aria-label={t('label.viewNetworkTrafficHint')}
+                    className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-xxs font-mono font-bold uppercase tracking-wider text-primary ring-1 ring-primary/25 transition-colors hover:bg-primary/18 hover:ring-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                  >
+                    {t('label.viewNetworkTraffic')}
+                    <ExternalLink className="h-2.5 w-2.5" aria-hidden />
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs text-xs">
+                  {t('label.viewNetworkTrafficHint')}
+                </TooltipContent>
+              </Tooltip>
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">

@@ -14,24 +14,27 @@ import { useAppConfig } from '@/hooks/useAppConfig';
 import { Progress } from './ui/progress';
 import { Sparkline } from './Sparkline';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { SystemIcon } from '@/lib/systemIcon';
 import type { NodeWithStatus } from '@/services/api';
 import { useRecentStats } from '@/hooks/useRecentStats';
 import { formatSpeed, formatUptime, formatBytes, getUsageStatus, calcTrafficUsage, formatTrafficType, getExpiryStatus, formatExpiry, cn } from '@/lib/utils';
 import type { TrafficLimitType } from '@/lib/utils';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
+import { RegionFlag } from './RegionFlag';
 import dayjs from 'dayjs';
 
 interface NodeTableProps {
   nodes: NodeWithStatus[];
 }
 
-const borderColor: Record<string, string> = {
-  critical: 'border-destructive/70',
-  warning: 'border-warning/70',
-  normal: 'border-transparent',
+// Status -> usage bar fill / overlay text color
+const fillByStatus: Record<string, string> = {
+  critical: 'bg-destructive/75',
+  warning: 'bg-warning/70',
+  normal: 'bg-primary/55',
 };
 
-const textColor: Record<string, string> = {
+const textByStatus: Record<string, string> = {
   critical: 'text-destructive',
   warning: 'text-warning',
   normal: '',
@@ -39,13 +42,18 @@ const textColor: Record<string, string> = {
 
 function UsageCell({ value, status }: { value: number; status: string }) {
   return (
-    <div className={cn('relative w-full min-w-[80px] rounded border', borderColor[status] || 'border-transparent')}>
+    <div className="relative w-full min-w-22">
       <Progress
         value={Math.min(value, 100)}
-        className="h-5 bg-muted/20 rounded"
-        indicatorClassName="rounded transition-transform duration-500 ease-out bg-primary/60"
+        className="h-5 bg-muted/25 rounded"
+        indicatorClassName={cn('rounded transition-transform duration-500 ease-out', fillByStatus[status] || 'bg-primary/55')}
       />
-      <span className="absolute inset-0 flex items-center justify-center text-xs font-metric font-bold text-foreground">
+      <span
+        className={cn(
+          'absolute inset-0 flex items-center justify-center text-xs font-metric font-bold',
+          status === 'normal' ? 'text-foreground' : textByStatus[status],
+        )}
+      >
         {value.toFixed(1)}%
       </span>
     </div>
@@ -69,8 +77,13 @@ export function NodeTable({ nodes }: NodeTableProps) {
 
   const columns = useMemo(() => [
     columnHelper.accessor('status', {
-      header: t('table.status'),
-      size: 80,
+      header: () => (
+        <span className="flex items-center justify-center w-full">
+          <span className="sr-only">{t('table.status')}</span>
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-current opacity-60" aria-hidden />
+        </span>
+      ),
+      size: 36,
       enableSorting: true,
       sortingFn: (rowA, rowB) => {
         const a = rowA.original.status === 'online' ? 1 : 0;
@@ -80,17 +93,23 @@ export function NodeTable({ nodes }: NodeTableProps) {
       cell: ({ row }) => {
         const isOnline = row.original.status === 'online';
         return (
-          <div className="flex items-center gap-1.5">
-            <span className={cn(
-              'w-1.5 h-1.5 rounded-full',
-              isOnline ? 'bg-success motion-safe:animate-pulse' : 'bg-destructive'
-            )} />
-            <span className={cn(
-              'text-xs font-mono font-bold',
-              isOnline ? 'text-success' : 'text-destructive'
-            )}>
-              {isOnline ? t('status.on') : t('status.off')}
-            </span>
+          <div className="flex items-center justify-center w-full">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  className={cn(
+                    'inline-block w-2 h-2 rounded-full cursor-default',
+                    isOnline
+                      ? 'bg-success shadow-[0_0_6px_color-mix(in_oklch,var(--success)_55%,transparent)] motion-safe:animate-pulse'
+                      : 'bg-destructive/80',
+                  )}
+                  aria-label={isOnline ? t('status.on') : t('status.off')}
+                />
+              </TooltipTrigger>
+              <TooltipContent side="right" className="text-xs font-mono">
+                {isOnline ? t('status.on') : t('status.off')}
+              </TooltipContent>
+            </Tooltip>
           </div>
         );
       },
@@ -98,7 +117,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
 
     columnHelper.accessor('name', {
       header: t('table.node'),
-      size: 250,
+      size: 280,
       enableSorting: true,
       cell: ({ row }) => {
         const node = row.original;
@@ -109,94 +128,124 @@ export function NodeTable({ nodes }: NodeTableProps) {
           ? calcTrafficUsage(node.stats.network.totalUp, node.stats.network.totalDown, node.traffic_limit_type as TrafficLimitType)
           : 0;
         const trafficPct = hasTraffic ? (trafficUsed / node.traffic_limit!) * 100 : 0;
+        const trafficUrgent = trafficPct >= 70;
+        const expiryUrgent = expiryStatus === 'expired' || expiryStatus === 'warning';
         const tagList = node.tags ? node.tags.split(/[,;]/).map(t => t.trim()).filter(Boolean) : [];
 
         return (
-          <div className="min-w-0 space-y-0.5">
-            {/* Node name row */}
-            <div className="flex items-center gap-2">
-              <span
-                className="text-base font-display font-bold truncate cursor-pointer hover:text-primary transition-colors shrink-0 max-w-[50%]"
+          <div className="min-w-0 space-y-1">
+            {/* Row 1: flag · node name */}
+            <div className="flex items-center gap-2 min-w-0">
+              <RegionFlag region={node.region} size="sm" />
+              <button
+                type="button"
+                className="text-base font-display font-bold truncate cursor-pointer text-foreground hover:text-primary hover:underline underline-offset-4 decoration-primary/40 transition-colors text-left"
                 onClick={() => navigate(`/node/${node.uuid}`)}
-              >{node.name}</span>
-              <span className="text-xs font-mono text-muted-foreground/60 shrink-0">{node.region}</span>
-              {node.group && (
-                <span className="text-xs font-mono text-primary/80 bg-primary/15 px-1.5 py-0.5 rounded-sm shrink-0">
-                  {node.group}
-                </span>
-              )}
-              {tagList.slice(0, 5).map((tag, i) => (
-                <span key={i} className="text-xs font-mono text-muted-foreground/80 bg-muted/50 px-1.5 py-0.5 rounded-sm shrink-0">
-                  {tag}
-                </span>
-              ))}
-              {tagList.length > 5 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="text-xs font-mono text-muted-foreground/60 bg-muted/40 px-1.5 py-0.5 rounded-sm cursor-default shrink-0">
-                      +{tagList.length - 5}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs font-mono">
-                    {tagList.slice(5).join(', ')}
-                  </TooltipContent>
-                </Tooltip>
-              )}
-              {node.hidden && (
-                <span className="text-xs font-mono text-warning/80 bg-warning/15 px-1.5 py-0.5 rounded-sm shrink-0">
-                  {t('node.hidden')}
-                </span>
-              )}
+              >
+                {node.name}
+              </button>
             </div>
-            {/* System info row */}
-            {node.stats && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="text-xs font-mono text-muted-foreground/60 truncate cursor-default">
-                    {node.os} · {node.cpu_cores}C · {formatBytes(node.stats.ram.total)}
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-xs text-xs font-mono whitespace-pre-line">
-                  {[node.cpu_name && `CPU: ${node.cpu_name} (${node.cpu_cores}C)`, node.os && `OS: ${node.os}`, node.arch && `Arch: ${node.arch}`, node.virtualization && `Virt: ${node.virtualization}`, `RAM: ${formatBytes(node.stats.ram.total)}`].filter(Boolean).join('\n')}
-                </TooltipContent>
-              </Tooltip>
+
+            {/* Row 2: group + tags + hidden */}
+            {(node.group || tagList.length > 0 || node.hidden) && (
+              <div className="flex flex-wrap items-center gap-1">
+                {node.group && (
+                  <span className="text-xxs font-mono text-primary/85 bg-primary/15 px-1.5 py-0.5 rounded-sm shrink-0">
+                    {node.group}
+                  </span>
+                )}
+                {tagList.slice(0, 4).map((tag, i) => (
+                  <span key={i} className="text-xxs font-mono text-muted-foreground/70 bg-muted/45 px-1.5 py-0.5 rounded-sm shrink-0">
+                    {tag}
+                  </span>
+                ))}
+                {tagList.length > 4 && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="text-xxs font-mono text-muted-foreground/55 bg-muted/35 px-1.5 py-0.5 rounded-sm cursor-default shrink-0">
+                        +{tagList.length - 4}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs font-mono">
+                      {tagList.slice(4).join(', ')}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+                {node.hidden && (
+                  <span className="text-xxs font-mono text-warning/85 bg-warning/15 px-1.5 py-0.5 rounded-sm shrink-0">
+                    {t('node.hidden')}
+                  </span>
+                )}
+              </div>
             )}
-            {/* Traffic & expiry row */}
-            <div className="flex items-center gap-3">
-              {hasTraffic && node.stats && (
-                <span className={cn(
-                  'text-xs font-metric',
-                  trafficPct >= 90 ? 'text-destructive' : trafficPct >= 70 ? 'text-warning' : 'text-muted-foreground/40',
-                )}>
-                  {formatTrafficType(node.traffic_limit_type!)} {formatBytes(trafficUsed)}/{formatBytes(node.traffic_limit!)}
-                </span>
-              )}
-              {expiryStatus && (
+
+            {/* Row 3: system info · traffic · expiry — unified to /50, only urgent states pop */}
+            {node.stats && (
+              <div className="flex items-center gap-2 text-xxs font-mono text-muted-foreground/50 truncate">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className={cn(
-                      'text-xs font-metric cursor-default',
-                      expiryStatus === 'expired' ? 'text-destructive' : expiryStatus === 'warning' ? 'text-warning' : 'text-muted-foreground/40',
-                    )}>
-                      {formatExpiry(node.expired_at)}
+                    <span className="inline-flex items-center gap-1 truncate cursor-default">
+                      <SystemIcon kind="os" value={node.os} className="h-2.5 w-2.5 shrink-0 opacity-70" />
+                      <span className="truncate">{node.os} · {node.cpu_cores}C · {formatBytes(node.stats.ram.total)}</span>
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom" className="whitespace-pre-line text-xs font-mono">
-                    {isLoggedIn
-                      ? t('label.expiryTooltipDetail', {
-                          date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
-                          cycle: node.billing_cycle ?? '-',
-                          renewal: node.auto_renewal ? t('label.yes') : t('label.no'),
-                          price: node.price === -1 ? t('label.free') : node.price === 0 ? t('label.notSet') : `${node.currency}${node.price}`,
-                        })
-                      : t('label.expiryTooltip', {
-                          date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
-                        })
-                    }
+                  <TooltipContent side="bottom" className="max-w-xs text-xs font-mono whitespace-pre-line">
+                    {[node.cpu_name && `CPU: ${node.cpu_name} (${node.cpu_cores}C)`, node.os && `OS: ${node.os}`, node.arch && `Arch: ${node.arch}`, node.virtualization && `Virt: ${node.virtualization}`, `RAM: ${formatBytes(node.stats.ram.total)}`].filter(Boolean).join('\n')}
                   </TooltipContent>
                 </Tooltip>
-              )}
-            </div>
+                {hasTraffic && (
+                  <>
+                    <span className="text-muted-foreground/25">·</span>
+                    <span
+                      className={cn(
+                        'font-metric shrink-0',
+                        trafficUrgent
+                          ? trafficPct >= 90
+                            ? 'text-destructive'
+                            : 'text-warning'
+                          : '',
+                      )}
+                    >
+                      {formatTrafficType(node.traffic_limit_type!)} {formatBytes(trafficUsed)}/{formatBytes(node.traffic_limit!)}
+                    </span>
+                  </>
+                )}
+                {expiryStatus && (
+                  <>
+                    <span className="text-muted-foreground/25">·</span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span
+                          className={cn(
+                            'font-metric cursor-default shrink-0',
+                            expiryUrgent
+                              ? expiryStatus === 'expired'
+                                ? 'text-destructive'
+                                : 'text-warning'
+                              : '',
+                          )}
+                        >
+                          {formatExpiry(node.expired_at)}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="whitespace-pre-line text-xs font-mono">
+                        {isLoggedIn
+                          ? t('label.expiryTooltipDetail', {
+                              date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
+                              cycle: node.billing_cycle ?? '-',
+                              renewal: node.auto_renewal ? t('label.yes') : t('label.no'),
+                              price: node.price === -1 ? t('label.free') : node.price === 0 ? t('label.notSet') : `${node.currency}${node.price}`,
+                            })
+                          : t('label.expiryTooltip', {
+                              date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
+                            })
+                        }
+                      </TooltipContent>
+                    </Tooltip>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         );
       },
@@ -255,15 +304,15 @@ export function NodeTable({ nodes }: NodeTableProps) {
       {
         id: 'network',
         header: t('label.network'),
-        size: 120,
+        size: 130,
         enableSorting: true,
         cell: ({ row }) => {
           const stats = row.original.stats;
           if (!stats) return <span className="text-sm font-metric text-muted-foreground/30">—</span>;
           return (
-            <div className="text-xs font-metric leading-tight">
-              <div><span className="text-success/70">↑</span>{formatSpeed(stats.network.up)}</div>
-              <div><span className="text-primary/70">↓</span>{formatSpeed(stats.network.down)}</div>
+            <div className="text-xs font-metric leading-tight tabular-nums">
+              <div><span className="text-success/70 mr-1">↑</span>{formatSpeed(stats.network.up)}</div>
+              <div><span className="text-primary/70 mr-1">↓</span>{formatSpeed(stats.network.down)}</div>
             </div>
           );
         },
@@ -275,7 +324,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
       {
         id: 'uptime',
         header: t('label.uptime'),
-        size: 80,
+        size: 90,
         enableSorting: true,
         cell: ({ row }) => {
           const stats = row.original.stats;
@@ -290,25 +339,38 @@ export function NodeTable({ nodes }: NodeTableProps) {
       {
         id: 'load',
         header: t('label.load'),
-        size: 100,
+        size: 90,
         enableSorting: true,
         cell: ({ row }) => {
           const stats = row.original.stats;
           if (!stats) return <span className="text-xs font-metric text-muted-foreground/30">—</span>;
-          return <span className="text-xs font-metric">{stats.load.load1.toFixed(2)}</span>;
+          const cores = row.original.cpu_cores || 1;
+          const ratio = stats.load.load1 / cores;
+          const loadStatus = ratio >= 1.5 ? 'critical' : ratio >= 1 ? 'warning' : 'normal';
+          return (
+            <span className={cn('text-xs font-metric tabular-nums', textByStatus[loadStatus])}>
+              {stats.load.load1.toFixed(2)}
+            </span>
+          );
         },
       }
     ),
 
     columnHelper.display({
       id: 'sparkline',
-      header: '',
+      header: 'TREND',
       size: 80,
       cell: ({ row }) => {
         const node = row.original;
-        if (node.status !== 'online') return null;
+        if (node.status !== 'online') {
+          return (
+            <div className="w-16 h-4.5 flex items-center" aria-hidden>
+              <div className="w-full border-t border-dashed border-muted-foreground/20" />
+            </div>
+          );
+        }
         const data = getCpuSparkline(node.uuid);
-        if (!data) return null;
+        if (!data) return <span className="text-xs font-metric text-muted-foreground/30">—</span>;
         return <Sparkline data={data} width={64} height={18} />;
       },
     }),
@@ -325,10 +387,10 @@ export function NodeTable({ nodes }: NodeTableProps) {
   });
 
   return (
-    <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl overflow-hidden commander-corners relative">
-      <div className="commander-scanner-effect" />
+    <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl overflow-hidden commander-corners commander-corners-soft relative">
+      <div className="commander-scanner-effect commander-scanner-soft" />
       <span className="corner-bottom" />
-      
+
       {/* Console Header Decoration */}
       <div className="console-header-decoration flex items-center justify-between px-3 py-1.5 border-b border-border/30 bg-muted/10 text-xxs font-mono text-muted-foreground/40 uppercase tracking-[0.2em] relative z-10">
         <div className="flex items-center gap-2">
@@ -347,18 +409,18 @@ export function NodeTable({ nodes }: NodeTableProps) {
           <thead>
             {table.getHeaderGroups().map(headerGroup => (
               <tr key={headerGroup.id} className="border-b border-border/40 bg-muted/15 relative">
-                {headerGroup.headers.map(header => (
+                {headerGroup.headers.map((header, hIdx) => (
                   <th
                     key={header.id}
                     className={cn(
-                      'px-3 py-2.5 text-left text-xs font-mono font-bold text-muted-foreground/60 uppercase tracking-[0.15em]',
+                      'py-2.5 text-xxs font-mono font-bold text-muted-foreground/55 uppercase tracking-[0.18em]',
+                      hIdx === 0 ? 'px-1 text-center' : 'px-3 text-left',
                       header.column.getCanSort() && 'cursor-pointer select-none hover:text-primary transition-colors'
                     )}
                     style={{ width: header.getSize() === 999 ? undefined : header.getSize() }}
                     onClick={header.column.getToggleSortingHandler()}
                   >
-                    <div className="flex items-center gap-1">
-                      <span className="text-primary opacity-40 mr-0.5">_</span>
+                    <div className={cn('flex items-center gap-1', hIdx === 0 && 'justify-center')}>
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                       {header.column.getCanSort() && (
                         <SortIcon sorted={header.column.getIsSorted()} />
@@ -373,32 +435,41 @@ export function NodeTable({ nodes }: NodeTableProps) {
             {table.getRowModel().rows.map((row, idx) => {
               const isOnline = row.original.status === 'online';
               const stats = row.original.stats;
-              const isCritical = stats && (
-                (stats.cpu.usage > 80) || 
-                (stats.ram.used / stats.ram.total > 0.85) || 
+              const isCritical = !!stats && (
+                (stats.cpu.usage > 80) ||
+                (stats.ram.used / stats.ram.total > 0.85) ||
                 (stats.disk.used / stats.disk.total > 0.9)
               );
-              
+
               return (
                 <tr
                   key={row.id}
                   className={cn(
-                    'transition-colors hover:bg-primary/8 group relative',
+                    'group transition-colors',
+                    'hover:bg-primary/10',
                     idx !== table.getRowModel().rows.length - 1 && 'border-b border-border/20',
                     !isOnline && 'opacity-45',
-                    isCritical && 'bg-destructive/5 hover:bg-destructive/10 motion-safe:animate-pulse-subtle'
+                    isCritical && 'bg-destructive/4'
                   )}
                 >
                   {row.getVisibleCells().map((cell, cellIdx) => (
                     <td
                       key={cell.id}
                       className={cn(
-                        'px-3 py-2.5 relative',
-                        cellIdx > 0 && 'border-l border-border/10'
+                        'py-3 align-middle relative',
+                        cellIdx === 0 ? 'px-1 text-center' : 'px-3',
                       )}
+                      style={{ minHeight: 64 }}
                     >
-                      {cellIdx === 0 && isCritical && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-3/4 bg-destructive shadow-[0_0_8px_color-mix(in_oklch,var(--destructive)_65%,transparent)]" />
+                      {cellIdx === 0 && (
+                        <div
+                          className={cn(
+                            'pointer-events-none absolute left-0 top-0 bottom-0 w-0.5 transition-colors',
+                            isCritical
+                              ? 'bg-destructive shadow-[0_0_8px_color-mix(in_oklch,var(--destructive)_65%,transparent)] motion-safe:animate-pulse-subtle'
+                              : 'bg-transparent group-hover:bg-primary/40'
+                          )}
+                        />
                       )}
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
@@ -419,13 +490,16 @@ export function NodeTable({ nodes }: NodeTableProps) {
           const cpuUsage = stats?.cpu?.usage ?? 0;
           const ramUsage = stats ? (stats.ram.used / stats.ram.total) * 100 : 0;
           const diskUsage = stats ? (stats.disk.used / stats.disk.total) * 100 : 0;
+          const cores = node.cpu_cores || 1;
+          const loadRatio = stats ? stats.load.load1 / cores : 0;
+          const loadStatus = loadRatio >= 1.5 ? 'critical' : loadRatio >= 1 ? 'warning' : 'normal';
           const tagList = node.tags ? node.tags.split(/[,;]/).map(t => t.trim()).filter(Boolean) : [];
 
           return (
             <div
               key={row.id}
               className={cn(
-                'px-3 py-3 space-y-2 transition-colors hover:bg-primary/8',
+                'px-3 py-3 space-y-2 transition-colors hover:bg-primary/10',
                 idx !== table.getRowModel().rows.length - 1 && 'border-b border-border/20',
                 !isOnline && 'opacity-45'
               )}
@@ -433,31 +507,34 @@ export function NodeTable({ nodes }: NodeTableProps) {
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className={cn(
-                    'w-1.5 h-1.5 rounded-full flex-shrink-0',
-                    isOnline ? 'bg-success' : 'bg-destructive'
+                    'w-2 h-2 rounded-full shrink-0',
+                    isOnline
+                      ? 'bg-success shadow-[0_0_6px_color-mix(in_oklch,var(--success)_55%,transparent)]'
+                      : 'bg-destructive/80'
                   )} />
-                  <span
-                    className="text-base font-display font-bold truncate cursor-pointer hover:text-primary transition-colors"
+                  <RegionFlag region={node.region} size="sm" />
+                  <button
+                    type="button"
+                    className="text-base font-display font-bold truncate cursor-pointer text-foreground hover:text-primary hover:underline underline-offset-4 decoration-primary/40 transition-colors text-left"
                     onClick={() => navigate(`/node/${node.uuid}`)}
-                  >{node.name}</span>
-                  <span className="text-xs font-mono text-muted-foreground/60 flex-shrink-0">{node.region}</span>
+                  >{node.name}</button>
                 </div>
                 {(node.group || tagList.length > 0 || node.hidden) && (
-                  <div className="flex flex-wrap items-center gap-1.5 ml-3.5">
+                  <div className="flex flex-wrap items-center gap-1 ml-4">
                     {node.group && (
-                      <span className="text-xs font-mono text-primary/80 bg-primary/15 px-1.5 py-0.5 rounded-sm">
+                      <span className="text-xxs font-mono text-primary/85 bg-primary/15 px-1.5 py-0.5 rounded-sm">
                         {node.group}
                       </span>
                     )}
                     {tagList.slice(0, 5).map((tag, i) => (
-                      <span key={i} className="text-xs font-mono text-muted-foreground/80 bg-muted/50 px-1.5 py-0.5 rounded-sm">
+                      <span key={i} className="text-xxs font-mono text-muted-foreground/70 bg-muted/45 px-1.5 py-0.5 rounded-sm">
                         {tag}
                       </span>
                     ))}
                     {tagList.length > 5 && (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span className="text-xs font-mono text-muted-foreground/60 bg-muted/40 px-1.5 py-0.5 rounded-sm cursor-default">
+                          <span className="text-xxs font-mono text-muted-foreground/55 bg-muted/35 px-1.5 py-0.5 rounded-sm cursor-default">
                             +{tagList.length - 5}
                           </span>
                         </TooltipTrigger>
@@ -467,7 +544,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
                       </Tooltip>
                     )}
                     {node.hidden && (
-                      <span className="text-xs font-mono text-warning/80 bg-warning/15 px-1.5 py-0.5 rounded-sm">
+                      <span className="text-xxs font-mono text-warning/85 bg-warning/15 px-1.5 py-0.5 rounded-sm">
                         {t('node.hidden')}
                       </span>
                     )}
@@ -475,12 +552,13 @@ export function NodeTable({ nodes }: NodeTableProps) {
                 )}
               </div>
               {stats && (
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-metric text-muted-foreground ml-3.5">
-                  <span className={textColor[getUsageStatus(cpuUsage, { warning: 60, critical: 80 })]}>{t('label.cpu')} {cpuUsage.toFixed(0)}%</span>
-                  <span className={textColor[getUsageStatus(ramUsage, { warning: 70, critical: 85 })]}>{t('label.ram')} {ramUsage.toFixed(0)}%</span>
-                  <span className={textColor[getUsageStatus(diskUsage, { warning: 75, critical: 90 })]}>{t('label.disk')} {diskUsage.toFixed(0)}%</span>
-                  <span><span className="text-success/70">↑</span>{formatSpeed(stats.network.up)}</span>
-                    <span><span className="text-primary/70">↓</span>{formatSpeed(stats.network.down)}</span>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-metric text-muted-foreground ml-4 tabular-nums">
+                  <span className={textByStatus[getUsageStatus(cpuUsage, { warning: 60, critical: 80 })]}>{t('label.cpu')} {cpuUsage.toFixed(0)}%</span>
+                  <span className={textByStatus[getUsageStatus(ramUsage, { warning: 70, critical: 85 })]}>{t('label.ram')} {ramUsage.toFixed(0)}%</span>
+                  <span className={textByStatus[getUsageStatus(diskUsage, { warning: 75, critical: 90 })]}>{t('label.disk')} {diskUsage.toFixed(0)}%</span>
+                  <span><span className="text-success/70 mr-1">↑</span>{formatSpeed(stats.network.up)}</span>
+                  <span><span className="text-primary/70 mr-1">↓</span>{formatSpeed(stats.network.down)}</span>
+                  <span className={textByStatus[loadStatus]}>{t('label.load')} {stats.load.load1.toFixed(2)}</span>
                   <span>{formatUptime(stats.uptime)}</span>
                 </div>
               )}

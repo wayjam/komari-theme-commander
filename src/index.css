@@ -489,12 +489,51 @@
     display: none;
   }
 
-  /* Respect users who prefer reduced motion: stop the looping scanner / pulse /
-     radar animations entirely. Keeps the static gradient overlay in place. */
+  /* Soft variants — used in info-dense surfaces (e.g. NodeTable) where the
+     full-strength corners / scanner would compete with content. Opacity is
+     halved so the decoration recedes into the background. */
+  .commander-corners-soft::before,
+  .commander-corners-soft::after,
+  .commander-corners-soft > .corner-bottom::before,
+  .commander-corners-soft > .corner-bottom::after {
+    opacity: 0.08;
+  }
+  .commander-corners-soft:hover::before,
+  .commander-corners-soft:hover::after,
+  .commander-corners-soft:hover > .corner-bottom::before,
+  .commander-corners-soft:hover > .corner-bottom::after {
+    opacity: 0.18;
+  }
+  [data-theme="deepspace"] .commander-corners-soft::before,
+  [data-theme="deepspace"] .commander-corners-soft::after,
+  [data-theme="deepspace"] .commander-corners-soft > .corner-bottom::before,
+  [data-theme="deepspace"] .commander-corners-soft > .corner-bottom::after {
+    opacity: 0.18;
+  }
+  [data-theme="deepspace"] .commander-corners-soft:hover::before,
+  [data-theme="deepspace"] .commander-corners-soft:hover::after,
+  [data-theme="deepspace"] .commander-corners-soft:hover > .corner-bottom::before,
+  [data-theme="deepspace"] .commander-corners-soft:hover > .corner-bottom::after {
+    opacity: 0.32;
+  }
+
+  .commander-scanner-soft::after {
+    opacity: 0.5;
+  }
+  [data-theme="deepspace"] .commander-scanner-soft::after {
+    opacity: 0.04;
+  }
+
+  /* Respect users who prefer reduced motion: stop the looping scanner / pulse
+     animations entirely. Keeps the static gradient overlay in place.
+     NOTE: `.radar-scan` is intentionally excluded — it relies on continuous
+     rotation to be visually meaningful and is downgraded to a much slower
+     (32s) rotation in the unlayered media-query at the bottom of this file.
+     Listing it here with `animation: none` would win the cascade (layered
+     !important > unlayered !important) and freeze the sweep. */
   @media (prefers-reduced-motion: reduce) {
     .commander-scanner-effect::after,
-    .animate-pulse-subtle,
-    .radar-scan {
+    .animate-pulse-subtle {
       animation: none !important;
     }
   }
@@ -868,6 +907,30 @@
   /* Clean: minimal dividers only */
   [data-theme="clean"] .network-stat-glow {
     display: none;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     Clean theme: download-direction LIVE badge uses `--accent`,
+     which is intentionally near-white in this theme. Remap its
+     foreground to `--accent-foreground` (deep blue-gray) for
+     sufficient contrast on light card surfaces.
+     `!important` is required because Tailwind v4 places utilities
+     in a later cascade layer than `@layer components`, so plain
+     rules here would lose to `text-accent` / `bg-accent/10`.
+     The Sparkline color falls back via CSS var (no override needed).
+     ════════════════════════════════════════════════════════════ */
+  [data-theme="clean"] .network-dir-live--down {
+    background-color: color-mix(in oklch, var(--accent-foreground) 10%, transparent) !important;
+    color: var(--accent-foreground) !important;
+  }
+  [data-theme="clean"] .network-dir-live--down .bg-accent {
+    background-color: var(--accent-foreground) !important;
+  }
+  [data-theme="clean"] .network-dir-live--down .bg-accent\/60 {
+    background-color: color-mix(in oklch, var(--accent-foreground) 60%, transparent) !important;
+  }
+  [data-theme="clean"] .network-stats-panel {
+    --network-down-color: var(--accent-foreground);
   }
 
   /* ════════════════════════════════════════════════════════════
@@ -1248,12 +1311,51 @@
     opacity: 0.3;
   }
 
+  /* Selected row: scanline stays visible (no hover required) */
+  .sidebar-node-scanline--selected {
+    opacity: 0.45;
+  }
+
   [data-theme="deepspace"] .sidebar-node-item:hover .sidebar-node-scanline {
     opacity: 0.5;
     box-shadow: 0 0 4px var(--color-primary);
   }
 
+  [data-theme="deepspace"] .sidebar-node-scanline--selected {
+    opacity: 0.65;
+    box-shadow: 0 0 6px var(--color-primary);
+  }
+
   [data-theme="clean"] .sidebar-node-scanline {
+    display: none;
+  }
+
+  /* Network card emphasis — soft primary tint top border */
+  .sidebar-network-card {
+    box-shadow: inset 0 1px 0 0 color-mix(in oklch, var(--color-primary) 35%, transparent);
+  }
+
+  [data-theme="deepspace"] .sidebar-network-card {
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in oklch, var(--color-primary) 55%, transparent),
+      0 0 12px -4px color-mix(in oklch, var(--color-primary) 25%, transparent);
+  }
+
+  [data-theme="clean"] .sidebar-network-card {
+    box-shadow: none;
+    border-top-color: var(--color-border);
+  }
+
+  /* Corner accent — L-shape decoration in header top-right */
+  .sidebar-corner-accent {
+    opacity: 0.18;
+  }
+
+  [data-theme="deepspace"] .sidebar-corner-accent {
+    opacity: 0.35;
+  }
+
+  [data-theme="clean"] .sidebar-corner-accent {
     display: none;
   }
 
@@ -1426,6 +1528,248 @@
   @keyframes hud-clean-spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     HUD Gauge — Resource progress bars (CPU / RAM / Disk / Traffic)
+     Polished version: per-channel hue, machined-groove track,
+     gradient fill with leading cursor head, ruler ticks above.
+     ════════════════════════════════════════════════════════════ */
+
+  .hud-gauge {
+    --gauge-color: var(--primary);
+    --gauge-color-soft: color-mix(in oklch, var(--gauge-color) 55%, transparent);
+    --gauge-track: color-mix(in oklch, var(--muted-foreground) 14%, transparent);
+    --gauge-track-inset: color-mix(in oklch, var(--foreground) 6%, transparent);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  /* Channel hues — only apply when status is normal; warning/critical override */
+  .hud-gauge[data-channel="cpu"][data-status="normal"]    { --gauge-color: var(--chart-1); }
+  .hud-gauge[data-channel="ram"][data-status="normal"]    { --gauge-color: var(--chart-2); }
+  .hud-gauge[data-channel="disk"][data-status="normal"]   { --gauge-color: var(--chart-3); }
+  .hud-gauge[data-channel="traffic"][data-status="normal"]{ --gauge-color: var(--chart-4); }
+
+  .hud-gauge[data-status="warning"]  { --gauge-color: var(--warning); }
+  .hud-gauge[data-status="critical"] { --gauge-color: var(--destructive); }
+
+  /* Numeric readout — slight bump in size, weight does the emphasis */
+  .hud-gauge__value {
+    font-size: 13px;
+    line-height: 1;
+    letter-spacing: -0.01em;
+  }
+
+  /* Ticks + track wrapper */
+  .hud-gauge__track-wrap {
+    position: relative;
+    padding-top: 3px;
+  }
+
+  /* Tick ruler — 3 small marks above the track */
+  .hud-gauge__ticks {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    pointer-events: none;
+  }
+
+  .hud-gauge__ticks > span {
+    position: absolute;
+    top: 1px;
+    width: 1px;
+    height: 2px;
+    background: color-mix(in oklch, var(--muted-foreground) 35%, transparent);
+    transform: translateX(-50%);
+  }
+
+  /* Track — machined groove */
+  .hud-gauge__track {
+    position: relative;
+    height: 5px;
+    border-radius: 999px;
+    background: var(--gauge-track);
+    box-shadow:
+      inset 0 1px 0 0 var(--gauge-track-inset),
+      inset 0 -1px 0 0 color-mix(in oklch, var(--background) 30%, transparent);
+    overflow: hidden;
+  }
+
+  /* Fill — gradient with directional flow */
+  .hud-gauge__fill {
+    position: relative;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(
+      90deg,
+      color-mix(in oklch, var(--gauge-color) 60%, transparent) 0%,
+      var(--gauge-color) 100%
+    );
+    transition: width 700ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: width;
+  }
+
+  /* Leading cursor head — the "playhead" anchoring eye to current value */
+  .hud-gauge__cursor {
+    position: absolute;
+    top: -1px;
+    bottom: -1px;
+    right: 0;
+    width: 2px;
+    border-radius: 1px;
+    background: var(--gauge-color);
+    /* Hide cursor when fill is at 0 to avoid a stray dot at left edge */
+    opacity: 0;
+  }
+
+  /* Show cursor only when fill width > 0 — use container query-ish trick:
+     the parent fill has width set inline, so we always render but rely on
+     overflow:hidden of track to clip when width=0. A bit defensive. */
+  .hud-gauge__fill[style*="width: 0"] .hud-gauge__cursor,
+  .hud-gauge__fill[style*="width:0"] .hud-gauge__cursor {
+    opacity: 0;
+  }
+  .hud-gauge__fill .hud-gauge__cursor {
+    opacity: 1;
+  }
+
+  /* Critical: cursor pulses (the only animated element — draws the eye) */
+  .hud-gauge[data-status="critical"] .hud-gauge__cursor {
+    animation: pulse-subtle 1.4s ease-in-out infinite;
+  }
+
+  /* DeepSpace — deeper groove + neon cursor glow */
+  [data-theme="deepspace"] .hud-gauge {
+    --gauge-track: color-mix(in oklch, var(--foreground) 10%, transparent);
+    --gauge-track-inset: oklch(0 0 0 / 35%);
+  }
+
+  [data-theme="deepspace"] .hud-gauge__track {
+    box-shadow:
+      inset 0 1px 1px 0 oklch(0 0 0 / 50%),
+      inset 0 0 0 1px color-mix(in oklch, var(--gauge-color) 8%, transparent);
+  }
+
+  [data-theme="deepspace"] .hud-gauge__cursor {
+    box-shadow:
+      0 0 4px var(--gauge-color),
+      0 0 8px color-mix(in oklch, var(--gauge-color) 60%, transparent);
+  }
+
+  [data-theme="deepspace"] .hud-gauge__ticks > span {
+    background: color-mix(in oklch, var(--muted-foreground) 50%, transparent);
+  }
+
+  /* Lumina — subtle inset; soft cursor glow */
+  :root .hud-gauge__cursor {
+    box-shadow: 0 0 3px color-mix(in oklch, var(--gauge-color) 50%, transparent);
+  }
+
+  /* Clean — strip all decorations: no inset, no cursor, no ticks, no gradient */
+  [data-theme="clean"] .hud-gauge__track {
+    box-shadow: none;
+    background: var(--muted);
+    height: 4px;
+  }
+
+  [data-theme="clean"] .hud-gauge__fill {
+    background: var(--gauge-color);
+  }
+
+  [data-theme="clean"] .hud-gauge__cursor {
+    display: none;
+  }
+
+  [data-theme="clean"] .hud-gauge__ticks {
+    display: none;
+  }
+
+  [data-theme="clean"] .hud-gauge[data-channel][data-status="normal"] {
+    --gauge-color: var(--primary);
+  }
+
+  /* Reduced-motion — disable cursor pulse */
+  @media (prefers-reduced-motion: reduce) {
+    .hud-gauge[data-status="critical"] .hud-gauge__cursor {
+      animation: none !important;
+    }
+    .hud-gauge__fill {
+      transition: none !important;
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     Globe Mission-Control chrome — top KPI strip + bottom feed
+     ══════════════════════════════════════════════════════════════ */
+  .globe-top-strip {
+    border-bottom: 1px solid color-mix(in oklch, var(--primary) 18%, transparent);
+    background: linear-gradient(
+      to bottom,
+      color-mix(in oklch, var(--primary) 4%, transparent) 0%,
+      transparent 100%
+    );
+  }
+  .globe-top-strip::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -1px;
+    width: 64px;
+    height: 1px;
+    background: var(--primary);
+    opacity: 0.55;
+  }
+  .globe-top-strip::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    width: 64px;
+    height: 1px;
+    background: var(--primary);
+    opacity: 0.55;
+  }
+  [data-theme="clean"] .globe-top-strip {
+    border-bottom-color: var(--border);
+    background: transparent;
+  }
+  [data-theme="clean"] .globe-top-strip::before,
+  [data-theme="clean"] .globe-top-strip::after {
+    opacity: 0.35;
+  }
+  [data-theme="deepspace"] .globe-top-strip {
+    background: linear-gradient(
+      to bottom,
+      color-mix(in oklch, var(--primary) 8%, transparent) 0%,
+      transparent 100%
+    );
+  }
+
+  .globe-feed {
+    border-top: 1px solid color-mix(in oklch, var(--primary) 14%, transparent);
+    background: linear-gradient(
+      to top,
+      color-mix(in oklch, var(--primary) 4%, transparent) 0%,
+      transparent 100%
+    );
+  }
+  .globe-feed::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: -1px;
+    width: 48px;
+    height: 1px;
+    background: var(--primary);
+    opacity: 0.4;
+  }
+  [data-theme="clean"] .globe-feed {
+    border-top-color: var(--border);
+    background: transparent;
   }
 }
 

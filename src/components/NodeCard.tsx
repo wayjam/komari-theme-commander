@@ -2,82 +2,138 @@ import { Sparkline } from './Sparkline';
 import { useMemo, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, ArrowUp, ArrowDown, Activity, Clock } from 'lucide-react';
+import { SystemIcon } from '@/lib/systemIcon';
 import type { NodeWithStatus } from '@/services/api';
 import { useRecentStats } from '@/hooks/useRecentStats';
 import { formatBytes, formatSpeed, formatUptime, getUsageStatus, calcTrafficUsage, formatTrafficType, getExpiryStatus, formatExpiry, cn } from '@/lib/utils';
 import type { TrafficLimitType } from '@/lib/utils';
 import { useAppConfig } from '@/hooks/useAppConfig';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
+import { RegionFlag } from './RegionFlag';
+import { RemarkNote } from './RemarkNote';
 import dayjs from 'dayjs';
 
 interface NodeCardProps {
   node: NodeWithStatus;
 }
 
-function HudGauge({ label, value, unit = '%', status, total }: { label: string; value: number; unit?: string; status: 'normal' | 'warning' | 'critical'; total?: string }) {
-  const barColor = status === 'critical' ? 'bg-destructive' : status === 'warning' ? 'bg-warning' : 'bg-primary';
-  const textColor = status === 'critical' ? 'text-destructive' : status === 'warning' ? 'text-warning' : '';
+type GaugeChannel = 'cpu' | 'ram' | 'disk' | 'traffic';
+type GaugeStatus = 'normal' | 'warning' | 'critical';
+
+/**
+ * Polished resource gauge.
+ * - Per-channel hue (cpu=chart-1, ram=chart-2, disk=chart-3) so eye can scan
+ *   "which resource is hot" across many cards without reading labels.
+ * - Status (warning/critical) overrides channel color — semantic always wins.
+ * - Inset-shadow track gives a "machined groove" feel; gradient fill + leading
+ *   cursor head adds direction & precise readout anchor.
+ * - 3 unobtrusive 25/50/75% tick marks above the track (not on it) act as a
+ *   ruler instead of cutting the bar into segments.
+ */
+function HudGauge({
+  label,
+  value,
+  unit = '%',
+  status,
+  total,
+  channel,
+}: {
+  label: string;
+  value: number;
+  unit?: string;
+  status: GaugeStatus;
+  total?: string;
+  channel: GaugeChannel;
+}) {
+  const pct = Math.min(Math.max(value, 0), 100);
+  const textColor =
+    status === 'critical' ? 'text-destructive' : status === 'warning' ? 'text-warning' : '';
   return (
-    <div className="space-y-0.5">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">{label}</span>
-        <span className="flex items-center gap-1.5">
-          <span className={cn('text-xs font-metric font-bold', textColor)}>
-            {value.toFixed(1)}{unit}
+    <div className="hud-gauge" data-channel={channel} data-status={status}>
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider hud-gauge__label">
+          {label}
+        </span>
+        <span className="flex items-baseline gap-1.5 leading-none">
+          <span className={cn('hud-gauge__value font-metric font-bold tabular-nums', textColor)}>
+            {value.toFixed(1)}
+            <span className="hud-gauge__unit text-xxs font-metric text-muted-foreground/70 ml-0.5">
+              {unit}
+            </span>
           </span>
-          {total && <span className="text-xxs font-metric text-muted-foreground/60">{total}</span>}
+          {total && (
+            <span className="text-xxs font-metric text-muted-foreground/60 leading-none">
+              {total}
+            </span>
+          )}
         </span>
       </div>
-      <div className="h-[3px] w-full bg-muted/40 rounded-full overflow-hidden relative">
-        <div
-          className={cn(
-            'h-full w-full origin-left rounded-full transition-transform duration-700 ease-out',
-            barColor,
-          )}
-          style={{ transform: `scaleX(${Math.min(value, 100) / 100})` }}
-        />
-        {/* Subtle segments for non-clean themes */}
-        <div className="absolute inset-0 flex justify-between px-[10%] pointer-events-none opacity-20 [data-theme='clean']:hidden">
-          <div className="w-[1px] h-full bg-background" />
-          <div className="w-[1px] h-full bg-background" />
-          <div className="w-[1px] h-full bg-background" />
-          <div className="w-[1px] h-full bg-background" />
+      <div className="hud-gauge__track-wrap">
+        {/* Tick ruler — sits above the track, not inside it */}
+        <div className="hud-gauge__ticks" aria-hidden="true">
+          <span style={{ left: '25%' }} />
+          <span style={{ left: '50%' }} />
+          <span style={{ left: '75%' }} />
+        </div>
+        <div className="hud-gauge__track">
+          <div className="hud-gauge__fill" style={{ width: `${pct}%` }}>
+            <span className="hud-gauge__cursor" aria-hidden="true" />
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function TrafficBar({ totalUp, totalDown, limit, type, label }: { totalUp: number; totalDown: number; limit: number; type: TrafficLimitType; label: string }) {
+function TrafficBar({
+  totalUp,
+  totalDown,
+  limit,
+  type,
+  label,
+}: {
+  totalUp: number;
+  totalDown: number;
+  limit: number;
+  type: TrafficLimitType;
+  label: string;
+}) {
   const used = calcTrafficUsage(totalUp, totalDown, type);
   const pct = limit > 0 ? (used / limit) * 100 : 0;
   const status = getUsageStatus(pct, { warning: 70, critical: 90 });
+  const clamped = Math.min(Math.max(pct, 0), 100);
   return (
-    <div className="space-y-0.5">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-mono text-muted-foreground">{label} ({formatTrafficType(type)})</span>
-        <span className={cn(
-          'text-xs font-metric font-bold',
-          status === 'critical' ? 'text-destructive' : status === 'warning' ? 'text-warning' : '',
-        )}>
-          {formatBytes(used)} / {formatBytes(limit)}
+    <div className="hud-gauge" data-channel="traffic" data-status={status}>
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-xs font-mono text-muted-foreground hud-gauge__label">
+          {label} <span className="text-muted-foreground/60">({formatTrafficType(type)})</span>
+        </span>
+        <span
+          className={cn(
+            'text-xs font-metric font-bold tabular-nums leading-none',
+            status === 'critical'
+              ? 'text-destructive'
+              : status === 'warning'
+                ? 'text-warning'
+                : '',
+          )}
+        >
+          {formatBytes(used)}
+          <span className="text-muted-foreground/60 mx-1">/</span>
+          <span className="text-muted-foreground/80">{formatBytes(limit)}</span>
         </span>
       </div>
-      <div className="h-[3px] w-full bg-muted/40 rounded-full overflow-hidden relative">
-        <div
-          className={cn(
-            'h-full w-full origin-left rounded-full transition-transform duration-700 ease-out',
-            status === 'critical' ? 'bg-destructive' : status === 'warning' ? 'bg-warning' : 'bg-primary',
-          )}
-          style={{ transform: `scaleX(${Math.min(pct, 100) / 100})` }}
-        />
-        {/* Subtle segments */}
-        <div className="absolute inset-0 flex justify-between px-[10%] pointer-events-none opacity-20 [data-theme='clean']:hidden">
-          <div className="w-[1px] h-full bg-background" />
-          <div className="w-[1px] h-full bg-background" />
-          <div className="w-[1px] h-full bg-background" />
-          <div className="w-[1px] h-full bg-background" />
+      <div className="hud-gauge__track-wrap">
+        <div className="hud-gauge__ticks" aria-hidden="true">
+          <span style={{ left: '25%' }} />
+          <span style={{ left: '50%' }} />
+          <span style={{ left: '75%' }} />
+        </div>
+        <div className="hud-gauge__track">
+          <div className="hud-gauge__fill" style={{ width: `${clamped}%` }}>
+            <span className="hud-gauge__cursor" aria-hidden="true" />
+          </div>
         </div>
       </div>
     </div>
@@ -135,13 +191,13 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
       {/* Header */}
       <div className="p-3 sm:p-4 relative z-10">
         <div className="min-w-0 flex flex-col gap-2">
-          {/* Node name row */}
+          {/* Node name row — status · flag · name */}
           <div className="flex items-center gap-2">
             <span className={cn(
               'w-2 h-2 rounded-full flex-shrink-0',
               isOnline ? 'bg-success motion-safe:animate-pulse' : 'bg-destructive'
             )} />
-            <span className="text-base flex-shrink-0">{node.region}</span>
+            <RegionFlag region={node.region} size="md" />
             <h3
               className={cn(
                 "text-base font-display font-bold truncate cursor-pointer hover:text-primary transition-colors",
@@ -219,8 +275,11 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
           {(node.os || node.arch) && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="text-xs font-mono text-muted-foreground/60 truncate ml-4 cursor-default">
-                  {node.os}{node.os && node.arch && ' · '}{node.virtualization && `${node.virtualization}/`}{node.arch}
+                <div className="flex items-center gap-1.5 text-xs font-mono text-muted-foreground/60 truncate ml-4 cursor-default">
+                  <SystemIcon kind="os" value={node.os} className="h-3 w-3 shrink-0 opacity-70" />
+                  <span className="truncate">
+                    {node.os}{node.os && node.arch && ' · '}{node.virtualization && `${node.virtualization}/`}{node.arch}
+                  </span>
                 </div>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-xs text-xs font-mono whitespace-pre-line">
@@ -241,10 +300,10 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
         {stats ? (
           <div className="space-y-2">
             {/* Resource gauges */}
-            <div className="space-y-1.5">
-              <HudGauge label={t('label.cpu')} value={cpuUsage} status={cpuStatus} total={`${node.cpu_cores}C`} />
-              <HudGauge label={t('label.ram')} value={ramUsage} status={ramStatus} total={formatBytes(stats.ram.total)} />
-              <HudGauge label={t('label.disk')} value={diskUsage} status={diskStatus} total={formatBytes(stats.disk.total)} />
+            <div className="space-y-2">
+              <HudGauge channel="cpu" label={t('label.cpu')} value={cpuUsage} status={cpuStatus} total={`${node.cpu_cores}C`} />
+              <HudGauge channel="ram" label={t('label.ram')} value={ramUsage} status={ramStatus} total={formatBytes(stats.ram.total)} />
+              <HudGauge channel="disk" label={t('label.disk')} value={diskUsage} status={diskStatus} total={formatBytes(stats.disk.total)} />
             </div>
 
             {/* Traffic limit bar */}
@@ -269,21 +328,33 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
             {/* Data grid — 4 columns HUD */}
             <div className="grid grid-cols-4 gap-1 pt-1">
               <div className="text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
-                <div className="text-xs font-mono text-muted-foreground">{t('label.load')}</div>
+                <div className="flex items-center justify-center gap-1 text-xs font-mono text-muted-foreground">
+                  <Activity className="h-2.5 w-2.5 opacity-70" />
+                  <span>{t('label.load')}</span>
+                </div>
                 <div className="text-xs font-metric font-bold">{stats.load.load1.toFixed(2)}</div>
               </div>
               <div className="text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
-                <div className="text-xs font-mono text-muted-foreground">{t('label.netUp')}</div>
+                <div className="flex items-center justify-center gap-1 text-xs font-mono text-muted-foreground">
+                  <ArrowUp className="h-2.5 w-2.5 opacity-70" style={{ color: 'var(--chart-2)' }} />
+                  <span>{t('label.netUp')}</span>
+                </div>
                 <div className="text-xs font-metric font-bold">{formatSpeed(stats.network.up).replace('/s','')}</div>
                 <div className="text-xxs font-metric text-muted-foreground/60">{formatBytes(stats.network.totalUp)}</div>
               </div>
               <div className="text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
-                <div className="text-xs font-mono text-muted-foreground">{t('label.netDown')}</div>
+                <div className="flex items-center justify-center gap-1 text-xs font-mono text-muted-foreground">
+                  <ArrowDown className="h-2.5 w-2.5 opacity-70" style={{ color: 'var(--chart-1)' }} />
+                  <span>{t('label.netDown')}</span>
+                </div>
                 <div className="text-xs font-metric font-bold">{formatSpeed(stats.network.down).replace('/s','')}</div>
                 <div className="text-xxs font-metric text-muted-foreground/60">{formatBytes(stats.network.totalDown)}</div>
               </div>
               <div className="text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
-                <div className="text-xs font-mono text-muted-foreground">{t('label.up')}</div>
+                <div className="flex items-center justify-center gap-1 text-xs font-mono text-muted-foreground">
+                  <Clock className="h-2.5 w-2.5 opacity-70" />
+                  <span>{t('label.up')}</span>
+                </div>
                 <div className="text-xs font-metric font-bold">{formatUptime(stats.uptime)}</div>
               </div>
             </div>

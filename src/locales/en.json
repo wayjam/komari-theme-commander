@@ -44,6 +44,8 @@
     "avg": "AVG",
     "nodes": "nodes",
     "networkDetail": "Detail",
+    "networkDetailHint": "Open the dedicated network page: real-time traffic, historical charts and ping monitoring.",
+    "viewNetworkTrafficHint": "Open the dedicated network page for full traffic history and per-task ping latency.",
     "tags": "Tags",
     "remark": "Remark",
     "privateRemark": "Private Remark",
@@ -137,7 +139,17 @@
     "checkInterval": "Interval",
     "checkType": "Type",
     "sampleCount": "Samples",
-    "lossDisclaimer": "Packet loss is approximate—use as a guide only. Jitter measures latency swing (higher = less stable). Formula: (P99 − P50) ÷ max(min(P50, 50), 10)."
+    "lossDisclaimer": "Packet loss is approximate—use as a guide only. Jitter measures latency swing (higher = less stable). Formula: (P99 − P50) ÷ max(min(P50, 50), 10).",
+    "health": "Health",
+    "healthNominal": "All network checks nominal",
+    "healthDegraded": "Network quality degraded",
+    "healthCritical": "Network anomaly detected",
+    "healthUnknown": "No network data yet",
+    "healthSummary": "{{tasks}} tasks · avg {{avg}}ms · loss {{loss}}",
+    "tasksIssueCount": "{{count}} in trouble",
+    "ofLimit": "{{pct}} used",
+    "recentWindow": "last 60s",
+    "realtime": "LIVE"
   },
   "theme": {
     "lumina": "LUMINA",
@@ -209,6 +221,15 @@
     "noSignal": "NO SIGNAL",
     "tableMode": "Table View Mode :: Data Stream Alpha-4",
     "parityOk": "PARITY: OK",
-    "bwidthNominal": "BWIDTH: NOMINAL"
+    "bwidthNominal": "BWIDTH: NOMINAL",
+    "missionOps": "Mission Ops",
+    "utc": "UTC",
+    "fleet": "Fleet",
+    "online": "Online",
+    "flow": "Flow",
+    "avgCpu": "Avg CPU",
+    "alert": "Alert",
+    "nominal": "All Nominal",
+    "sector": "Sector"
   }
 }

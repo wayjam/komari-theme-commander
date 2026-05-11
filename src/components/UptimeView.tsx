@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Shield, ShieldCheck, ShieldX, RefreshCw, ChevronRight } from 'lucide-react';
 import { HudSpinner } from './HudSpinner';
+import { RegionFlag } from './RegionFlag';
 import { apiService } from '@/services/api';
 import type { NodeWithStatus } from '@/services/api';
 import { cn } from '@/lib/utils';
@@ -132,10 +133,8 @@ function NodeRow({ node, uptime, loading, onNavigate }: NodeRowProps) {
             isOnline ? 'uptime-status-dot bg-success motion-safe:animate-pulse' : 'bg-destructive',
           )}
         />
+        <RegionFlag region={node.region} size="sm" />
         <span className="text-sm font-display font-bold truncate group-hover:text-primary transition-colors">{node.name}</span>
-        {node.region && (
-          <span className="text-xs font-mono text-muted-foreground/60">{node.region}</span>
-        )}
         {node.group && (
           <span className="text-xs font-mono text-primary/80 bg-primary/10 px-1 rounded">[{node.group}]</span>
         )}

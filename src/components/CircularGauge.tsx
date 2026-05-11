@@ -1,14 +1,31 @@
 import { cn } from '@/lib/utils';
 
+type GaugeChannel = 'cpu' | 'ram' | 'disk' | 'traffic' | 'load';
+type GaugeStatus = 'normal' | 'warning' | 'critical';
+
 interface CircularGaugeProps {
   label: string;
   value: number;
   icon: React.ReactNode;
-  status: 'normal' | 'warning' | 'critical';
+  status: GaugeStatus;
   detail?: string;
   subDetail?: string;
   size?: number;
+  /**
+   * Per-channel hue (cpu=chart-1, ram=chart-2, disk=chart-3, traffic=chart-4, load=chart-5).
+   * Only applied when status is "normal" — warning/critical always override (semantic > channel).
+   * Falls back to `--primary` when omitted, preserving legacy callers.
+   */
+  channel?: GaugeChannel;
 }
+
+const CHANNEL_VAR: Record<GaugeChannel, string> = {
+  cpu: 'var(--chart-1)',
+  ram: 'var(--chart-2)',
+  disk: 'var(--chart-3)',
+  traffic: 'var(--chart-4)',
+  load: 'var(--chart-5)',
+};
 
 export function CircularGauge({
   label,
@@ -18,6 +35,7 @@ export function CircularGauge({
   detail,
   subDetail,
   size = 90,
+  channel,
 }: CircularGaugeProps) {
   const strokeWidth = 5;
   const radius = (size - strokeWidth) / 2;
@@ -25,21 +43,24 @@ export function CircularGauge({
   const clampedValue = Math.min(Math.max(value, 0), 100);
   const offset = circumference - (clampedValue / 100) * circumference;
 
-  const strokeColor =
+  // Status > channel > primary fallback
+  const colorVar =
     status === 'critical'
-      ? 'stroke-destructive'
+      ? 'var(--destructive)'
       : status === 'warning'
-        ? 'stroke-warning'
-        : 'stroke-primary';
+        ? 'var(--warning)'
+        : channel
+          ? CHANNEL_VAR[channel]
+          : 'var(--primary)';
 
-  const textColor =
+  const textColorClass =
     status === 'critical'
       ? 'text-destructive'
       : status === 'warning'
         ? 'text-warning'
-        : 'text-primary';
+        : '';
 
-  const glowColor =
+  const glowClass =
     status === 'critical'
       ? 'circular-gauge-glow-critical'
       : status === 'warning'
@@ -47,14 +68,18 @@ export function CircularGauge({
         : 'circular-gauge-glow-normal';
 
   return (
-    <div className="flex flex-col items-center gap-1.5 p-2.5 rounded bg-muted/15 border border-border/20">
+    <div
+      className="flex flex-col items-center gap-1.5 p-2.5 rounded bg-muted/15 border border-border/20"
+      data-channel={channel}
+      data-status={status}
+    >
       <div className="flex items-center gap-1.5 self-start">
         {icon}
         <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
           {label}
         </span>
       </div>
-      <div className={cn('relative circular-gauge', glowColor)} style={{ width: size, height: size }}>
+      <div className={cn('relative circular-gauge', glowClass)} style={{ width: size, height: size }}>
         <svg
           width={size}
           height={size}
@@ -76,28 +101,42 @@ export function CircularGauge({
             cy={size / 2}
             r={radius}
             fill="none"
-            className={cn(strokeColor, 'transition-[stroke-dashoffset] duration-700 ease-out')}
+            stroke={colorVar}
+            className="transition-[stroke-dashoffset] duration-700 ease-out"
             strokeWidth={strokeWidth}
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={offset}
           />
         </svg>
-        {/* Center text */}
+        {/* Center text — kept neutral on normal; status-colored only for warning/critical.
+            The arc carries the channel hue; the readout stays calm and legible. */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className={cn('text-lg font-metric font-bold leading-none', textColor)}>
+          <span
+            className={cn(
+              'text-lg font-metric font-bold leading-none tabular-nums',
+              textColorClass || 'text-foreground',
+            )}
+          >
             {clampedValue.toFixed(1)}
           </span>
-          <span className={cn('text-xxs font-metric', textColor)}>%</span>
+          <span
+            className={cn(
+              'text-xxs font-metric mt-0.5',
+              textColorClass || 'text-muted-foreground/70',
+            )}
+          >
+            %
+          </span>
         </div>
       </div>
       {detail && (
-        <div className="text-xs font-metric text-muted-foreground text-center leading-tight">
+        <div className="text-xs font-metric tabular-nums text-muted-foreground text-center leading-tight">
           {detail}
         </div>
       )}
       {subDetail && (
-        <div className="text-xxs font-metric text-muted-foreground/60 text-center leading-tight">
+        <div className="text-xxs font-metric tabular-nums text-muted-foreground/60 text-center leading-tight">
           {subDetail}
         </div>
       )}

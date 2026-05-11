@@ -44,6 +44,8 @@
     "avg": "平均",
     "nodes": "個節點",
     "networkDetail": "詳情",
+    "networkDetailHint": "進入網路專屬頁面：查看即時流量、歷史圖表與 Ping 延遲監控",
+    "viewNetworkTrafficHint": "進入網路專屬頁面：查看完整流量歷史與各任務的 Ping 延遲",
     "tags": "標籤",
     "remark": "備註",
     "privateRemark": "私有備註",
@@ -137,7 +139,17 @@
     "checkInterval": "檢測間隔",
     "checkType": "類型",
     "sampleCount": "樣本數量",
-    "lossDisclaimer": "丟包率為估算值，僅供參考。波動表示延遲起伏（數值越大越不穩定）。公式：(P99 − P50) ÷ max(min(P50, 50), 10)。"
+    "lossDisclaimer": "丟包率為估算值，僅供參考。波動表示延遲起伏（數值越大越不穩定）。公式：(P99 − P50) ÷ max(min(P50, 50), 10)。",
+    "health": "健康度",
+    "healthNominal": "網路運作正常",
+    "healthDegraded": "網路狀態下降",
+    "healthCritical": "出現網路異常",
+    "healthUnknown": "暫無網路資料",
+    "healthSummary": "{{tasks}} 個任務 · 平均 {{avg}}ms · 丟包 {{loss}}",
+    "tasksIssueCount": "{{count}} 任務異常",
+    "ofLimit": "已用 {{pct}}",
+    "recentWindow": "近 60s",
+    "realtime": "即時"
   },
   "theme": {
     "lumina": "光明",
@@ -209,6 +221,15 @@
     "noSignal": "無訊號",
     "tableMode": "表格模式 :: 資料流 Alpha-4",
     "parityOk": "校驗：正常",
-    "bwidthNominal": "頻寬：正常"
+    "bwidthNominal": "頻寬：正常",
+    "missionOps": "指揮中心",
+    "utc": "UTC",
+    "fleet": "艦隊",
+    "online": "線上",
+    "flow": "流量",
+    "avgCpu": "均CPU",
+    "alert": "告警",
+    "nominal": "全部正常",
+    "sector": "扇區"
   }
 }

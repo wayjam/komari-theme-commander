@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { ArrowLeft, Cpu, HardDrive, MemoryStick, Network, BarChart3, ExternalLink, Server, Layers, Search, X, Activity } from 'lucide-react';
+import { ArrowLeft, Cpu, HardDrive, MemoryStick, Network, BarChart3, ExternalLink, Server, Layers, Search, X, Activity, MapPin, Terminal } from 'lucide-react';
+import { SystemIcon } from '@/lib/systemIcon';
 import type { NodeWithStatus } from '@/services/api';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
@@ -63,11 +64,12 @@ function NodeRowContent({
     <button
       onClick={() => onSelectNode(node.uuid)}
       className={cn(
-        'w-full px-3 py-2.5 text-left transition-all duration-150 border-l-2',
+        'relative w-full px-3 py-2.5 text-left transition-all duration-150 flex flex-col gap-1',
         'hover:bg-primary/5 cursor-pointer sidebar-node-item',
         'border-b border-border/20',
+        'border-l-[3px]',
         isSelected
-          ? 'bg-primary/10 border-l-primary'
+          ? 'bg-gradient-to-r from-primary/15 via-primary/8 to-transparent border-l-primary'
           : 'border-l-transparent'
       )}
     >
@@ -76,25 +78,30 @@ function NodeRowContent({
           className={cn(
             'w-1.5 h-1.5 rounded-full flex-shrink-0',
             isOnline ? 'bg-success' : 'bg-destructive',
-            isOnline && 'motion-safe:animate-pulse'
+            isOnline && isSelected && 'motion-safe:animate-pulse'
           )}
         />
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2 min-w-0">
             <span className="text-base font-display font-bold truncate shrink-0 max-w-[65%]">{node.name}</span>
             {(node.os || node.arch) && (
-              <span className="text-xs font-mono text-muted-foreground/70 truncate min-w-0">
-                {[node.os?.split(/[\s/]/)[0], node.arch, node.virtualization].filter(Boolean).join(' · ')}
+              <span className="inline-flex items-center gap-1 text-xs font-mono text-muted-foreground truncate min-w-0">
+                <SystemIcon kind="os" value={node.os} className="h-3 w-3 shrink-0 opacity-80" />
+                <span className="truncate">
+                  {[node.os?.split(/[\s/]/)[0], node.arch, node.virtualization].filter(Boolean).join(' · ')}
+                </span>
               </span>
             )}
           </div>
         </div>
         {emoji && (
-          <span className="text-sm flex-shrink-0">{emoji}</span>
+          <span className="text-base flex-shrink-0 leading-none bg-muted/30 rounded-sm px-1 py-0.5 border border-border/20">
+            {emoji}
+          </span>
         )}
       </div>
       {/* Tags row — show max 2 tags + overflow count */}
-      <div className="flex items-center gap-1.5 mt-1 ml-3.5 overflow-hidden">
+      <div className="flex min-w-0 items-center gap-1.5 ml-3.5">
         {node.group && (
           <span className="text-xs font-mono text-primary/80 bg-primary/15 px-1.5 py-0.5 rounded-sm flex-shrink-0">
             {node.group}
@@ -125,7 +132,7 @@ function NodeRowContent({
       </div>
       {isOnline && stats && (
         <div
-          className="mt-1 ml-3.5 flex min-w-0 items-center gap-1 text-xxs font-metric text-muted-foreground sm:text-xs"
+          className="ml-3.5 flex min-w-0 items-center gap-1.5 text-xs font-metric text-muted-foreground"
           title={[sidebarCpuLine, sidebarRamLine, sidebarNetLine].filter(Boolean).join(' · ')}
         >
           <span
@@ -136,9 +143,7 @@ function NodeRowContent({
           >
             {sidebarCpuLine}
           </span>
-          <span className="shrink-0 text-border/60 select-none" aria-hidden>
-            │
-          </span>
+          <span className="inline-block w-px h-3 bg-border/40 shrink-0" aria-hidden />
           <span
             className={cn(
               'shrink-0 whitespace-nowrap tabular-nums',
@@ -147,16 +152,19 @@ function NodeRowContent({
           >
             {sidebarRamLine}
           </span>
-          <span className="shrink-0 text-border/60 select-none" aria-hidden>
-            │
-          </span>
+          <span className="inline-block w-px h-3 bg-border/40 shrink-0" aria-hidden />
           <span className="min-w-0 truncate tabular-nums" title={sidebarNetLine}>
             {sidebarNetLine}
           </span>
         </div>
       )}
       {/* HUD hover scan line */}
-      <div className="sidebar-node-scanline" />
+      <div
+        className={cn(
+          'sidebar-node-scanline',
+          isSelected && 'sidebar-node-scanline--selected'
+        )}
+      />
     </button>
   );
 }
@@ -300,20 +308,13 @@ function NodeListView({
     <div className="flex flex-col h-full relative">
       {/* Header */}
       <div className="px-3 py-2 border-b border-border/50 relative overflow-hidden flex-shrink-0">
-        <div className="absolute top-0 right-0 w-16 h-16 pointer-events-none opacity-[0.03]">
-          <div className="absolute top-2 right-2 border-t border-right w-full h-full border-primary" />
+        <div className="sidebar-corner-accent absolute top-0 right-0 w-10 h-10 pointer-events-none">
+          <div className="absolute top-1.5 right-1.5 border-t border-r w-full h-full border-primary" />
         </div>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-display font-bold text-muted-foreground uppercase tracking-wider">
-              {t('fleet.status')}
-            </span>
-            <div className="flex gap-0.5">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="w-1 h-1 bg-primary/20 rounded-full" />
-              ))}
-            </div>
-          </div>
+          <span className="text-xs font-display font-bold text-muted-foreground uppercase tracking-wider">
+            {t('fleet.status')}
+          </span>
           <div className="flex items-center gap-2 text-xs font-mono">
             <span className="text-success"><span className="font-metric">{onlineCount}</span> {t('status.on')}</span>
             <span className="text-muted-foreground/50">|</span>
@@ -323,51 +324,7 @@ function NodeListView({
       </div>
 
       {/* Search filter */}
-      <div className="px-2 py-1.5 border-b border-border/30 space-y-2 flex-shrink-0">
-        {!useVirtual && (
-        <button
-          type="button"
-          onClick={() => setSortByActive(!sortByActive)}
-          className={cn(
-            "flex items-center justify-between w-full px-1.5 py-1 rounded cursor-pointer transition-all duration-200 group/sort",
-            sortByActive
-              ? "bg-primary/8"
-              : "hover:bg-muted/20"
-          )}
-        >
-          <div className="flex items-center gap-1.5">
-            <div className={cn(
-              "relative flex items-center justify-center w-3.5 h-3.5 transition-colors duration-200",
-              sortByActive ? "text-primary" : "text-muted-foreground/30"
-            )}>
-              <Activity className="h-3 w-3" />
-              {sortByActive && (
-                <span className="absolute -top-0.5 -right-0.5 w-1 h-1 rounded-full bg-primary motion-safe:animate-pulse" />
-              )}
-            </div>
-            <span className={cn(
-              "text-xs font-mono uppercase tracking-wider transition-colors duration-200",
-              sortByActive ? "text-primary/80" : "text-muted-foreground/40"
-            )}>
-              {t('filter.sortByActivity')}
-            </span>
-          </div>
-          <div className={cn(
-            "flex items-center gap-1 text-xs font-mono tracking-widest transition-colors duration-200",
-            sortByActive ? "text-primary/60" : "text-muted-foreground/25"
-          )}>
-            <span>[</span>
-            <span className={cn(
-              "w-1.5 h-1.5 rounded-full transition-all duration-300",
-              sortByActive
-                ? "bg-primary shadow-[0_0_4px_var(--color-primary)]"
-                : "bg-muted-foreground/20"
-            )} />
-            <span>{sortByActive ? 'ON' : 'OFF'}</span>
-            <span>]</span>
-          </div>
-        </button>
-        )}
+      <div className="px-2 py-1.5 border-b border-border/30 space-y-1 flex-shrink-0">
         <div className="relative">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/40" />
           <input
@@ -375,8 +332,38 @@ function NodeListView({
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder={t('placeholder.filterNodes')}
-            className="w-full h-7 pl-7 pr-7 text-xs font-mono bg-muted/15 border border-border/20 rounded placeholder:text-muted-foreground/25 focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-colors"
+            className={cn(
+              "w-full h-7 pl-7 text-xs font-mono bg-muted/15 border border-border/20 rounded placeholder:text-muted-foreground/25 focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-colors",
+              !useVirtual ? (searchQuery ? "pr-14" : "pr-8") : (searchQuery ? "pr-7" : "pr-2")
+            )}
           />
+          {!useVirtual && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setSortByActive(!sortByActive)}
+                  aria-pressed={sortByActive}
+                  aria-label={t('filter.sortByActivity')}
+                  className={cn(
+                    'absolute top-1/2 -translate-y-1/2 flex items-center justify-center h-5 w-5 rounded transition-colors cursor-pointer',
+                    searchQuery ? 'right-7' : 'right-1.5',
+                    sortByActive
+                      ? 'text-primary bg-primary/10 hover:bg-primary/20'
+                      : 'text-muted-foreground/40 hover:bg-muted/30 hover:text-muted-foreground'
+                  )}
+                >
+                  <Activity className="h-3 w-3" />
+                  {sortByActive && (
+                    <span className="absolute -top-0.5 -right-0.5 w-1 h-1 rounded-full bg-primary motion-safe:animate-pulse" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs font-mono">
+                {t('filter.sortByActivity')} · {sortByActive ? 'ON' : 'OFF'}
+              </TooltipContent>
+            </Tooltip>
+          )}
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
@@ -387,7 +374,7 @@ function NodeListView({
           )}
         </div>
         {searchQuery && (
-          <div className="text-xxs font-mono text-muted-foreground/50 mt-1 px-1">
+          <div className="text-xxs font-mono text-muted-foreground/50 px-1">
             <span className="font-metric">{sortedAndFiltered.length}</span>
             {' / '}
             <span className="font-metric">{nodes.length}</span>
@@ -408,7 +395,7 @@ function NodeListView({
             {Array.from({ length: 8 }).map((_, i) => (
               <div
                 key={i}
-                className="px-3 py-2.5 border-b border-border/20 border-l-2 border-l-transparent"
+                className="px-3 py-2.5 border-b border-border/20 border-l-2 border-l-transparent flex flex-col gap-1"
                 style={{ animationDelay: `${i * 80}ms` }}
               >
                 <div className="flex items-center gap-2">
@@ -420,11 +407,11 @@ function NodeListView({
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 mt-1.5 ml-3.5">
+                <div className="flex items-center gap-1.5 ml-3.5">
                   <div className="h-4 w-12 rounded-sm bg-primary/8 motion-safe:animate-pulse" />
                   <div className="h-4 w-10 rounded-sm bg-muted/15 motion-safe:animate-pulse" />
                 </div>
-                <div className="flex items-center gap-2.5 mt-1.5 ml-3.5">
+                <div className="flex items-center gap-2.5 ml-3.5">
                   <div className="h-3 w-14 rounded bg-muted/15 motion-safe:animate-pulse" />
                   <div className="h-3 w-px bg-border/30" />
                   <div className="h-3 w-14 rounded bg-muted/15 motion-safe:animate-pulse" />
@@ -551,12 +538,12 @@ function NodeDetailView({
         >
           <ArrowLeft className="h-3.5 w-3.5" />
         </button>
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex flex-col gap-1">
           <div className="text-base font-display font-bold truncate">{node.name}</div>
           <div className="flex items-center gap-1.5">
             <span className={cn(
-              'w-1.5 h-1.5 rounded-full',
-              isOnline ? 'bg-success' : 'bg-destructive'
+              'w-1.5 h-1.5 rounded-full shrink-0',
+              isOnline ? 'bg-success motion-safe:animate-pulse' : 'bg-destructive'
             )} />
             {isOnline && stats?.updated_at ? (
               <Tooltip>
@@ -574,24 +561,29 @@ function NodeDetailView({
                 {isOnline ? t('status.online') : t('status.offline')}
               </span>
             )}
-            {node.group && (
-              <>
-                <span className="text-xs text-muted-foreground/40">|</span>
-                <span className="text-xs font-mono text-primary">{node.group}</span>
-              </>
-            )}
-            {/* Expiry badge with billing tooltip */}
-            {isLoggedIn && node.price !== -1 && (() => {
-              const expiryStatus = getExpiryStatus(node.expired_at);
-              if (!expiryStatus) return null;
-              return (
-                <>
-                  <span className="text-xs text-muted-foreground/40">|</span>
+          </div>
+          {/* Chips row: group + expiry */}
+          {(node.group || (isLoggedIn && node.price !== -1 && getExpiryStatus(node.expired_at))) && (
+            <div className="flex items-center flex-wrap gap-1">
+              {node.group && (
+                <span className="text-xs font-mono text-primary/90 bg-primary/12 border border-primary/20 px-1.5 py-0.5 rounded-sm">
+                  {node.group}
+                </span>
+              )}
+              {isLoggedIn && node.price !== -1 && (() => {
+                const expiryStatus = getExpiryStatus(node.expired_at);
+                if (!expiryStatus) return null;
+                const tone = expiryStatus === 'expired'
+                  ? 'text-destructive bg-destructive/12 border-destructive/25'
+                  : expiryStatus === 'warning'
+                    ? 'text-warning bg-warning/12 border-warning/25'
+                    : 'text-muted-foreground bg-muted/40 border-border/30';
+                return (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className={cn(
-                        'text-xs font-metric cursor-default',
-                        expiryStatus === 'expired' ? 'text-destructive' : expiryStatus === 'warning' ? 'text-warning' : 'text-muted-foreground/60',
+                        'text-xs font-metric border px-1.5 py-0.5 rounded-sm cursor-default',
+                        tone,
                       )}>
                         {formatExpiry(node.expired_at)}
                       </span>
@@ -605,10 +597,10 @@ function NodeDetailView({
                       })}
                     </TooltipContent>
                   </Tooltip>
-                </>
-              );
-            })()}
-          </div>
+                );
+              })()}
+            </div>
+          )}
           {/* Tags */}
           {node.tags && (() => {
             const tagList = node.tags.split(/[,;]/).map(t => t.trim()).filter(Boolean);
@@ -616,7 +608,7 @@ function NodeDetailView({
             const visibleTags = tagList.slice(0, maxTags);
             const hiddenCount = tagList.length - visibleTags.length;
             return tagList.length > 0 ? (
-              <div className="flex flex-wrap gap-1 mt-1">
+              <div className="flex flex-wrap gap-1">
                 {visibleTags.map((tag, i) => (
                   <span key={i} className="text-xs font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded-sm">
                     {tag}
@@ -641,7 +633,8 @@ function NodeDetailView({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-4">
+      <div className="flex-1 overflow-y-auto relative">
+        <div className="p-3 pb-16 space-y-4">
         {!isOnline ? (
           <div className="flex items-center justify-center h-24 text-muted-foreground text-xs leading-relaxed px-2 text-center">
             {t('telemetry.nodeOfflineShort')}
@@ -654,30 +647,36 @@ function NodeDetailView({
                 <Server className="h-3 w-3 text-primary" />
                 <span className="text-xs font-display font-bold text-muted-foreground uppercase">{t('info.system')}</span>
               </div>
-              <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs font-mono">
-                <span className="text-muted-foreground whitespace-nowrap">{t('label.cpu')}</span>
+              <div className="grid grid-cols-[12px_auto_1fr] gap-x-2 gap-y-1.5 text-xs font-mono items-center">
+                <SystemIcon kind="cpu" value={node.cpu_name} className="h-3 w-3 text-muted-foreground/70" />
+                <span className="text-muted-foreground/70 uppercase tracking-wide text-xxs whitespace-nowrap">{t('label.cpu')}</span>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="truncate cursor-default">{node.cpu_name || '-'} ({node.cpu_cores}C)</span>
                   </TooltipTrigger>
                   <TooltipContent side="right" className="max-w-xs text-xs font-mono">{node.cpu_name || '-'} ({node.cpu_cores}C)</TooltipContent>
                 </Tooltip>
-                <span className="text-muted-foreground whitespace-nowrap">{t('label.arch')}</span>
+                <SystemIcon kind="arch" value={node.arch} className="h-3 w-3 text-muted-foreground/70" />
+                <span className="text-muted-foreground/70 uppercase tracking-wide text-xxs whitespace-nowrap">{t('label.arch')}</span>
                 <span className="truncate">{node.arch || '-'}</span>
-                <span className="text-muted-foreground whitespace-nowrap">{t('label.os')}</span>
+                <SystemIcon kind="os" value={node.os} className="h-3 w-3 text-muted-foreground/70" />
+                <span className="text-muted-foreground/70 uppercase tracking-wide text-xxs whitespace-nowrap">{t('label.os')}</span>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="truncate cursor-default">{node.os || '-'}</span>
                   </TooltipTrigger>
                   <TooltipContent side="right" className="max-w-xs text-xs font-mono">{node.os || '-'}</TooltipContent>
                 </Tooltip>
-                <span className="text-muted-foreground whitespace-nowrap">{t('label.virt')}</span>
+                <SystemIcon kind="virt" value={node.virtualization} className="h-3 w-3 text-muted-foreground/70" />
+                <span className="text-muted-foreground/70 uppercase tracking-wide text-xxs whitespace-nowrap">{t('label.virt')}</span>
                 <span className="truncate">{node.virtualization || '-'}</span>
-                <span className="text-muted-foreground whitespace-nowrap">{t('label.region')}</span>
+                <MapPin className="h-3 w-3 text-muted-foreground/70" />
+                <span className="text-muted-foreground/70 uppercase tracking-wide text-xxs whitespace-nowrap">{t('label.region')}</span>
                 <span className="truncate">{node.region || '-'}</span>
                 {node.kernel_version && (
                   <>
-                    <span className="text-muted-foreground whitespace-nowrap">{t('label.kernel')}</span>
+                    <Terminal className="h-3 w-3 text-muted-foreground/70" />
+                    <span className="text-muted-foreground/70 uppercase tracking-wide text-xxs whitespace-nowrap">{t('label.kernel')}</span>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <span className="truncate cursor-default">{node.kernel_version}</span>
@@ -791,10 +790,10 @@ function NodeDetailView({
             </div>
 
             {/* Network */}
-            <div className="p-2.5 rounded-md bg-muted/20 border border-border/30 space-y-2">
+            <div className="relative p-2.5 rounded-md bg-muted/25 border border-border/40 border-t-primary/40 space-y-2 sidebar-network-card">
               <div className="flex items-center gap-1.5">
                 <Network className="h-3.5 w-3.5 text-primary" />
-                <span className="text-xs font-display font-bold text-muted-foreground uppercase">{t('label.network')}</span>
+                <span className="text-xs font-display font-bold text-foreground/85 uppercase tracking-wider">{t('label.network')}</span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -874,16 +873,12 @@ function NodeDetailView({
             )}
 
             {/* Remark */}
-            {node.public_remark && (
-              <div className="text-xs text-muted-foreground/60 px-2.5 border-l-2 border-primary/20 leading-relaxed">
-                {node.public_remark}
-              </div>
-            )}
+            <RemarkNote text={node.public_remark} variant="public" />
           </>
         ) : null}
 
         {/* Action buttons — Charts hidden on mobile (modal too small), Detail always visible */}
-        <div className="flex gap-2">
+        <div className="sticky bottom-0 -mx-3 px-3 pt-3 pb-3 mt-2 flex gap-2 bg-gradient-to-t from-card via-card/95 to-card/0 backdrop-blur-sm">
           <Button
             variant="outline"
             size="sm"
@@ -902,6 +897,7 @@ function NodeDetailView({
             <ExternalLink className="h-3 w-3 mr-1.5" />
             {t('action.detail')}
           </Button>
+        </div>
         </div>
       </div>
     </div>

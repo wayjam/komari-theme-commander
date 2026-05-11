@@ -44,6 +44,8 @@
     "avg": "平均",
     "nodes": "个节点",
     "networkDetail": "详情",
+    "networkDetailHint": "进入网络专属页面：查看实时流量、历史图表与 Ping 延迟监控",
+    "viewNetworkTrafficHint": "进入网络专属页面：查看完整流量历史与各任务的 Ping 延迟",
     "tags": "标签",
     "remark": "备注",
     "privateRemark": "私有备注",
@@ -137,7 +139,17 @@
     "checkInterval": "检测间隔",
     "checkType": "类型",
     "sampleCount": "样本数量",
-    "lossDisclaimer": "丢包率为估算值，仅供参考。波动表示延迟起伏（数值越大越不稳定）。公式：(P99 − P50) ÷ max(min(P50, 50), 10)。"
+    "lossDisclaimer": "丢包率为估算值，仅供参考。波动表示延迟起伏（数值越大越不稳定）。公式：(P99 − P50) ÷ max(min(P50, 50), 10)。",
+    "health": "健康度",
+    "healthNominal": "网络运行正常",
+    "healthDegraded": "网络状态下降",
+    "healthCritical": "出现网络异常",
+    "healthUnknown": "暂无网络数据",
+    "healthSummary": "{{tasks}} 个任务 · 平均 {{avg}}ms · 丢包 {{loss}}",
+    "tasksIssueCount": "{{count}} 任务异常",
+    "ofLimit": "已用 {{pct}}",
+    "recentWindow": "近 60s",
+    "realtime": "实时"
   },
   "theme": {
     "lumina": "光明",
@@ -209,6 +221,15 @@
     "noSignal": "无信号",
     "tableMode": "表格模式 :: 数据流 Alpha-4",
     "parityOk": "校验：正常",
-    "bwidthNominal": "带宽：正常"
+    "bwidthNominal": "带宽：正常",
+    "missionOps": "指挥中心",
+    "utc": "UTC",
+    "fleet": "舰队",
+    "online": "在线",
+    "flow": "流量",
+    "avgCpu": "均CPU",
+    "alert": "告警",
+    "nominal": "全部正常",
+    "sector": "扇区"
   }
 }

@@ -1,15 +1,18 @@
-import { useEffect, useMemo, useState, useCallback, Fragment } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef, Fragment } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { ArrowLeft, Network, Signal, ArrowUpDown, Unplug, ChevronDown, ChevronRight, Info, Clock } from 'lucide-react';
+import { Progress } from './ui/progress';
+import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
+import { Sparkline } from './Sparkline';
+import { ArrowLeft, Network, Signal, ArrowUpDown, Unplug, ChevronDown, ChevronRight, Info, Clock, AlertTriangle } from 'lucide-react';
 import { HudSpinner } from './HudSpinner';
 import { apiService } from '../services/api';
 import { useAppConfig } from '@/hooks/useAppConfig';
 import { usePrivacyMode } from '@/hooks/usePrivacyMode';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { formatSpeed, formatBytes, cn } from '@/lib/utils';
+import { formatSpeed, formatBytes, cn, calcTrafficUsage, type TrafficLimitType } from '@/lib/utils';
 import type { NodeWithStatus } from '@/services/api';
 import {
   ConnectionsLineChart,
@@ -58,6 +61,28 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
 
   // Accept node data from parent context if available
   const stats = propNode?.stats;
+
+  // ──────────────────────────────────────────────────────────────
+  // Rolling 60-sample sparkline buffer for realtime up/down speeds.
+  // Stats arrive every ~2s via the parent polling loop, so ~60
+  // samples ≈ last 2 minutes of activity.
+  // ──────────────────────────────────────────────────────────────
+  const SPARK_CAP = 60;
+  const [upHistory, setUpHistory] = useState<number[]>([]);
+  const [downHistory, setDownHistory] = useState<number[]>([]);
+  const lastStatsRef = useRef<{ up: number; down: number } | null>(null);
+
+  useEffect(() => {
+    if (!stats) return;
+    const up = stats.network?.up ?? 0;
+    const down = stats.network?.down ?? 0;
+    const prev = lastStatsRef.current;
+    // Only record when value actually changes (polling may re-emit identical payloads)
+    if (prev && prev.up === up && prev.down === down) return;
+    lastStatsRef.current = { up, down };
+    setUpHistory(h => [...h.slice(-(SPARK_CAP - 1)), up]);
+    setDownHistory(h => [...h.slice(-(SPARK_CAP - 1)), down]);
+  }, [stats]);
 
   const timeRanges = useMemo(() => {
     const candidates = [
@@ -223,6 +248,25 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
     });
   }, [pingData, tasks]);
 
+  // Health overview — one-line answer for "is the network healthy right now?"
+  const healthOverview = useMemo(() => {
+    if (!latencySummary.length) {
+      return { level: 'unknown' as const, avgCurrent: null, maxLoss: 0, issueCount: 0 };
+    }
+    const currents = latencySummary
+      .map(i => i.current)
+      .filter((v): v is number => v !== null);
+    const avgCurrent = currents.length
+      ? currents.reduce((a, b) => a + b, 0) / currents.length
+      : null;
+    const maxLoss = latencySummary.reduce((m, i) => Math.max(m, i.loss), 0);
+    const issueCount = latencySummary.filter(i => i.loss > 5).length;
+    const warnCount = latencySummary.filter(i => i.loss > 0 && i.loss <= 5).length;
+    const level: 'nominal' | 'degraded' | 'critical' =
+      maxLoss > 5 ? 'critical' : warnCount > 0 ? 'degraded' : 'nominal';
+    return { level, avgCurrent, maxLoss, issueCount, warnCount };
+  }, [latencySummary]);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleLegendClick = useCallback((e: any) => {
     if (e?.dataKey != null) {
@@ -241,8 +285,8 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl">
-        <div className="text-sm text-destructive mb-3">{error}</div>
+      <div className="flex flex-col items-center justify-center gap-3 h-64 rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl">
+        <div className="text-sm text-destructive">{error}</div>
         <button onClick={fetchData} className="px-3 py-1.5 text-xs font-mono rounded border border-primary/30 text-primary hover:bg-primary/15 transition-colors cursor-pointer">
           {t('action.retry')}
         </button>
@@ -314,25 +358,57 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
           <div className="grid grid-cols-1 divide-y divide-border/20 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
             <div className="relative p-4 sm:p-5 group">
               <div className="network-stat-glow pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-              <div className="relative flex min-h-[4.25rem] flex-col justify-center gap-2">
+              <div className="relative flex min-h-[5.25rem] flex-col justify-center gap-2">
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xs text-primary">↑</span>
                   <span className="text-xs font-display font-bold uppercase tracking-wider text-muted-foreground/70">{t('label.upload')}</span>
+                  <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-px text-xxs font-mono font-bold uppercase tracking-wider text-primary">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="absolute inset-0 rounded-full bg-primary/60 motion-safe:animate-ping" aria-hidden />
+                      <span className="relative h-1.5 w-1.5 rounded-full bg-primary" />
+                    </span>
+                    {t('chart.realtime')}
+                  </span>
                 </div>
-                <div className="text-xl font-metric font-bold leading-none tracking-tight text-foreground sm:text-2xl">
-                  {formatSpeed(stats.network.up)}
+                <div className="flex items-end gap-3">
+                  <div className="text-xl font-metric font-bold leading-none tracking-tight text-foreground tabular-nums sm:text-2xl">
+                    {formatSpeed(stats.network.up)}
+                  </div>
+                  {upHistory.length >= 2 && (
+                    <div className="ml-auto shrink-0" aria-hidden>
+                      <Sparkline data={upHistory} width={84} height={28} color="var(--color-primary)" />
+                    </div>
+                  )}
+                </div>
+                <div className="text-xxs font-mono uppercase tracking-wider text-muted-foreground/50">
+                  {t('chart.recentWindow')}
                 </div>
               </div>
             </div>
             <div className="relative p-4 sm:p-5 group">
               <div className="network-stat-glow pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-              <div className="relative flex min-h-[4.25rem] flex-col justify-center gap-2">
+              <div className="relative flex min-h-[5.25rem] flex-col justify-center gap-2">
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent/10 text-xs text-accent">↓</span>
                   <span className="text-xs font-display font-bold uppercase tracking-wider text-muted-foreground/70">{t('label.download')}</span>
+                  <span className="network-dir-live network-dir-live--down ml-auto inline-flex items-center gap-1 rounded-full bg-accent/10 px-1.5 py-px text-xxs font-mono font-bold uppercase tracking-wider text-accent">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="absolute inset-0 rounded-full bg-accent/60 motion-safe:animate-ping" aria-hidden />
+                      <span className="relative h-1.5 w-1.5 rounded-full bg-accent" />
+                    </span>
+                    {t('chart.realtime')}
+                  </span>
                 </div>
-                <div className="text-xl font-metric font-bold leading-none tracking-tight text-foreground sm:text-2xl">
-                  {formatSpeed(stats.network.down)}
+                <div className="flex items-end gap-3">
+                  <div className="text-xl font-metric font-bold leading-none tracking-tight text-foreground tabular-nums sm:text-2xl">
+                    {formatSpeed(stats.network.down)}
+                  </div>
+                  {downHistory.length >= 2 && (
+                    <div className="ml-auto shrink-0" aria-hidden>
+                      <Sparkline data={downHistory} width={84} height={28} color="var(--network-down-color, var(--color-accent))" />
+                    </div>
+                  )}
+                </div>
+                <div className="text-xxs font-mono uppercase tracking-wider text-muted-foreground/50">
+                  {t('chart.recentWindow')}
                 </div>
               </div>
             </div>
@@ -349,7 +425,7 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
                   </span>
                   <span className="text-xxs font-display font-bold uppercase tracking-wider text-muted-foreground/60 sm:text-xs">{t('label.totalUp')}</span>
                 </div>
-                <div className="text-sm font-metric font-bold text-foreground sm:text-base">
+                <div className="text-sm font-metric font-bold tabular-nums text-foreground sm:text-base">
                   {stats.network.totalUp ? formatBytes(stats.network.totalUp) : t('label.na')}
                 </div>
               </div>
@@ -363,12 +439,55 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
                   </span>
                   <span className="text-xxs font-display font-bold uppercase tracking-wider text-muted-foreground/60 sm:text-xs">{t('label.totalDown')}</span>
                 </div>
-                <div className="text-sm font-metric font-bold text-foreground sm:text-base">
+                <div className="text-sm font-metric font-bold tabular-nums text-foreground sm:text-base">
                   {stats.network.totalDown ? formatBytes(stats.network.totalDown) : t('label.na')}
                 </div>
               </div>
             </div>
           </div>
+
+          {/* Traffic limit progress — only shown when the node has a configured quota */}
+          {propNode?.traffic_limit ? (() => {
+            const used = calcTrafficUsage(
+              stats.network.totalUp || 0,
+              stats.network.totalDown || 0,
+              propNode.traffic_limit_type as TrafficLimitType,
+            );
+            const pct = Math.min((used / propNode.traffic_limit) * 100, 100);
+            const tone = pct >= 90 ? 'destructive' : pct >= 70 ? 'warning' : 'primary';
+            return (
+              <div className="relative border-t border-border/20 px-4 py-3 sm:px-5 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xxs font-display font-bold uppercase tracking-wider text-muted-foreground/70 sm:text-xs">
+                    {t('label.traffic')}
+                  </span>
+                  <span
+                    className={cn(
+                      'text-xs font-metric font-bold tabular-nums',
+                      tone === 'destructive' && 'text-destructive',
+                      tone === 'warning' && 'text-warning',
+                    )}
+                  >
+                    {formatBytes(used)} / {formatBytes(propNode.traffic_limit)}
+                    <span className="ml-2 text-xxs font-mono text-muted-foreground/70">
+                      {t('chart.ofLimit', { pct: `${pct.toFixed(1)}%` })}
+                    </span>
+                  </span>
+                </div>
+                <Progress
+                  value={pct}
+                  className="h-1.5"
+                  indicatorClassName={
+                    tone === 'destructive'
+                      ? 'bg-destructive'
+                      : tone === 'warning'
+                        ? 'bg-warning'
+                        : ''
+                  }
+                />
+              </div>
+            );
+          })() : null}
 
           {isLoggedIn && (
             <div className="relative border-t border-border/20 p-4 sm:px-5 sm:py-4 group">
@@ -383,12 +502,12 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
                 <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 sm:justify-end">
                   <div className="flex items-baseline gap-2">
                     <span className="text-xs font-mono text-muted-foreground/70">TCP</span>
-                    <span className="text-base font-metric font-bold">{stats.connections.tcp}</span>
+                    <span className="text-base font-metric font-bold tabular-nums">{stats.connections.tcp}</span>
                   </div>
                   <div className="hidden h-4 w-px bg-border/35 sm:block" aria-hidden />
                   <div className="flex items-baseline gap-2">
                     <span className="text-xs font-mono text-muted-foreground/70">UDP</span>
-                    <span className="text-base font-metric font-bold">{stats.connections.udp}</span>
+                    <span className="text-base font-metric font-bold tabular-nums">{stats.connections.udp}</span>
                   </div>
                 </div>
               </div>
@@ -402,31 +521,64 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
         <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl overflow-hidden">
           <button
             onClick={() => setLatencyCollapsed(c => !c)}
-            className="w-full flex items-center justify-between px-4 py-3 border-b border-border/30 hover:bg-muted/10 transition-colors cursor-pointer"
+            className="w-full flex items-center justify-between gap-3 px-4 py-3 border-b border-border/30 hover:bg-muted/10 transition-colors cursor-pointer"
           >
-            <div className="flex items-center gap-2">
-              <Signal className="h-3.5 w-3.5 text-primary" />
+            <div className="flex items-center gap-2 min-w-0">
+              <Signal className="h-3.5 w-3.5 text-primary shrink-0" />
               <span className="text-xs font-display font-bold text-muted-foreground uppercase tracking-wider">{t('chart.latencyOverview')}</span>
-              <span className="text-xxs font-metric text-muted-foreground/60">({latencySummary.length})</span>
+              <span className="text-xxs font-metric tabular-nums text-muted-foreground/60">({latencySummary.length})</span>
+              {/* Collapsed-state summary badges — remain informative when the section is closed */}
+              {latencyCollapsed && healthOverview.avgCurrent !== null && (
+                <span className="ml-2 hidden items-center gap-2 sm:flex">
+                  <span className="text-xxs font-mono text-muted-foreground/70 tabular-nums">
+                    ~{Math.round(healthOverview.avgCurrent)}
+                    <span className="ml-0.5 text-muted-foreground/50">ms</span>
+                  </span>
+                  <span
+                    className={cn(
+                      'rounded px-1.5 py-px text-xxs font-mono font-bold tabular-nums',
+                      healthOverview.maxLoss > 5
+                        ? 'bg-destructive/10 text-destructive'
+                        : healthOverview.maxLoss > 0
+                          ? 'bg-warning/10 text-warning'
+                          : 'bg-success/10 text-success',
+                    )}
+                  >
+                    {healthOverview.maxLoss.toFixed(1)}% loss
+                  </span>
+                </span>
+              )}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => e.stopPropagation()}
+                    className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground/50 hover:bg-muted/30 hover:text-muted-foreground cursor-help"
+                    aria-label={t('chart.lossDisclaimer')}
+                  >
+                    <Info className="h-3 w-3" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs text-xs leading-relaxed whitespace-pre-line">
+                  {t('chart.lossDisclaimer')}
+                </TooltipContent>
+              </Tooltip>
             </div>
-            <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${latencyCollapsed ? '-rotate-90' : ''}`} />
+            <ChevronDown className={cn('h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 shrink-0', latencyCollapsed && '-rotate-90')} />
           </button>
           {!latencyCollapsed && (
             <>
-              <div className="px-4 py-2 border-b border-border/10 flex items-start gap-1.5 bg-muted/5">
-                <Info className="h-3 w-3 text-muted-foreground/40 mt-0.5 shrink-0" />
-                <span className="text-xs text-muted-foreground/60 leading-relaxed max-w-prose">{t('chart.lossDisclaimer')}</span>
-              </div>
               <div className="overflow-x-auto max-h-128 overflow-y-auto">
                 <table className="w-full">
                   <thead className="sticky top-0 bg-card/95 backdrop-blur-sm z-10">
                     <tr className="border-b border-border/20">
-                      <th className="text-left text-xs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2 w-8"></th>
-                      <th className="text-left text-xs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.taskName')}</th>
-                      <th className="text-right text-xs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.current')}</th>
-                      <th className="text-right text-xs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.average')}</th>
-                      <th className="text-right text-xs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.loss')}</th>
-                      <th className="text-right text-xs font-mono font-bold text-muted-foreground/60 uppercase px-4 py-2">{t('chart.jitter')}</th>
+                      <th className="w-8 px-2 py-2.5"></th>
+                      <th className="px-4 py-2.5 text-left text-xxs font-display font-bold uppercase tracking-widest text-muted-foreground/70">{t('chart.taskName')}</th>
+                      <th className="px-4 py-2.5 text-right text-xxs font-display font-bold uppercase tracking-widest text-muted-foreground/70">{t('chart.current')}</th>
+                      <th className="px-4 py-2.5 text-right text-xxs font-display font-bold uppercase tracking-widest text-muted-foreground/70">{t('chart.average')}</th>
+                      <th className="px-4 py-2.5 text-right text-xxs font-display font-bold uppercase tracking-widest text-muted-foreground/70">{t('chart.loss')}</th>
+                      <th className="px-4 py-2.5 text-right text-xxs font-display font-bold uppercase tracking-widest text-muted-foreground/70">{t('chart.jitter')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -437,6 +589,8 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
                         if (next.has(item.id)) next.delete(item.id); else next.add(item.id);
                         return next;
                       });
+                      const lossTone =
+                        item.loss > 5 ? 'destructive' : item.loss > 0 ? 'warning' : 'success';
                       return (
                         <Fragment key={item.id}>
                           <tr
@@ -444,7 +598,9 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
                               'group cursor-pointer border-b transition-colors',
                               isExpanded
                                 ? 'border-border/20 bg-primary/[0.07] shadow-[inset_3px_0_0_0_var(--color-primary)] hover:bg-primary/[0.09]'
-                                : 'border-border/10 hover:bg-muted/10 last:border-0',
+                                : lossTone === 'destructive'
+                                  ? 'border-destructive/15 bg-destructive/[0.04] shadow-[inset_3px_0_0_0_color-mix(in_oklch,var(--destructive)_45%,transparent)] hover:bg-destructive/[0.07]'
+                                  : 'border-border/10 hover:bg-muted/10 last:border-0',
                             )}
                             onClick={toggleExpand}
                           >
@@ -472,25 +628,35 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
                                 >
                                   {item.name}
                                 </span>
+                                {lossTone === 'destructive' && !isExpanded && (
+                                  <AlertTriangle className="h-3 w-3 text-destructive" aria-hidden />
+                                )}
                               </div>
                             </td>
                             <td className="px-4 py-2.5 text-right align-middle">
-                              <span className="text-xs font-metric font-bold">
+                              <span className="text-xs font-metric font-bold tabular-nums">
                                 {item.current !== null ? `${Math.round(item.current)} ms` : '—'}
                               </span>
                             </td>
                             <td className="px-4 py-2.5 text-right align-middle">
-                              <span className="text-xs font-metric text-muted-foreground">
+                              <span className="text-xs font-metric tabular-nums text-muted-foreground">
                                 {item.avg !== null ? `${Math.round(item.avg)} ms` : '—'}
                               </span>
                             </td>
                             <td className="px-4 py-2.5 text-right align-middle">
-                              <span className={`text-xs font-metric font-bold ${item.loss > 5 ? 'text-destructive' : item.loss > 0 ? 'text-warning' : 'text-success'}`}>
+                              <span
+                                className={cn(
+                                  'inline-flex items-center rounded px-1.5 py-0.5 text-xs font-metric font-bold tabular-nums',
+                                  lossTone === 'destructive' && 'bg-destructive/12 text-destructive ring-1 ring-destructive/25',
+                                  lossTone === 'warning' && 'bg-warning/12 text-warning ring-1 ring-warning/25',
+                                  lossTone === 'success' && 'text-success',
+                                )}
+                              >
                                 {item.loss.toFixed(1)}%
                               </span>
                             </td>
                             <td className="px-4 py-2.5 text-right align-middle">
-                              <span className={`text-xs font-metric ${item.jitter !== null && item.jitter > 1 ? 'text-warning' : 'text-muted-foreground'}`}>
+                              <span className={cn('text-xs font-metric tabular-nums', item.jitter !== null && item.jitter > 1 ? 'text-warning' : 'text-muted-foreground')}>
                                 {item.jitter !== null ? item.jitter.toFixed(2) : '—'}
                               </span>
                             </td>
@@ -503,41 +669,41 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
                                     <div className="grid grid-cols-3 gap-x-6 gap-y-3 sm:grid-cols-4 lg:grid-cols-6">
                                   <div>
                                     <div className="text-xs font-mono text-muted-foreground/60 uppercase">{t('chart.min')}</div>
-                                    <div className="text-xs font-metric font-bold">{item.min !== null ? `${Math.round(item.min)} ms` : '—'}</div>
+                                    <div className="text-xs font-metric font-bold tabular-nums">{item.min !== null ? `${Math.round(item.min)} ms` : '—'}</div>
                                   </div>
                                   <div>
                                     <div className="text-xs font-mono text-muted-foreground/60 uppercase">{t('chart.max')}</div>
-                                    <div className="text-xs font-metric font-bold">{item.max !== null ? `${Math.round(item.max)} ms` : '—'}</div>
+                                    <div className="text-xs font-metric font-bold tabular-nums">{item.max !== null ? `${Math.round(item.max)} ms` : '—'}</div>
                                   </div>
                                   <div>
                                     <div className="text-xs font-mono text-muted-foreground/60 uppercase">{t('chart.average')}</div>
-                                    <div className="text-xs font-metric font-bold">{item.avg !== null ? `${Math.round(item.avg)} ms` : '—'}</div>
+                                    <div className="text-xs font-metric font-bold tabular-nums">{item.avg !== null ? `${Math.round(item.avg)} ms` : '—'}</div>
                                   </div>
                                   <div>
                                     <div className="text-xs font-mono text-muted-foreground/60 uppercase">{t('chart.current')}</div>
-                                    <div className="text-xs font-metric font-bold">{item.current !== null ? `${Math.round(item.current)} ms` : '—'}</div>
+                                    <div className="text-xs font-metric font-bold tabular-nums">{item.current !== null ? `${Math.round(item.current)} ms` : '—'}</div>
                                   </div>
                                   <div>
                                     <div className="text-xs font-mono text-muted-foreground/60 uppercase">{t('chart.jitter')}</div>
-                                    <div className="text-xs font-metric font-bold">{item.jitter !== null ? item.jitter.toFixed(2) : '—'}</div>
+                                    <div className="text-xs font-metric font-bold tabular-nums">{item.jitter !== null ? item.jitter.toFixed(2) : '—'}</div>
                                   </div>
                                   <div>
                                     <div className="text-xs font-mono text-muted-foreground/60 uppercase">P50</div>
-                                    <div className="text-xs font-metric font-bold">{item.p50 !== null ? `${Math.round(item.p50)} ms` : '—'}</div>
+                                    <div className="text-xs font-metric font-bold tabular-nums">{item.p50 !== null ? `${Math.round(item.p50)} ms` : '—'}</div>
                                   </div>
                                   <div>
                                     <div className="text-xs font-mono text-muted-foreground/60 uppercase">P99</div>
-                                    <div className="text-xs font-metric font-bold">{item.p99 !== null ? `${Math.round(item.p99)} ms` : '—'}</div>
+                                    <div className="text-xs font-metric font-bold tabular-nums">{item.p99 !== null ? `${Math.round(item.p99)} ms` : '—'}</div>
                                   </div>
                                   <div>
                                     <div className="text-xs font-mono text-muted-foreground/60 uppercase">{t('chart.loss')}</div>
-                                    <div className={`text-xs font-metric font-bold ${item.loss > 5 ? 'text-destructive' : item.loss > 0 ? 'text-warning' : 'text-success'}`}>
+                                    <div className={cn('text-xs font-metric font-bold tabular-nums', item.loss > 5 ? 'text-destructive' : item.loss > 0 ? 'text-warning' : 'text-success')}>
                                       {item.loss.toFixed(1)}%
                                     </div>
                                   </div>
                                   <div>
                                     <div className="text-xs font-mono text-muted-foreground/60 uppercase">{t('chart.checkInterval')}</div>
-                                    <div className="text-xs font-metric font-bold">{item.interval}s</div>
+                                    <div className="text-xs font-metric font-bold tabular-nums">{item.interval}s</div>
                                   </div>
                                   <div>
                                     <div className="text-xs font-mono text-muted-foreground/60 uppercase">{t('chart.checkType')}</div>
@@ -545,7 +711,7 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
                                   </div>
                                   <div>
                                     <div className="text-xs font-mono text-muted-foreground/60 uppercase">{t('chart.sampleCount')}</div>
-                                    <div className="text-xs font-metric font-bold">{item.total !== null ? item.total : '—'}</div>
+                                    <div className="text-xs font-metric font-bold tabular-nums">{item.total !== null ? item.total : '—'}</div>
                                   </div>
                                     </div>
                                   </div>
