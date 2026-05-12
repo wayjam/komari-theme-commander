@@ -212,13 +212,17 @@ function LazyNodeRow({ node, rangeHours, onNavigate, onResult, forceKey }: LazyN
   const fetchedRef = useRef(false);
   const lastForceKey = useRef(forceKey);
 
+  // Keep latest onResult in a ref so effects don't rerun on callback identity change.
+  const onResultRef = useRef(onResult);
+  useEffect(() => { onResultRef.current = onResult; }, [onResult]);
+
   // Check cache on mount
   useEffect(() => {
     if (_cache && _cache.rangeHours === rangeHours) {
       const cached = _cache.nodes.get(node.uuid);
       if (cached) {
         setUptime(cached.result);
-        onResult(node.uuid, cached.result);
+        onResultRef.current(node.uuid, cached.result);
         fetchedRef.current = true;
       }
     }
@@ -274,7 +278,7 @@ function LazyNodeRow({ node, rangeHours, onNavigate, onResult, forceKey }: LazyN
         });
 
         setUptime(result);
-        onResult(node.uuid, result);
+        onResultRef.current(node.uuid, result);
         fetchedRef.current = true;
       } catch {
         if (!cancelled) {
@@ -316,7 +320,7 @@ function LazyNodeRow({ node, rangeHours, onNavigate, onResult, forceKey }: LazyN
         });
 
         setUptime(result);
-        onResult(node.uuid, result);
+        onResultRef.current(node.uuid, result);
       } catch {
         // ignore
       }

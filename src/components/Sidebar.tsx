@@ -13,6 +13,7 @@ import type { TrafficLimitType } from '@/lib/utils';
 import { useAppConfig } from '@/hooks/useAppConfig';
 import dayjs from 'dayjs';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { RemarkNote } from './RemarkNote';
 import prettyBytes from 'pretty-bytes';
 
 interface SidebarProps {

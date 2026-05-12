@@ -11,7 +11,6 @@ import type { TrafficLimitType } from '@/lib/utils';
 import { useAppConfig } from '@/hooks/useAppConfig';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { RegionFlag } from './RegionFlag';
-import { RemarkNote } from './RemarkNote';
 import dayjs from 'dayjs';
 
 interface NodeCardProps {

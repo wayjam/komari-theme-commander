@@ -165,7 +165,6 @@ export function worldCountriesFilter(
         const before = Buffer.byteLength(raw, "utf8")
         const after = Buffer.byteLength(json, "utf8")
         const pct = ((1 - after / before) * 100).toFixed(1)
-        // eslint-disable-next-line no-console
         console.log(
           `[world-countries-filter] kept ${fields.length}/${WORLD_COUNTRIES_FIELDS.length} fields ` +
             `(${formatBytes(before)} → ${formatBytes(after)}, -${pct}%) [${mode}]`,
@@ -286,7 +285,7 @@ async function scanReferencedFields(
       // pattern that captures any `.<field>` following the binding ident.
       // Limit lookahead to avoid matching across whole files.
       const directRe = new RegExp(
-        `\\b${binding}\\b[\\w\\.\\[\\]\\(\\)\"'\\?\\,\\s]{0,200}?\\.([a-zA-Z_$][\\w$]*)`,
+        `\\b${binding}\\b[\\w\\.\\[\\]\\(\\)"'\\?\\,\\s]{0,200}?\\.([a-zA-Z_$][\\w$]*)`,
         "g",
       )
       collectMatches(source, directRe, allowed, found)

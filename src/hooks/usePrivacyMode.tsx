@@ -24,7 +24,7 @@ function hashCode(str: string): number {
   return Math.abs(hash);
 }
 
-function generateFakeName(uuid: string, _index?: number): string {
+function generateFakeName(uuid: string): string {
   const h = hashCode(uuid);
   const prefix = FAKE_PREFIXES[h % FAKE_PREFIXES.length];
   const suffix = FAKE_SUFFIXES[(h >> 4) % FAKE_SUFFIXES.length];
@@ -37,7 +37,7 @@ interface PrivacyModeContextType {
   setPrivacyMode: (enabled: boolean) => void;
   togglePrivacyMode: () => void;
   maskNodes: (nodes: NodeWithStatus[]) => NodeWithStatus[];
-  maskName: (uuid: string, name: string, index?: number) => string;
+  maskName: (uuid: string, name: string) => string;
 }
 
 function getInitialPrivacyMode(): boolean {
@@ -72,16 +72,16 @@ export function PrivacyModeProvider({ children }: { children: ReactNode }) {
     setPrivacyMode(!privacyMode);
   }, [privacyMode, setPrivacyMode]);
 
-  const maskName = useCallback((uuid: string, name: string, index?: number) => {
+  const maskName = useCallback((uuid: string, name: string) => {
     if (!privacyMode) return name;
-    return generateFakeName(uuid, index ?? 0);
+    return generateFakeName(uuid);
   }, [privacyMode]);
 
   const maskNodes = useCallback((nodes: NodeWithStatus[]) => {
     if (!privacyMode) return nodes;
-    return nodes.map((node, i) => ({
+    return nodes.map((node) => ({
       ...node,
-      name: generateFakeName(node.uuid, i),
+      name: generateFakeName(node.uuid),
     }));
   }, [privacyMode]);
 

@@ -21,7 +21,12 @@ export default tseslint.config([
     },
   },
   {
-    files: ['src/components/ui/**/*.{ts,tsx}', 'src/hooks/useTheme.tsx'],
+    files: [
+      'src/components/ui/**/*.{ts,tsx}',
+      'src/hooks/useTheme.tsx',
+      'src/hooks/usePrivacyMode.tsx',
+      'src/lib/systemIcon.tsx',
+    ],
     rules: {
       'react-refresh/only-export-components': 'off',
     },
