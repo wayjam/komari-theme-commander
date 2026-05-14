@@ -309,9 +309,6 @@ function NodeListView({
     <div className="flex flex-col h-full relative">
       {/* Header */}
       <div className="px-3 py-2 border-b border-border/50 relative overflow-hidden flex-shrink-0">
-        <div className="sidebar-corner-accent absolute top-0 right-0 w-10 h-10 pointer-events-none">
-          <div className="absolute top-1.5 right-1.5 border-t border-r w-full h-full border-primary" />
-        </div>
         <div className="flex items-center justify-between">
           <span className="text-xs font-display font-bold text-muted-foreground uppercase tracking-wider">
             {t('fleet.status')}

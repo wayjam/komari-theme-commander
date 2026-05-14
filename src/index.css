@@ -1083,6 +1083,78 @@
     background-color: color-mix(in oklch, var(--success) 34%, var(--muted)) !important;
   }
 
+  /* Slot hover dimming — pure CSS, no React state per slot.
+     When the bar is hovered, every slot dims to 0.4 except the one being hovered. */
+  .uptime-view .uptime-bar:hover .uptime-slot {
+    opacity: 0.4;
+    transition: opacity 0.12s ease;
+  }
+  .uptime-view .uptime-bar:hover .uptime-slot:hover {
+    opacity: 1;
+  }
+
+  /* Per-row hover indicator — 1px primary edge on the left, no full side-stripe */
+  .uptime-view .uptime-row {
+    position: relative;
+    transition: background-color 0.15s ease;
+  }
+  .uptime-view .uptime-row::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    bottom: 8px;
+    left: 0;
+    width: 1px;
+    background: var(--primary);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    pointer-events: none;
+  }
+  .uptime-view .uptime-row:hover {
+    background: color-mix(in oklch, var(--primary) 4%, transparent);
+  }
+  .uptime-view .uptime-row:hover::before {
+    opacity: 0.7;
+  }
+  [data-theme="deepspace"] .uptime-view .uptime-row:hover {
+    background: color-mix(in oklch, var(--primary) 7%, transparent);
+  }
+  [data-theme="deepspace"] .uptime-view .uptime-row:hover::before {
+    opacity: 0.9;
+    box-shadow: 0 0 6px var(--primary);
+  }
+
+  /* Status strip — subtle teal edge for deepspace */
+  [data-theme="deepspace"] .uptime-view .uptime-status-strip {
+    box-shadow:
+      inset 0 1px 0 oklch(0.78 0.17 195 / 12%),
+      0 0 24px oklch(0.08 0.02 265 / 50%);
+  }
+
+  /* Time-axis ticks — small marks under labels */
+  .uptime-view .uptime-axis::before {
+    content: '';
+    position: absolute;
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: -2px;
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      color-mix(in oklch, var(--border) 80%, transparent) 8%,
+      color-mix(in oklch, var(--border) 80%, transparent) 92%,
+      transparent
+    );
+    pointer-events: none;
+  }
+  @media (min-width: 640px) {
+    .uptime-view .uptime-axis::before {
+      left: 1rem;
+      right: 1rem;
+    }
+  }
+
   /* ════════════════════════════════════════════════════════════
      DeepSpace Theme — Nebula Background (stars via Canvas)
      ════════════════════════════════════════════════════════════ */
@@ -1473,19 +1545,6 @@
   [data-theme="clean"] .sidebar-network-card {
     box-shadow: none;
     border-top-color: var(--color-border);
-  }
-
-  /* Corner accent — L-shape decoration in header top-right */
-  .sidebar-corner-accent {
-    opacity: 0.18;
-  }
-
-  [data-theme="deepspace"] .sidebar-corner-accent {
-    opacity: 0.35;
-  }
-
-  [data-theme="clean"] .sidebar-corner-accent {
-    display: none;
   }
 
   /* Clean: hide inline HUD decorative elements */
