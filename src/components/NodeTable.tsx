@@ -17,7 +17,7 @@ import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { SystemIcon } from '@/lib/systemIcon';
 import type { NodeWithStatus } from '@/services/api';
 import { useRecentStats } from '@/hooks/useRecentStats';
-import { formatSpeed, formatUptime, formatBytes, getUsageStatus, calcTrafficUsage, formatTrafficType, getExpiryStatus, formatExpiry, cn } from '@/lib/utils';
+import { formatSpeed, formatSpeedParts, formatUptime, formatBytes, getUsageStatus, calcTrafficUsage, formatTrafficType, getExpiryStatus, formatExpiry, cn } from '@/lib/utils';
 import type { TrafficLimitType } from '@/lib/utils';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { RegionFlag } from './RegionFlag';
@@ -309,10 +309,22 @@ export function NodeTable({ nodes }: NodeTableProps) {
         cell: ({ row }) => {
           const stats = row.original.stats;
           if (!stats) return <span className="text-sm font-metric text-muted-foreground/30">—</span>;
+          const up = formatSpeedParts(stats.network.up);
+          const down = formatSpeedParts(stats.network.down);
+          // Fixed-width numeric cell + fixed-width unit cell so row height/width
+          // stays stable regardless of the value's order of magnitude.
           return (
-            <div className="text-xs font-metric leading-tight tabular-nums">
-              <div><span className="text-success/70 mr-1">↑</span>{formatSpeed(stats.network.up)}</div>
-              <div><span className="text-primary/70 mr-1">↓</span>{formatSpeed(stats.network.down)}</div>
+            <div className="text-xs font-metric leading-tight tabular-nums whitespace-nowrap">
+              <div className="flex items-center gap-1">
+                <span className="text-success/70 w-3 text-center shrink-0">↑</span>
+                <span className="w-10 text-right shrink-0">{up.value}</span>
+                <span className="w-9 text-left text-muted-foreground/70 shrink-0">{up.unit}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-primary/70 w-3 text-center shrink-0">↓</span>
+                <span className="w-10 text-right shrink-0">{down.value}</span>
+                <span className="w-9 text-left text-muted-foreground/70 shrink-0">{down.unit}</span>
+              </div>
             </div>
           );
         },
@@ -329,7 +341,11 @@ export function NodeTable({ nodes }: NodeTableProps) {
         cell: ({ row }) => {
           const stats = row.original.stats;
           if (!stats) return <span className="text-xs font-metric text-muted-foreground/30">—</span>;
-          return <span className="text-xs font-metric">{formatUptime(stats.uptime)}</span>;
+          return (
+            <span className="text-xs font-metric tabular-nums whitespace-nowrap">
+              {formatUptime(stats.uptime)}
+            </span>
+          );
         },
       }
     ),
@@ -348,7 +364,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
           const ratio = stats.load.load1 / cores;
           const loadStatus = ratio >= 1.5 ? 'critical' : ratio >= 1 ? 'warning' : 'normal';
           return (
-            <span className={cn('text-xs font-metric tabular-nums', textByStatus[loadStatus])}>
+            <span className={cn('inline-block text-xs font-metric tabular-nums whitespace-nowrap text-right w-12', textByStatus[loadStatus])}>
               {stats.load.load1.toFixed(2)}
             </span>
           );
@@ -451,6 +467,10 @@ export function NodeTable({ nodes }: NodeTableProps) {
                     !isOnline && 'opacity-45',
                     isCritical && 'bg-destructive/4'
                   )}
+                  // h-16 acts as a minimum height in <table> layout, so this
+                  // gives every row a stable 64px floor while still allowing
+                  // taller content (long node name / many tags) to expand.
+                  style={{ height: 64 }}
                 >
                   {row.getVisibleCells().map((cell, cellIdx) => (
                     <td
@@ -459,7 +479,6 @@ export function NodeTable({ nodes }: NodeTableProps) {
                         'py-3 align-middle relative',
                         cellIdx === 0 ? 'px-1 text-center' : 'px-3',
                       )}
-                      style={{ minHeight: 64 }}
                     >
                       {cellIdx === 0 && (
                         <div
@@ -553,13 +572,13 @@ export function NodeTable({ nodes }: NodeTableProps) {
               </div>
               {stats && (
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-metric text-muted-foreground ml-4 tabular-nums">
-                  <span className={textByStatus[getUsageStatus(cpuUsage, { warning: 60, critical: 80 })]}>{t('label.cpu')} {cpuUsage.toFixed(0)}%</span>
-                  <span className={textByStatus[getUsageStatus(ramUsage, { warning: 70, critical: 85 })]}>{t('label.ram')} {ramUsage.toFixed(0)}%</span>
-                  <span className={textByStatus[getUsageStatus(diskUsage, { warning: 75, critical: 90 })]}>{t('label.disk')} {diskUsage.toFixed(0)}%</span>
-                  <span><span className="text-success/70 mr-1">↑</span>{formatSpeed(stats.network.up)}</span>
-                  <span><span className="text-primary/70 mr-1">↓</span>{formatSpeed(stats.network.down)}</span>
-                  <span className={textByStatus[loadStatus]}>{t('label.load')} {stats.load.load1.toFixed(2)}</span>
-                  <span>{formatUptime(stats.uptime)}</span>
+                  <span className={cn('whitespace-nowrap', textByStatus[getUsageStatus(cpuUsage, { warning: 60, critical: 80 })])}>{t('label.cpu')} {cpuUsage.toFixed(0).padStart(2, '0')}%</span>
+                  <span className={cn('whitespace-nowrap', textByStatus[getUsageStatus(ramUsage, { warning: 70, critical: 85 })])}>{t('label.ram')} {ramUsage.toFixed(0).padStart(2, '0')}%</span>
+                  <span className={cn('whitespace-nowrap', textByStatus[getUsageStatus(diskUsage, { warning: 75, critical: 90 })])}>{t('label.disk')} {diskUsage.toFixed(0).padStart(2, '0')}%</span>
+                  <span className="whitespace-nowrap"><span className="text-success/70 mr-1">↑</span>{formatSpeed(stats.network.up)}</span>
+                  <span className="whitespace-nowrap"><span className="text-primary/70 mr-1">↓</span>{formatSpeed(stats.network.down)}</span>
+                  <span className={cn('whitespace-nowrap', textByStatus[loadStatus])}>{t('label.load')} {stats.load.load1.toFixed(2)}</span>
+                  <span className="whitespace-nowrap">{formatUptime(stats.uptime)}</span>
                 </div>
               )}
             </div>

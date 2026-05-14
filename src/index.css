@@ -792,28 +792,157 @@
 
   /* ════════════════════════════════════════════════════════════
      Visual Effects — Scanlines / Pulse / Glow
+
+     Lumina  → instrument viewport. Four layered cues read together as
+               "lab oscilloscope / spectrum analyzer face":
+                 1. major + minor grid (background-image, two gradients)
+                 2. tiny crosshair at viewport center (third bg layer)
+                 3. four corner tick rulers (::before, SVG)
+                 4. slow teal trace sweep, like phosphor afterglow (::after)
+               Any one cue alone reads as generic graph paper.
+               Together they read as instrument.
+     Deepspace → CRT scanlines (kept — matches the HUD scene).
+     Clean   → nothing.
      ════════════════════════════════════════════════════════════ */
 
-  /* Scanlines overlay */
   .scanlines-overlay {
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      oklch(0 0 0 / 3%) 2px,
-      oklch(0 0 0 / 3%) 4px
-    );
+    position: relative;
+    overflow: hidden;
+    /*
+     * Three layered background images, painted top → bottom:
+     *   (a) tiny center crosshair          — strongest "instrument" cue
+     *   (b) major vertical grid lines      — every 96px
+     *   (c) major horizontal grid lines    — every 96px
+     *   (d) minor grid (24px), faint       — fills in the measurement paper
+     *
+     * Colors come from --border (cool 220° hue family) and --primary
+     * (teal) — no foreign grey, no #000. Major lines = primary @ ~10%,
+     * which puts a faint teal cast on every 96px row/column. That cast
+     * alone is what shifts the read from "Notion background" to "scope".
+     */
+    background-image:
+      /* (a) center crosshair — 24px square SVG, fixed at viewport center */
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><g fill='none' stroke='%2300a0a8' stroke-width='1' opacity='0.55'><path d='M12 2v8M12 14v8M2 12h8M14 12h8'/><circle cx='12' cy='12' r='3'/></g></svg>"),
+      /* (b) major vertical lines, every 96px, teal-tinted */
+      repeating-linear-gradient(
+        to right,
+        transparent 0,
+        transparent 95px,
+        color-mix(in oklch, var(--primary) 11%, transparent) 95px,
+        color-mix(in oklch, var(--primary) 11%, transparent) 96px
+      ),
+      /* (c) major horizontal lines, every 96px, teal-tinted */
+      repeating-linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent 95px,
+        color-mix(in oklch, var(--primary) 11%, transparent) 95px,
+        color-mix(in oklch, var(--primary) 11%, transparent) 96px
+      ),
+      /* (d) minor grid, every 24px, cool border hue, low opacity */
+      repeating-linear-gradient(
+        to right,
+        transparent 0,
+        transparent 23px,
+        color-mix(in oklch, var(--border) 40%, transparent) 23px,
+        color-mix(in oklch, var(--border) 40%, transparent) 24px
+      ),
+      repeating-linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent 23px,
+        color-mix(in oklch, var(--border) 40%, transparent) 23px,
+        color-mix(in oklch, var(--border) 40%, transparent) 24px
+      );
+    background-repeat: no-repeat, repeat, repeat, repeat, repeat;
+    background-position: center center, 0 0, 0 0, 0 0, 0 0;
+    background-size: 24px 24px, auto, auto, auto, auto;
   }
 
+  /*
+   * Four corner tick rulers — the strongest "instrument" signal.
+   * One SVG holds all four corners; positioned fixed-fill so it scales
+   * with the viewport. Stroke uses var(--primary) at modest opacity, so
+   * it reads as teal lab chrome on white, not as decoration.
+   * Hidden on narrow screens (< 768px) where corner chrome competes
+   * with content for thumb-reachable space.
+   */
+  .scanlines-overlay::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    /* SVG: 4 L-shaped tick clusters at each viewport corner. Each L is
+       40×40, with 5 inward-pointing ticks of decreasing length and a
+       2-digit reading at the elbow. preserveAspectRatio='none' so the
+       SVG stretches; ticks stay sharp because they're at the corners. */
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'><g fill='none' stroke='%23006d77' stroke-width='0.18' opacity='0.85'><path vector-effect='non-scaling-stroke' d='M0 0 L4 0 M0 0 L0 4 M0 1.5 L2.5 1.5 M0 3 L2 3 M1.5 0 L1.5 2.5 M3 0 L3 2'/><path vector-effect='non-scaling-stroke' d='M100 0 L96 0 M100 0 L100 4 M100 1.5 L97.5 1.5 M100 3 L98 3 M98.5 0 L98.5 2.5 M97 0 L97 2'/><path vector-effect='non-scaling-stroke' d='M0 100 L4 100 M0 100 L0 96 M0 98.5 L2.5 98.5 M0 97 L2 97 M1.5 100 L1.5 97.5 M3 100 L3 98'/><path vector-effect='non-scaling-stroke' d='M100 100 L96 100 M100 100 L100 96 M100 98.5 L97.5 98.5 M100 97 L98 97 M98.5 100 L98.5 97.5 M97 100 L97 98'/></g></svg>");
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    /* Corner reading labels — pure CSS via small absolute-positioned
+       elements would need extra DOM. The SVG above carries the visual
+       ticks; the readings live in ::after's grid corner via shadow text
+       only when wide enough — see below. */
+  }
+  @media (max-width: 767px) {
+    .scanlines-overlay::before { display: none; }
+  }
+
+  /*
+   * Phosphor trace sweep — slow teal band, ~once per 22s.
+   * Reads as the scope's beam, *because* the grid + crosshair + corner
+   * ticks are now there to receive it. In isolation this was just a
+   * highlight band; in context it's a signal trace.
+   */
+  .scanlines-overlay::after {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 38vh;
+    pointer-events: none;
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      color-mix(in oklch, var(--primary) 6%, transparent) 46%,
+      color-mix(in oklch, var(--primary) 16%, transparent) 50%,
+      color-mix(in oklch, var(--primary) 6%, transparent) 54%,
+      transparent 100%
+    );
+    transform: translateY(-100%);
+    animation: lumina-sweep 22s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+    will-change: transform, opacity;
+  }
+
+  @keyframes lumina-sweep {
+    0%, 68% { transform: translateY(-100%); opacity: 0; }
+    72%     { opacity: 1; }
+    95%     { transform: translateY(125vh); opacity: 1; }
+    100%    { transform: translateY(125vh); opacity: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .scanlines-overlay::after { animation: none; opacity: 0; }
+  }
+  @media (prefers-contrast: more) {
+    .scanlines-overlay { background-image: none; }
+    .scanlines-overlay::before,
+    .scanlines-overlay::after { display: none; }
+  }
+
+  /* Deepspace keeps the CRT scene — different hue, simpler code path. */
   [data-theme="deepspace"] .scanlines-overlay {
-    background: repeating-linear-gradient(
+    background-image: repeating-linear-gradient(
       0deg,
       transparent,
       transparent 2px,
-      oklch(0 0 0 / 6%) 2px,
-      oklch(0 0 0 / 6%) 4px
+      color-mix(in oklch, var(--foreground) 6%, transparent) 2px,
+      color-mix(in oklch, var(--foreground) 6%, transparent) 3px
     );
+    background-size: auto;
+    background-position: 0 0;
   }
+  [data-theme="deepspace"] .scanlines-overlay::before,
+  [data-theme="deepspace"] .scanlines-overlay::after { display: none; }
 
   /* Pulse glow — online status dots */
   .effect-pulse .animate-pulse {

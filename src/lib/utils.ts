@@ -52,6 +52,33 @@ export function formatSpeed(bytesPerSecond: number): string {
   return prettyBytes(bytesPerSecond, { bits: false }) + '/s';
 }
 
+/**
+ * Split network speed into a fixed-width numeric part and a unit part.
+ * Useful for layouts that need each row to keep a steady column width
+ * regardless of the underlying value (the numeric part is padded to a
+ * stable character count, the unit is rendered separately with a fixed
+ * column width).
+ */
+export function formatSpeedParts(bytesPerSecond: number): { value: string; unit: string } {
+  if (!bytesPerSecond || bytesPerSecond < 0) {
+    return { value: '0', unit: 'B/s' };
+  }
+  const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+  let v = bytesPerSecond;
+  let i = 0;
+  while (v >= 1000 && i < units.length - 1) {
+    v /= 1000;
+    i++;
+  }
+  // Keep numeric portion to 3 significant digits so the visual width stays
+  // consistent (e.g. "1.23", "12.3", "123").
+  let value: string;
+  if (v >= 100) value = v.toFixed(0);
+  else if (v >= 10) value = v.toFixed(1);
+  else value = v.toFixed(2);
+  return { value, unit: `${units[i]}/s` };
+}
+
 /** Format bytes */
 export function formatBytes(bytes: number): string {
   return prettyBytes(bytes);
