@@ -3,31 +3,41 @@ import { apiService, wsService } from '../services/api';
 import type { NodeWithStatus, NodeStats, WsMessage } from '../services/api';
 
 /**
- * Shallow-compare two stats objects. Returns true if they are equivalent.
+ * Compare a stored, normalised `NodeStats` to the *raw* stats payload coming
+ * off the wire. Designed to short-circuit the WS hot loop: if every value
+ * the UI actually reads is unchanged, we keep the previous node reference,
+ * which lets `React.memo` on NodeCard / NodeTable rows bail out cleanly.
+ *
+ * `prev` is normalised (no missing fields), `raw` is whatever the server
+ * sent — fall back to 0 / '' so the comparison mirrors the normalisation
+ * logic in the caller exactly.
  */
-function statsEqual(a: NodeStats | undefined, b: NodeStats | undefined): boolean {
-  if (a === b) return true;
-  if (!a || !b) return false;
+function rawStatsEqual(
+  prev: NodeStats | undefined,
+  raw: NodeStats | undefined,
+): boolean {
+  if (!prev && !raw) return true;
+  if (!prev || !raw) return false;
   return (
-    a.cpu?.usage === b.cpu?.usage &&
-    a.ram?.used === b.ram?.used &&
-    a.ram?.total === b.ram?.total &&
-    a.swap?.used === b.swap?.used &&
-    a.swap?.total === b.swap?.total &&
-    a.disk?.used === b.disk?.used &&
-    a.disk?.total === b.disk?.total &&
-    a.network?.up === b.network?.up &&
-    a.network?.down === b.network?.down &&
-    a.network?.totalUp === b.network?.totalUp &&
-    a.network?.totalDown === b.network?.totalDown &&
-    a.load?.load1 === b.load?.load1 &&
-    a.load?.load5 === b.load?.load5 &&
-    a.load?.load15 === b.load?.load15 &&
-    a.uptime === b.uptime &&
-    a.process === b.process &&
-    a.connections?.tcp === b.connections?.tcp &&
-    a.connections?.udp === b.connections?.udp &&
-    a.updated_at === b.updated_at
+    prev.cpu.usage === (raw.cpu?.usage || 0) &&
+    prev.ram.used === (raw.ram?.used || 0) &&
+    prev.ram.total === (raw.ram?.total || 0) &&
+    prev.swap.used === (raw.swap?.used || 0) &&
+    prev.swap.total === (raw.swap?.total || 0) &&
+    prev.disk.used === (raw.disk?.used || 0) &&
+    prev.disk.total === (raw.disk?.total || 0) &&
+    prev.network.up === (raw.network?.up || 0) &&
+    prev.network.down === (raw.network?.down || 0) &&
+    prev.network.totalUp === (raw.network?.totalUp || 0) &&
+    prev.network.totalDown === (raw.network?.totalDown || 0) &&
+    prev.load.load1 === (raw.load?.load1 || 0) &&
+    prev.load.load5 === (raw.load?.load5 || 0) &&
+    prev.load.load15 === (raw.load?.load15 || 0) &&
+    prev.uptime === (raw.uptime || 0) &&
+    prev.process === (raw.process || 0) &&
+    prev.connections.tcp === (raw.connections?.tcp || 0) &&
+    prev.connections.udp === (raw.connections?.udp || 0) &&
+    prev.updated_at === (raw.updated_at || prev.updated_at)
   );
 }
 
@@ -75,14 +85,23 @@ export function useNodes() {
     const handleWebSocketData = (data: WsMessage) => {
       if (data.online && data.data) {
         const prevNodes = nodesRef.current;
+        const onlineSet = new Set(data.online);
         let changed = false;
         const nextNodes = prevNodes.map(node => {
-          const isOnline = data.online.includes(node.uuid);
+          const isOnline = onlineSet.has(node.uuid);
           const newStatus: 'online' | 'offline' = isOnline ? 'online' : 'offline';
           const rawStats = data.data[node.uuid];
 
+          // Fast path: when both status and the raw stats payload are
+          // equivalent to what we already hold, return the previous node
+          // reference unchanged. This is the hot loop for every WS tick, so
+          // skipping the spread + new-object allocation here is what makes
+          // memoised NodeCards actually bail out of re-render.
+          if (node.status === newStatus && rawStatsEqual(node.stats, rawStats)) {
+            return node;
+          }
+
           const newStats = rawStats ? {
-            ...rawStats,
             cpu: { usage: rawStats.cpu?.usage || 0 },
             ram: { total: rawStats.ram?.total || 0, used: rawStats.ram?.used || 0 },
             swap: { total: rawStats.swap?.total || 0, used: rawStats.swap?.used || 0 },
@@ -105,11 +124,6 @@ export function useNodes() {
             updated_at: rawStats.updated_at || new Date().toISOString(),
           } : undefined;
 
-          // Skip creating new object if nothing changed
-          if (node.status === newStatus && statsEqual(node.stats, newStats)) {
-            return node;
-          }
-
           changed = true;
           return { ...node, status: newStatus, stats: newStats };
         });
@@ -127,8 +141,15 @@ export function useNodes() {
     // Connect WebSocket
     wsService.connect();
 
-    // Set up timer to request data every 2 seconds
+    // Set up timer to request data every 2 seconds.
+    //
+    // Skip the request when the page is hidden — the user can't see anything
+    // anyway, and on tabs left open in the background this single change
+    // takes the network/CPU floor of this hook close to zero. The next
+    // visible tick will resync state because the WebSocket is still
+    // connected and the next `send('get')` will deliver fresh stats.
     const intervalId = setInterval(() => {
+      if (document.hidden) return;
       if (wsService.getOnlineNodes().length > 0) {
         wsService.send('get');
       }

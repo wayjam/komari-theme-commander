@@ -247,6 +247,12 @@
     "avgCpu": "均CPU",
     "alert": "告警",
     "nominal": "全部正常",
-    "sector": "扇区"
+    "sector": "扇区",
+    "feed": {
+      "idle": "遥测信道空闲",
+      "signalLost": "信号丢失",
+      "linkEstablished": "链路建立",
+      "critical": "危急"
+    }
   }
 }

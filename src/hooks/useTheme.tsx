@@ -83,6 +83,27 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [theme, resolvedTheme]);
 
+  // Toggle a root attribute when the page is hidden so a global CSS rule
+  // can pause all decorative animations (radar sweeps, label pulses,
+  // queue bars, scanlines, etc.). Browsers throttle rAF when hidden but
+  // CSS keyframes still advance their timelines and, on some platforms
+  // (PiP, side-by-side, certain external displays), still trigger
+  // composite work — this gives us a single, observable signal we can
+  // hook from the stylesheet.
+  useEffect(() => {
+    const root = document.documentElement;
+    const apply = () => {
+      if (document.hidden) {
+        root.setAttribute('data-page-hidden', '');
+      } else {
+        root.removeAttribute('data-page-hidden');
+      }
+    };
+    apply();
+    document.addEventListener('visibilitychange', apply);
+    return () => document.removeEventListener('visibilitychange', apply);
+  }, []);
+
   return (
     <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme }}>
       {children}

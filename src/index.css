@@ -620,13 +620,23 @@
     position: absolute;
     width: 100%;
     height: 100%;
-    background: 
-      radial-gradient(circle at 20% 30%, var(--primary) 0%, transparent 20%),
-      radial-gradient(circle at 80% 70%, var(--accent) 0%, transparent 20%);
+    /* Larger gradient stops compensate for the smaller blur radius below.
+       The visual result is essentially identical to the previous 40px blur
+       but the paint cost drops ~3-4× because Gaussian blur scales roughly
+       quadratically with radius. */
+    background:
+      radial-gradient(circle at 20% 30%, var(--primary) 0%, transparent 32%),
+      radial-gradient(circle at 80% 70%, var(--accent) 0%, transparent 32%);
     opacity: 0.05;
-    filter: blur(40px);
+    filter: blur(20px);
     pointer-events: none;
     mix-blend-mode: screen;
+    /* Promote to its own compositor layer so the blurred raster is cached
+       and not redrawn every frame when sibling layers (radar / orbit /
+       circles) animate above/below it. `contain: paint` also tells the
+       browser the blur output cannot affect anything outside this box. */
+    transform: translateZ(0);
+    contain: paint;
   }
 
   [data-theme="deepspace"] .deepspace-grid {
@@ -1959,6 +1969,343 @@
     border-top-color: var(--border);
     background: transparent;
   }
+
+  /* ── Single-slot ticker: row crossfade + idle breathing ──────────── */
+  .globe-feed-row {
+    will-change: transform, opacity;
+  }
+  .globe-feed-row-enter {
+    animation: globe-feed-enter 600ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  }
+  .globe-feed-row-leave {
+    animation: globe-feed-leave 600ms cubic-bezier(0.4, 0, 0.7, 0.3) both;
+  }
+  @keyframes globe-feed-enter {
+    0% {
+      opacity: 0;
+      transform: translateX(14px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  @keyframes globe-feed-leave {
+    0% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    100% {
+      opacity: 0;
+      transform: translateX(-14px);
+    }
+  }
+
+  .globe-feed-idle {
+    animation: globe-feed-idle-breathe 2.4s ease-in-out infinite;
+  }
+  .globe-feed-idle-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 9999px;
+    background: var(--primary);
+    opacity: 0.45;
+    box-shadow: 0 0 6px color-mix(in oklch, var(--primary) 60%, transparent);
+  }
+  @keyframes globe-feed-idle-breathe {
+    0%, 100% { opacity: 0.55; }
+    50%      { opacity: 0.95; }
+  }
+
+  /* Clean theme: keep the slot mechanic, drop the sci-fi flourishes —
+     no horizontal travel, no glow, slower breathing. */
+  [data-theme="clean"] .globe-feed-row-enter {
+    animation: globe-feed-enter-clean 500ms ease-out both;
+  }
+  [data-theme="clean"] .globe-feed-row-leave {
+    animation: globe-feed-leave-clean 500ms ease-in both;
+  }
+  @keyframes globe-feed-enter-clean {
+    0%   { opacity: 0; }
+    100% { opacity: 1; }
+  }
+  @keyframes globe-feed-leave-clean {
+    0%   { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  [data-theme="clean"] .globe-feed-idle-dot {
+    box-shadow: none;
+    background: var(--muted-foreground);
+    opacity: 0.4;
+  }
+  [data-theme="clean"] .globe-feed-idle {
+    animation-duration: 3.2s;
+  }
+
+  /* ── Liveness signals: scanline + heartbeat + entry sweep ─────────
+     Purpose: during the 3.5s static hold the row is motionless. These
+     three subtle, looping micro-effects keep the bar reading as a live
+     channel rather than a static caption. */
+
+  /* Scanline: a 1px gradient swept across the bottom edge, 4s loop. */
+  .globe-feed-scanline {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    pointer-events: none;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      transparent 30%,
+      color-mix(in oklch, var(--primary) 70%, transparent) 50%,
+      transparent 70%,
+      transparent 100%
+    );
+    background-size: 220% 100%;
+    background-repeat: no-repeat;
+    animation: globe-feed-scanline 4s linear infinite;
+    opacity: 0.6;
+  }
+  @keyframes globe-feed-scanline {
+    0%   { background-position: -110% 0; }
+    100% { background-position: 110% 0; }
+  }
+
+  /* ── Left-side label: the FEED tag is the entire left-side liveness
+     signal. No emitter dot (deliberately distinct from the sidebar's
+     pulsing online-status dots). Liveness is carried by two layered
+     animations on the text itself:
+       1. A specular highlight that traverses the glyphs (3.2s) — fast
+          enough to register as "active", slow enough not to distract.
+       2. A slow opacity breathe on the whole label (2.6s) so even when
+          the highlight is at the edges, the block visibly inhales/exhales.
+     The contrast between dim base (40%) and full-bright peak (100%) is
+     wider than before so the sweep is unmistakable without a dot. */
+  .globe-feed-label {
+    color: color-mix(in oklch, var(--primary) 75%, transparent);
+    font-size: inherit;
+    animation: globe-feed-label-breathe 2.6s ease-in-out infinite;
+  }
+  @keyframes globe-feed-label-breathe {
+    0%, 100% { opacity: 0.7; }
+    50%      { opacity: 1;   }
+  }
+  /* Section-start tick — replaces a literal `▌` (U+258C) glyph.
+     Why: U+258C has no descender and renders flush to cap-height, so the
+     glyph's geometric center sits well above the line-box center, making
+     `▌FEED` read as visually higher than the right-side queue bars (which
+     are bottom-aligned `items-end` inside their own 12px-tall container).
+     A CSS-drawn rect lets the tick's geometry be 100% under our control:
+     same 12px height as the queue container, both clusters then become
+     12px boxes that the outer `flex items-center` drops onto the same
+     row centerline. Combined with `.globe-feed-queue-bar.is-lit { height:
+     100% }` on the right, every solid element shares the same geometric
+     centerline — no per-pixel nudges needed.
+
+     `currentColor` inheritance lets the parent's pulse / critical color
+     animations tint the tick automatically, no separate rules. */
+  .globe-feed-label-tick {
+    display: inline-block;
+    width: 2px;
+    /* 12px — matches the queue container's `h-3`. Both clusters are then
+       12px-tall boxes that the outer `flex items-center` drops onto the
+       same row centerline. tick (solid 12px rect) and lit queue bar
+       (100% of 12px) share their geometric centers exactly, so the eye
+       reads "left section start | row content | right section end" as
+       horizontally aligned without any per-pixel nudge. */
+    height: 0.75rem;
+    margin-right: 0.4em;
+    background: currentColor;
+    border-radius: 1px;
+    /* Slightly dimmer than the text so the tick reads as chrome, not
+       a character. The text itself runs the brighter pulse animation. */
+    opacity: 0.7;
+    flex-shrink: 0;
+    align-self: center;
+  }
+  .globe-feed-label-text {
+    /* Previously: a `linear-gradient(... background-clip: text)` with a
+       moving `background-position` keyframe. That looks great but every
+       frame the browser has to re-rasterize the text glyphs against a
+       new gradient sample — text re-rasterization with subpixel AA is
+       one of the most expensive paint paths in modern browsers and
+       was showing up at 4-8ms/frame on the perf trace.
+       Replacement: a 2-stop color breathe between dim and full primary.
+       The browser interpolates a single solid color, which is essentially
+       free (no glyph re-raster). Combined with the existing opacity
+       breathe on `.globe-feed-label`, the label still reads as "alive". */
+    color: var(--primary);
+    animation: globe-feed-label-pulse 3.2s ease-in-out infinite;
+  }
+  @keyframes globe-feed-label-pulse {
+    0%, 100% { color: color-mix(in oklch, var(--primary) 55%, transparent); }
+    50%      { color: var(--primary); }
+  }
+  /* Critical: whole label goes red + the pulse accelerates so the
+     left side reads as "alarming" without a dedicated indicator. */
+  .globe-feed-label-critical {
+    animation-duration: 1.4s;
+  }
+  .globe-feed-label-critical .globe-feed-label-text {
+    color: var(--destructive);
+    animation: globe-feed-label-pulse-critical 1.8s ease-in-out infinite;
+  }
+  @keyframes globe-feed-label-pulse-critical {
+    0%, 100% { color: color-mix(in oklch, var(--destructive) 55%, transparent); }
+    50%      { color: var(--destructive); }
+  }
+
+  /* Entry sweep: a one-shot specular highlight that traverses a freshly
+     mounted row. Only attached to the entering peer, runs once. */
+  .globe-feed-row-sweep {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in oklch, var(--primary) 18%, transparent) 50%,
+      transparent 100%
+    );
+    background-size: 60% 100%;
+    background-repeat: no-repeat;
+    animation: globe-feed-row-sweep 700ms cubic-bezier(0.25, 0.46, 0.45, 0.94) 1 forwards;
+    mix-blend-mode: screen;
+  }
+  @keyframes globe-feed-row-sweep {
+    0%   { background-position: -60% 0; opacity: 0; }
+    20%  { opacity: 1; }
+    100% { background-position: 120% 0; opacity: 0; }
+  }
+
+  /* Clean theme dials these way down — keep liveness signal, lose the
+     sci-fi character. */
+  [data-theme="clean"] .globe-feed-scanline {
+    opacity: 0.3;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      transparent 35%,
+      color-mix(in oklch, var(--muted-foreground) 55%, transparent) 50%,
+      transparent 65%,
+      transparent 100%
+    );
+    animation-duration: 5.5s;
+  }
+  [data-theme="clean"] .globe-feed-label {
+    animation: none;
+    color: color-mix(in oklch, var(--foreground) 70%, transparent);
+  }
+  /* Clean: drop the pulse (too sci-fi), just hold a static muted color. */
+  [data-theme="clean"] .globe-feed-label-text {
+    color: color-mix(in oklch, var(--foreground) 70%, transparent);
+    animation: none;
+  }
+  [data-theme="clean"] .globe-feed-label-critical {
+    color: var(--destructive);
+  }
+  [data-theme="clean"] .globe-feed-label-critical .globe-feed-label-text {
+    color: var(--destructive);
+  }
+  [data-theme="clean"] .globe-feed-row-sweep {
+    display: none;
+  }
+
+  /* ── Queue depth indicator: equalizer-style vertical bars ──────────
+     Three short vertical bars (rect, not dot — deliberately distinct from
+     the sidebar's pulsing online-status dots). Lit bars rise to the full
+     container height + full brightness; unlit bars stay short and dim.
+     The lit bars ride out-of-phase sine waves so the trio reads like a
+     low-bitrate audio meter, communicating "live signal level" rather
+     than "loading".
+
+     Heights are % of the parent (`.globe-feed-queue`, h-3 = 12px) and a
+     lit bar fills the container 100%. This is the key to alignment with
+     the FEED tick on the left: a 100%-tall bar's geometric center equals
+     the container center, and the container itself is centered in the
+     row by the outer `flex items-center`. So bar centerline = tick
+     centerline = row centerline, all without any per-pixel nudges. */
+  .globe-feed-queue-bar {
+    display: block;
+    width: 2px;
+    height: 25%;
+    border-radius: 1px;
+    background: var(--primary);
+    opacity: 0.18;
+    transform-origin: bottom center;
+    transition: opacity 220ms ease, height 260ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      background-color 220ms ease;
+  }
+  .globe-feed-queue-bar.is-lit {
+    opacity: 0.85;
+    height: 100%;
+    box-shadow: 0 0 4px color-mix(in oklch, var(--primary) 50%, transparent);
+    animation: globe-feed-queue-bar 1.4s ease-in-out infinite;
+  }
+  @keyframes globe-feed-queue-bar {
+    0%, 100% { transform: scaleY(0.55); opacity: 0.55; }
+    35%      { transform: scaleY(1);    opacity: 1;    }
+    65%      { transform: scaleY(0.75); opacity: 0.8;  }
+  }
+
+  /* Critical: red + faster cadence. */
+  .globe-feed-queue-critical .globe-feed-queue-bar.is-lit {
+    background: var(--destructive);
+    box-shadow: 0 0 5px color-mix(in oklch, var(--destructive) 65%, transparent);
+    animation-duration: 0.8s;
+  }
+
+  /* Clean theme: lose glow + scaleY animation, keep height + opacity
+     encoding only, with a slow opacity breathe for liveness. */
+  [data-theme="clean"] .globe-feed-queue-bar {
+    background: var(--muted-foreground);
+    box-shadow: none;
+  }
+  [data-theme="clean"] .globe-feed-queue-bar.is-lit {
+    background: var(--foreground);
+    box-shadow: none;
+    animation: globe-feed-queue-bar-clean 2.2s ease-in-out infinite;
+  }
+  @keyframes globe-feed-queue-bar-clean {
+    0%, 100% { opacity: 0.45; }
+    50%      { opacity: 0.9; }
+  }
+  [data-theme="clean"] .globe-feed-queue-critical .globe-feed-queue-bar.is-lit {
+    background: var(--destructive);
+    animation-duration: 1.2s;
+  }
+
+  /* Reduced-motion: keep the swap (information!) but kill translation
+     and the idle breathing. */
+  @media (prefers-reduced-motion: reduce) {
+    .globe-feed-row-enter,
+    .globe-feed-row-leave,
+    [data-theme="clean"] .globe-feed-row-enter,
+    [data-theme="clean"] .globe-feed-row-leave {
+      animation-duration: 200ms;
+      animation-name: globe-feed-enter-clean;
+    }
+    .globe-feed-row-leave,
+    [data-theme="clean"] .globe-feed-row-leave {
+      animation-name: globe-feed-leave-clean;
+    }
+    .globe-feed-idle,
+    .globe-feed-scanline,
+    .globe-feed-label,
+    .globe-feed-label-text,
+    .globe-feed-row-sweep,
+    .globe-feed-queue-bar {
+      animation: none;
+    }
+    .globe-feed-queue-bar {
+      transform: none;
+    }
+    .globe-feed-row-sweep {
+      display: none;
+    }
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1990,4 +2337,20 @@
     animation-timing-function: linear !important;
     animation-iteration-count: infinite !important;
   }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Visibility — pause every CSS animation while the tab is hidden
+   ══════════════════════════════════════════════════════════════
+   `useTheme.tsx` toggles `data-page-hidden` on <html> in response to
+   the page's visibilitychange events. While the attribute is set, we
+   pause animations globally. Browsers throttle rAF/setTimeout when the
+   tab is hidden, but CSS keyframe timelines still advance — that wakes
+   the compositor and burns battery on side-by-side / PiP / external-
+   monitor situations where the tab is technically still being painted.
+   `animation-play-state: paused` is the cheapest possible "off". */
+html[data-page-hidden] *,
+html[data-page-hidden] *::before,
+html[data-page-hidden] *::after {
+  animation-play-state: paused !important;
 }

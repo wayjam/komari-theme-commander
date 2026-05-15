@@ -1,4 +1,4 @@
-import { memo, useEffect, useState, useMemo } from 'react';
+import { memo, useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Radio, Clock, Cpu, AlertTriangle, ShieldCheck } from 'lucide-react';
 import type { NodeWithStatus } from '@/services/api';
@@ -17,14 +17,51 @@ interface GlobeTopStripProps {
  *  - FLEET (online/total)    → covered by the right sidebar status block.
  *  This strip focuses on the two things NOT shown in chrome elsewhere:
  *  the live UTC clock and average fleet CPU pressure, plus a critical-alert tally.
+ *
+ * Performance:
+ *  - The UTC clock ticks every second. Originally that was a setState, which
+ *    forced a full re-render of this component (and its useMemo over nodes)
+ *    once per second — competing with cobe's RAF. Now the clock is written
+ *    directly into a span via ref, so the React tree is untouched on tick.
+ *  - The interval also pauses while the page is hidden, dropping the
+ *    background CPU floor to ~0.
  */
 export const GlobeTopStrip = memo(function GlobeTopStrip({ nodes }: GlobeTopStripProps) {
   const { t } = useTranslation();
-  const [now, setNow] = useState(() => new Date());
+  const utcRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
+    const tick = () => {
+      const el = utcRef.current;
+      if (!el) return;
+      const d = new Date();
+      el.textContent = `${String(d.getUTCFullYear())}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}:${String(d.getUTCSeconds()).padStart(2, '0')}Z`;
+    };
+    tick();
+    let id: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (id != null) return;
+      id = setInterval(tick, 1000);
+    };
+    const stop = () => {
+      if (id == null) return;
+      clearInterval(id);
+      id = null;
+    };
+    const onVisibility = () => {
+      if (document.hidden) {
+        stop();
+      } else {
+        tick();
+        start();
+      }
+    };
+    if (!document.hidden) start();
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, []);
 
   const stats = useMemo(() => {
@@ -45,8 +82,6 @@ export const GlobeTopStrip = memo(function GlobeTopStrip({ nodes }: GlobeTopStri
     return { avgCpu, critical, sampled: cpuCount };
   }, [nodes]);
 
-  const utc = `${String(now.getUTCFullYear())}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')} ${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}:${String(now.getUTCSeconds()).padStart(2, '0')}Z`;
-
   const cpuTone =
     stats.avgCpu < 60 ? 'text-success' : stats.avgCpu < 85 ? 'text-warning' : 'text-destructive';
 
@@ -63,11 +98,14 @@ export const GlobeTopStrip = memo(function GlobeTopStrip({ nodes }: GlobeTopStri
 
       <Sep />
 
-      {/* UTC clock */}
+      {/* UTC clock — written directly via ref to avoid per-second React renders */}
       <div className="flex items-center gap-2 shrink-0">
         <Clock className="h-3 w-3 text-muted-foreground/55" />
         <span className="text-muted-foreground/60">{t('hud.utc')}</span>
-        <span className="font-metric text-foreground/85 tracking-normal normal-case">{utc}</span>
+        <span
+          ref={utcRef}
+          className="font-metric text-foreground/85 tracking-normal normal-case"
+        />
       </div>
 
       <Sep className="hidden sm:block" />

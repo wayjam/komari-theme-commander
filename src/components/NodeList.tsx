@@ -183,22 +183,29 @@ export function NodeList({ nodes = [], loading = false, onRefresh, defaultView =
     setTimeout(() => setIsRefreshing(false), 800);
   }, [onRefresh, isRefreshing]);
 
-  const groups = Array.from(new Set(nodes.map(n => n.group).filter(Boolean)));
-
-  const allTags = useMemo(() => {
+  // Derive groups + tag set in a single pass — runs at every WS tick (every 2s),
+  // so we keep it cheap and skip allocations when nothing changes.
+  const { groups, allTags } = useMemo(() => {
+    const groupSet = new Set<string>();
     const tagSet = new Set<string>();
-    nodes.forEach(n => {
+    for (const n of nodes) {
+      if (n.group) groupSet.add(n.group);
       if (n.tags) {
-        n.tags.split(/[,;]/).forEach(t => {
-          const trimmed = t.trim();
+        const parts = n.tags.split(/[,;]/);
+        for (let i = 0; i < parts.length; i++) {
+          const trimmed = parts[i].trim();
           if (trimmed) tagSet.add(trimmed);
-        });
+        }
       }
-    });
-    return Array.from(tagSet).sort();
+    }
+    return {
+      groups: Array.from(groupSet),
+      allTags: Array.from(tagSet).sort(),
+    };
   }, [nodes]);
 
   const filteredNodes = useMemo(() => {
+    const q = searchQuery ? searchQuery.toLowerCase() : '';
     return nodes.filter(node => {
       if (groupFilter !== 'all' && node.group !== groupFilter) return false;
       if (tagFilter !== 'all') {
@@ -207,8 +214,7 @@ export function NodeList({ nodes = [], loading = false, onRefresh, defaultView =
         if (!nodeTags.includes(tagFilter)) return false;
       }
       if (statusFilter !== 'all' && node.status !== statusFilter) return false;
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
+      if (q) {
         const match = node.name.toLowerCase().includes(q)
           || node.region?.toLowerCase().includes(q)
           || node.group?.toLowerCase().includes(q)
@@ -219,24 +225,34 @@ export function NodeList({ nodes = [], loading = false, onRefresh, defaultView =
     });
   }, [nodes, groupFilter, tagFilter, statusFilter, searchQuery]);
 
-  const sortedNodes = [...filteredNodes].sort((a, b) => a.weight - b.weight);
+  // IMPORTANT: keep `sortedNodes` reference-stable across re-renders when the
+  // filtered set hasn't changed. Without `useMemo`, every WS tick produces a
+  // new array → VirtualGrid / NodeTable see a new prop reference → the entire
+  // virtualizer/react-table recomputes even though nothing meaningful changed.
+  const sortedNodes = useMemo(
+    () => [...filteredNodes].sort((a, b) => a.weight - b.weight),
+    [filteredNodes],
+  );
 
-  const onlineCount = nodes.filter(n => n.status === 'online').length;
+  const onlineCount = useMemo(
+    () => nodes.reduce((acc, n) => acc + (n.status === 'online' ? 1 : 0), 0),
+    [nodes],
+  );
   const hasFilters = groupFilter !== 'all' || tagFilter !== 'all' || statusFilter !== 'all' || searchQuery !== '';
 
-  const groupOptions = [
+  const groupOptions = useMemo(() => [
     { value: 'all', label: t('filter.all') },
     ...groups.map(g => ({ value: g, label: g })),
-  ];
-  const tagOptions = [
+  ], [groups, t]);
+  const tagOptions = useMemo(() => [
     { value: 'all', label: t('filter.all') },
-    ...allTags.map(t => ({ value: t, label: t })),
-  ];
-  const statusOptions = [
+    ...allTags.map(tag => ({ value: tag, label: tag })),
+  ], [allTags, t]);
+  const statusOptions = useMemo(() => [
     { value: 'all', label: t('filter.all') },
     { value: 'online', label: t('status.online') },
     { value: 'offline', label: t('status.offline') },
-  ];
+  ], [t]);
 
   if (loading) {
     return (

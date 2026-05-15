@@ -167,7 +167,6 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
       'hover:shadow-lg hover:shadow-primary/5 commander-corners',
       isOnline ? 'border-border/50' : 'border-border/30 opacity-70 offline-card'
     )}>
-      <div className="commander-scanner-effect" />
       <span className="corner-bottom" />
       
       {/* Corner brackets + real data overlay (Visible on Hover or Critical) */}

@@ -108,6 +108,9 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
   const selectedNodeIdRef = useRef(selectedNodeId);
   selectedNodeIdRef.current = selectedNodeId;
 
+  // DPR is read fresh in buildGlobe(); see comment there. We still keep a ref
+  // because onRender (created once) needs to read whatever the latest build
+  // committed to so it can scale state.width/height correctly each frame.
   const dprRef = useRef(Math.min(window.devicePixelRatio, 2));
 
   // Stable onRender — uses refs so globe doesn't need to be recreated
@@ -146,15 +149,33 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
     if (!container) return;
 
     const config = THEME_CONFIG[theme];
-    const dpr = dprRef.current;
 
     const buildGlobe = () => {
+      // Re-read DPR on every (re)build. Originally this was captured once in
+      // the outer scope of the effect, which meant moving the window across
+      // monitors with different pixel densities (e.g. external 1× → laptop
+      // 2×) left the canvas backing-buffer at the old DPR — visibly blurry
+      // until the user reloaded. Reading it here keeps it correct after
+      // every ResizeObserver-triggered rebuild.
+      const dpr = Math.min(window.devicePixelRatio, 2);
+      dprRef.current = dpr;
+
       const size = Math.min(container.clientWidth, container.clientHeight);
       widthRef.current = size;
       canvas.width = size * dpr;
       canvas.height = size * dpr;
       canvas.style.width = `${size}px`;
       canvas.style.height = `${size}px`;
+
+      // mapSamples: cobe's fragment shader samples this many world-grid
+      // points per frame to render the dotted continents. Cost scales
+      // ~linearly. 16000 was overkill at typical sidebar/globe-view sizes;
+      // 12000 is visually indistinguishable on desktop. On narrow
+      // viewports (mobile/tablet) we drop further to 8000 since the globe
+      // is also rendered smaller — the dot density per pixel stays similar
+      // while GPU cost drops another ~33%.
+      const isNarrow = typeof window !== 'undefined' && window.innerWidth < 640;
+      const mapSamples = isNarrow ? 8000 : 12000;
 
       return createGlobe(canvas, {
         devicePixelRatio: dpr,
@@ -164,7 +185,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
         theta: thetaRef.current,
         dark: config.dark,
         diffuse: 1.2,
-        mapSamples: 16000,
+        mapSamples,
         mapBrightness: theme === 'deepspace' ? 2 : 6,
         baseColor: config.baseColor,
         markerColor: config.markerColor,
@@ -186,7 +207,10 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
       if (newSize === lastSize) return;
       lastSize = newSize;
 
-      // Update canvas immediately to avoid visual glitch
+      // Update canvas immediately to avoid visual glitch. Use the latest
+      // committed DPR (which buildGlobe writes into dprRef on rebuild) so
+      // this transient pre-rebuild frame doesn't render at the wrong scale.
+      const dpr = dprRef.current;
       widthRef.current = newSize;
       canvas.width = newSize * dpr;
       canvas.height = newSize * dpr;

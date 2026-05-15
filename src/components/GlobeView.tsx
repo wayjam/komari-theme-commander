@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, memo } from 'react';
+// Note: useState retained for selectedNodeId; useRef now used by FrameCounter for direct DOM writes.
 import { useTranslation } from 'react-i18next';
 import { Globe } from '@/components/Globe';
 import { Sidebar } from '@/components/Sidebar';
@@ -170,19 +171,32 @@ const CardinalMarkers = memo(function CardinalMarkers() {
   );
 });
 
-/* ─────────── Fake frame counter (mission-control flair) ─────────── */
+/* ─────────── Fake frame counter (mission-control flair) ───────────
+ * Updates 1×/s. Originally used setState which forced a per-second
+ * re-render of GlobeView. Now writes directly into a span via ref so
+ * the React tree is untouched on tick. Also pauses while page hidden. */
 const FrameCounter = memo(function FrameCounter() {
-  const [frame, setFrame] = useState(0);
+  const frameRef = useRef<HTMLSpanElement>(null);
   const startRef = useRef(Date.now());
   useEffect(() => {
-    const id = setInterval(() => {
-      setFrame(Math.floor((Date.now() - startRef.current) / 1000) * 24);
-    }, 1000);
-    return () => clearInterval(id);
+    const tick = () => {
+      const el = frameRef.current;
+      if (!el) return;
+      const frame = Math.floor((Date.now() - startRef.current) / 1000) * 24;
+      el.textContent = `FRAME ${String(frame).padStart(6, '0')}`;
+    };
+    tick();
+    let id: ReturnType<typeof setInterval> | null = null;
+    const start = () => { if (id == null) id = setInterval(tick, 1000); };
+    const stop = () => { if (id != null) { clearInterval(id); id = null; } };
+    const onVis = () => { document.hidden ? stop() : (tick(), start()); };
+    if (!document.hidden) start();
+    document.addEventListener('visibilitychange', onVis);
+    return () => { stop(); document.removeEventListener('visibilitychange', onVis); };
   }, []);
   return (
     <div className="absolute bottom-3 right-3 z-20 pointer-events-none text-right text-xxs font-mono text-primary/40 uppercase tracking-[0.22em]">
-      <span className="font-metric tracking-normal normal-case">FRAME {String(frame).padStart(6, '0')}</span>
+      <span ref={frameRef} className="font-metric tracking-normal normal-case">FRAME 000000</span>
       <span className="mx-1.5 text-primary/25">·</span>
       <span className="font-metric tracking-normal normal-case">24FPS</span>
     </div>

@@ -247,6 +247,12 @@
     "avgCpu": "Avg CPU",
     "alert": "Alert",
     "nominal": "All Nominal",
-    "sector": "Sector"
+    "sector": "Sector",
+    "feed": {
+      "idle": "Telemetry stream idle",
+      "signalLost": "Signal lost",
+      "linkEstablished": "Link established",
+      "critical": "Critical"
+    }
   }
 }
