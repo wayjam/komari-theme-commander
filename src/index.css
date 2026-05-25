@@ -2306,6 +2306,356 @@
       display: none;
     }
   }
+
+  /* ══════════════════════════════════════════════════════════════
+     Globe marker overlays — cobe v2 CSS Anchor Positioning
+     ══════════════════════════════════════════════════════════════
+     The WebGL markers stay small and surface-hugging. HTML overlays add
+     flat radar pulses and the selected "satellite" label. cobe exposes
+     `--cobe-{id}` anchors plus `--cobe-visible-{id}` visibility vars; the
+     component bridges the per-id visibility var into a stable `--vis`.
+  */
+  .globe-region-pulse,
+  .globe-selected-overlay {
+    position: absolute;
+    pointer-events: none;
+    opacity: var(--vis, 0);
+    filter: blur(calc((1 - var(--vis, 0)) * 5px));
+    transition: opacity 0.28s ease, filter 0.28s ease;
+  }
+
+  .globe-region-pulse {
+    bottom: anchor(center);
+    left: anchor(center);
+    translate: -50% 50%;
+    width: 34px;
+    height: 34px;
+    z-index: 8;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    pointer-events: auto;
+    touch-action: manipulation;
+  }
+
+  .globe-region-pulse-ring {
+    position: absolute;
+    inset: 7px;
+    border-radius: 50%;
+    opacity: 0;
+    transform-origin: center;
+  }
+
+  .globe-region-core {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    translate: -50% -50%;
+    z-index: 1;
+    box-shadow: 0 0 0 1px color-mix(in oklch, var(--background) 80%, transparent);
+  }
+
+  .globe-region-pulse-online .globe-region-core {
+    background: var(--primary);
+    box-shadow:
+      0 0 0 1px color-mix(in oklch, var(--background) 82%, transparent),
+      0 0 8px color-mix(in oklch, var(--primary) 45%, transparent);
+  }
+
+  .globe-region-pulse-mixed .globe-region-core {
+    background: var(--warning);
+    box-shadow:
+      0 0 0 1px color-mix(in oklch, var(--background) 82%, transparent),
+      0 0 8px color-mix(in oklch, var(--warning) 42%, transparent);
+  }
+
+  .globe-region-pulse-offline .globe-region-core {
+    background: var(--destructive);
+    box-shadow:
+      0 0 0 1px color-mix(in oklch, var(--background) 82%, transparent),
+      0 0 8px color-mix(in oklch, var(--destructive) 42%, transparent);
+  }
+
+  .globe-region-pulse-offline .globe-region-core::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 10px;
+    height: 1.5px;
+    border-radius: 999px;
+    background: color-mix(in oklch, var(--background) 86%, transparent);
+    translate: -50% -50%;
+    rotate: -35deg;
+  }
+
+  .globe-region-pulse-online .globe-region-pulse-ring {
+    border: 1px solid color-mix(in oklch, var(--primary) 70%, transparent);
+    box-shadow: inset 0 0 8px color-mix(in oklch, var(--primary) 28%, transparent);
+    animation: globe-ground-pulse-online 2.4s ease-out infinite;
+  }
+
+  .globe-region-pulse-online .globe-region-pulse-ring-delay {
+    animation-delay: 1.2s;
+  }
+
+  .globe-region-pulse-mixed .globe-region-pulse-ring {
+    border: 1px solid color-mix(in oklch, var(--warning) 76%, transparent);
+    box-shadow: inset 0 0 8px color-mix(in oklch, var(--warning) 26%, transparent);
+    animation: globe-ground-pulse-mixed 2.8s ease-out infinite;
+  }
+
+  .globe-region-pulse-mixed .globe-region-pulse-ring-delay {
+    animation-delay: 1.4s;
+  }
+
+  .globe-region-pulse-offline .globe-region-pulse-ring {
+    border: 1px dashed color-mix(in oklch, var(--destructive) 72%, transparent);
+    animation: globe-ground-pulse-offline 3.2s steps(4, end) infinite;
+  }
+
+  .globe-region-pulse-offline .globe-region-pulse-ring-delay {
+    display: none;
+  }
+
+  .globe-region-pulse.is-selected {
+    width: 42px;
+    height: 42px;
+  }
+
+  .globe-region-pulse.is-selected .globe-region-pulse-ring {
+    border-width: 1.5px;
+  }
+
+  .globe-region-pulse:focus-visible {
+    outline: 1px solid color-mix(in oklch, var(--primary) 70%, transparent);
+    outline-offset: -4px;
+    border-radius: 999px;
+  }
+
+  .globe-selected-overlay {
+    bottom: anchor(top);
+    left: anchor(center);
+    translate: -50% 0;
+    z-index: 14;
+  }
+
+  .globe-selected-tether {
+    position: absolute;
+    left: 50%;
+    bottom: -18px;
+    width: 1px;
+    height: 18px;
+    background: linear-gradient(
+      to bottom,
+      color-mix(in oklch, var(--primary) 70%, transparent),
+      transparent
+    );
+    transform: translateX(-50%);
+    box-shadow: 0 0 8px color-mix(in oklch, var(--primary) 45%, transparent);
+  }
+
+  .globe-selected-tether::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -3px;
+    width: 5px;
+    height: 5px;
+    border: 1px solid color-mix(in oklch, var(--primary) 70%, transparent);
+    border-radius: 50%;
+    translate: -50% 0;
+    background: color-mix(in oklch, var(--background) 85%, transparent);
+  }
+
+  .globe-selected-label {
+    position: relative;
+    display: grid;
+    gap: 0.24rem;
+    min-width: 8.5rem;
+    padding: 0.48rem 0.62rem 0.5rem;
+    background:
+      linear-gradient(
+        135deg,
+        color-mix(in oklch, var(--background) 92%, var(--primary) 8%),
+        color-mix(in oklch, var(--background) 96%, var(--foreground) 4%)
+      );
+    border: 1px solid color-mix(in oklch, var(--primary) 40%, transparent);
+    color: var(--foreground);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: var(--text-xxs);
+    line-height: 1;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    border-radius: 6px;
+    box-shadow:
+      0 8px 22px rgba(0, 0, 0, 0.18),
+      0 0 0 1px color-mix(in oklch, var(--primary) 16%, transparent),
+      0 0 18px color-mix(in oklch, var(--primary) 16%, transparent);
+    backdrop-filter: blur(8px);
+    pointer-events: auto;
+  }
+
+  .globe-selected-label::before,
+  .globe-selected-label::after {
+    content: "";
+    position: absolute;
+    width: 7px;
+    height: 7px;
+    border-color: color-mix(in oklch, var(--primary) 60%, transparent);
+    border-style: solid;
+  }
+
+  .globe-selected-label::before {
+    top: -1px;
+    left: -1px;
+    border-width: 1px 0 0 1px;
+  }
+
+  .globe-selected-label::after {
+    right: -1px;
+    bottom: -1px;
+    border-width: 0 1px 1px 0;
+  }
+
+  .globe-selected-label-head {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: color-mix(in oklch, var(--foreground) 76%, transparent);
+    text-transform: uppercase;
+  }
+
+  .globe-selected-label-flag {
+    font-size: 0.85rem;
+    line-height: 1;
+  }
+
+  .globe-selected-status {
+    margin-left: auto;
+    padding: 0.12rem 0.28rem;
+    border-radius: 999px;
+    font-size: 0.5rem;
+    letter-spacing: 0.08em;
+  }
+
+  .globe-selected-status-online {
+    color: var(--primary);
+    background: color-mix(in oklch, var(--primary) 12%, transparent);
+  }
+
+  .globe-selected-status-offline {
+    color: var(--destructive);
+    background: color-mix(in oklch, var(--destructive) 12%, transparent);
+  }
+
+  .globe-selected-label-node {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--foreground);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  .globe-selected-label-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    color: color-mix(in oklch, var(--foreground) 48%, transparent);
+    font-size: 0.54rem;
+    text-transform: uppercase;
+  }
+
+  .globe-selected-switcher {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.06rem;
+    opacity: 0.48;
+    transition: opacity 0.16s ease;
+  }
+
+  .globe-selected-label:hover .globe-selected-switcher,
+  .globe-selected-switcher:focus-within {
+    opacity: 1;
+  }
+
+  .globe-selected-switch {
+    width: 0.82rem;
+    height: 0.82rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: color-mix(in oklch, var(--foreground) 45%, transparent);
+    font-size: 0.72rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+  }
+
+  .globe-selected-switch:hover {
+    color: var(--primary);
+    background: color-mix(in oklch, var(--primary) 10%, transparent);
+  }
+
+  .globe-selected-switch:focus-visible {
+    outline: 1px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  @keyframes globe-ground-pulse-online {
+    0% {
+      transform: scale(0.35);
+      opacity: 0.55;
+    }
+    100% {
+      transform: scale(1.35);
+      opacity: 0;
+    }
+  }
+
+  @keyframes globe-ground-pulse-mixed {
+    0% {
+      transform: scale(0.4);
+      opacity: 0.6;
+    }
+    55% {
+      opacity: 0.24;
+    }
+    100% {
+      transform: scale(1.25);
+      opacity: 0;
+    }
+  }
+
+  @keyframes globe-ground-pulse-offline {
+    0% {
+      transform: scale(0.5);
+      opacity: 0.45;
+    }
+    100% {
+      transform: scale(1.05);
+      opacity: 0;
+    }
+  }
+
+  @supports not (anchor-name: --test) {
+    .globe-region-pulse,
+    .globe-selected-overlay {
+      display: none;
+    }
+  }
+
 }
 
 /* ══════════════════════════════════════════════════════════════

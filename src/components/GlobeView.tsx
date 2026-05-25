@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, memo } from 'react';
+import { useState, useEffect, useRef, useCallback, memo } from 'react';
 // Note: useState retained for selectedNodeId; useRef now used by FrameCounter for direct DOM writes.
 import { useTranslation } from 'react-i18next';
 import { Globe } from '@/components/Globe';
@@ -19,6 +19,7 @@ export function GlobeView({ nodes, loading = false, onViewCharts }: GlobeViewPro
   const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const clearSelection = useCallback(() => setSelectedNodeId(null), []);
 
   // Feed enabled on themes with HUD aesthetic. Clean theme stays minimal.
   const showFeed = resolvedTheme === 'deepspace' || resolvedTheme === 'lumina';
@@ -117,6 +118,8 @@ export function GlobeView({ nodes, loading = false, onViewCharts }: GlobeViewPro
             nodes={nodes}
             theme={resolvedTheme}
             selectedNodeId={selectedNodeId}
+            onSelectNode={setSelectedNodeId}
+            onClearSelection={clearSelection}
             className="w-full h-full"
           />
 
@@ -189,7 +192,14 @@ const FrameCounter = memo(function FrameCounter() {
     let id: ReturnType<typeof setInterval> | null = null;
     const start = () => { if (id == null) id = setInterval(tick, 1000); };
     const stop = () => { if (id != null) { clearInterval(id); id = null; } };
-    const onVis = () => { document.hidden ? stop() : (tick(), start()); };
+    const onVis = () => {
+      if (document.hidden) {
+        stop();
+      } else {
+        tick();
+        start();
+      }
+    };
     if (!document.hidden) start();
     document.addEventListener('visibilitychange', onVis);
     return () => { stop(); document.removeEventListener('visibilitychange', onVis); };

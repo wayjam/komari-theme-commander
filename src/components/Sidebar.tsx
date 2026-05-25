@@ -573,12 +573,20 @@ function NodeDetailView({
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="px-3 py-2 border-b border-border/50 flex items-center gap-2">
-        <button
-          onClick={onBack}
-          className="p-1 rounded hover:bg-muted/50 transition-colors cursor-pointer"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={onBack}
+              className="p-1 rounded hover:bg-muted/50 transition-colors cursor-pointer"
+              aria-label="Back to fleet"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs font-mono">
+            Back to fleet · Esc
+          </TooltipContent>
+        </Tooltip>
         <div className="flex-1 min-w-0 flex flex-col gap-1">
           <div className="text-base font-display font-bold truncate">{node.name}</div>
           <div className="flex items-center gap-1.5">
@@ -958,8 +966,10 @@ export function Sidebar({ nodes, loading, selectedNodeId, onSelectNode, onViewCh
   useEffect(() => {
     if (!selectedNodeId) {
       setView('list');
+    } else if (selectedNode) {
+      setView('detail');
     }
-  }, [selectedNodeId]);
+  }, [selectedNodeId, selectedNode]);
 
   const handleSelectNode = useCallback((uuid: string) => {
     onSelectNode(uuid);

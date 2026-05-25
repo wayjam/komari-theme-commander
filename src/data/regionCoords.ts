@@ -1,6 +1,9 @@
 import countries from 'world-countries';
 
-// Build emoji → coordinates mapping, covering 249 countries/regions worldwide
+// Build emoji → coordinates mapping, covering 249 countries/regions worldwide.
+// This intentionally uses the raw country/region centroids from
+// `world-countries`; the theme only receives a flag emoji from Komari, so we
+// should not guess a city-level location in frontend code.
 const regionCoords: Record<string, [number, number]> = {};
 for (const c of countries) {
   regionCoords[c.flag] = [c.latlng[0], c.latlng[1]];
