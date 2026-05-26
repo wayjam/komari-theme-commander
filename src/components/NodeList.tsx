@@ -7,6 +7,7 @@ import { HudSpinner } from './HudSpinner';
 import { RefreshCw, Search, X, ChevronDown } from 'lucide-react';
 import type { NodeWithStatus } from '@/services/api';
 import { cn } from '@/lib/utils';
+import { parseTagList } from '@/lib/parseTags';
 
 interface NodeListProps {
   nodes?: NodeWithStatus[];
@@ -185,18 +186,16 @@ export function NodeList({ nodes = [], loading = false, onRefresh, defaultView =
 
   // Derive groups + tag set in a single pass — runs at every WS tick (every 2s),
   // so we keep it cheap and skip allocations when nothing changes.
+  // Tags are deduped by their parsed label, so `prod<red>` and `prod<blue>`
+  // collapse into a single `prod` filter option even when authored
+  // inconsistently across nodes.
   const { groups, allTags } = useMemo(() => {
     const groupSet = new Set<string>();
     const tagSet = new Set<string>();
     for (const n of nodes) {
       if (n.group) groupSet.add(n.group);
-      if (n.tags) {
-        const parts = n.tags.split(/[,;]/);
-        for (let i = 0; i < parts.length; i++) {
-          const trimmed = parts[i].trim();
-          if (trimmed) tagSet.add(trimmed);
-        }
-      }
+      const parsed = parseTagList(n.tags);
+      for (let i = 0; i < parsed.length; i++) tagSet.add(parsed[i].label);
     }
     return {
       groups: Array.from(groupSet),
@@ -209,16 +208,21 @@ export function NodeList({ nodes = [], loading = false, onRefresh, defaultView =
     return nodes.filter(node => {
       if (groupFilter !== 'all' && node.group !== groupFilter) return false;
       if (tagFilter !== 'all') {
-        if (!node.tags) return false;
-        const nodeTags = node.tags.split(/[,;]/).map(t => t.trim());
-        if (!nodeTags.includes(tagFilter)) return false;
+        const labels = parseTagList(node.tags).map(p => p.label);
+        if (!labels.includes(tagFilter)) return false;
       }
       if (statusFilter !== 'all' && node.status !== statusFilter) return false;
       if (q) {
+        // Search against parsed labels so users typing `prod` still match
+        // `prod<red>`, and typing `red` doesn't accidentally hit every tag
+        // that happens to use the red suffix.
+        const tagLabels = parseTagList(node.tags)
+          .map(p => p.label.toLowerCase())
+          .join(' ');
         const match = node.name.toLowerCase().includes(q)
           || node.region?.toLowerCase().includes(q)
           || node.group?.toLowerCase().includes(q)
-          || node.tags?.toLowerCase().includes(q);
+          || tagLabels.includes(q);
         if (!match) return false;
       }
       return true;

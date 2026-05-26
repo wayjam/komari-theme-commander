@@ -21,6 +21,8 @@ import { formatSpeed, formatSpeedParts, formatUptime, formatBytes, getUsageStatu
 import type { TrafficLimitType } from '@/lib/utils';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { RegionFlag } from './RegionFlag';
+import { TagPill } from './TagPill';
+import { parseTagList } from '@/lib/parseTags';
 import dayjs from 'dayjs';
 
 interface NodeTableProps {
@@ -148,7 +150,7 @@ const MobileRow = memo(function MobileRow({ node, isLast, onOpen, t }: MobileRow
   const cores = node.cpu_cores || 1;
   const loadRatio = stats ? stats.load.load1 / cores : 0;
   const loadStatus = loadRatio >= 1.5 ? 'critical' : loadRatio >= 1 ? 'warning' : 'normal';
-  const tagList = node.tags ? node.tags.split(/[,;]/).map(s => s.trim()).filter(Boolean) : [];
+  const tagList = parseTagList(node.tags);
 
   return (
     <div
@@ -181,9 +183,7 @@ const MobileRow = memo(function MobileRow({ node, isLast, onOpen, t }: MobileRow
               </span>
             )}
             {tagList.slice(0, 5).map((tag, i) => (
-              <span key={i} className="text-xxs font-mono text-muted-foreground/70 bg-muted/45 px-1.5 py-0.5 rounded-sm">
-                {tag}
-              </span>
+              <TagPill key={i} label={tag.label} color={tag.color} size="xs" />
             ))}
             {tagList.length > 5 && (
               <Tooltip>
@@ -193,7 +193,7 @@ const MobileRow = memo(function MobileRow({ node, isLast, onOpen, t }: MobileRow
                   </span>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-xs font-mono">
-                  {tagList.slice(5).join(', ')}
+                  {tagList.slice(5).map(t => t.label).join(', ')}
                 </TooltipContent>
               </Tooltip>
             )}
@@ -288,7 +288,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
         const trafficPct = hasTraffic ? (trafficUsed / node.traffic_limit!) * 100 : 0;
         const trafficUrgent = trafficPct >= 70;
         const expiryUrgent = expiryStatus === 'expired' || expiryStatus === 'warning';
-        const tagList = node.tags ? node.tags.split(/[,;]/).map(t => t.trim()).filter(Boolean) : [];
+        const tagList = parseTagList(node.tags);
 
         return (
           <div className="min-w-0 space-y-1">
@@ -313,9 +313,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
                   </span>
                 )}
                 {tagList.slice(0, 4).map((tag, i) => (
-                  <span key={i} className="text-xxs font-mono text-muted-foreground/70 bg-muted/45 px-1.5 py-0.5 rounded-sm shrink-0">
-                    {tag}
-                  </span>
+                  <TagPill key={i} label={tag.label} color={tag.color} size="xs" />
                 ))}
                 {tagList.length > 4 && (
                   <Tooltip>
@@ -325,7 +323,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
                       </span>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="text-xs font-mono">
-                      {tagList.slice(4).join(', ')}
+                      {tagList.slice(4).map(t => t.label).join(', ')}
                     </TooltipContent>
                   </Tooltip>
                 )}

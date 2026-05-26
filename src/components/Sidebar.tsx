@@ -14,6 +14,8 @@ import { useAppConfig } from '@/hooks/useAppConfig';
 import dayjs from 'dayjs';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { RemarkNote } from './RemarkNote';
+import { TagPill } from './TagPill';
+import { parseTagList } from '@/lib/parseTags';
 import prettyBytes from 'pretty-bytes';
 
 interface SidebarProps {
@@ -65,7 +67,7 @@ function NodeRowContentInner({
     : '';
   const emoji = extractRegionEmoji(node.region);
 
-  const tagList = node.tags ? node.tags.split(/[,;]/).map(t => t.trim()).filter(Boolean) : [];
+  const tagList = parseTagList(node.tags);
   const maxVisibleTags = 5;
   const visibleTags = tagList.slice(0, maxVisibleTags);
   const hiddenTagCount = tagList.length - visibleTags.length;
@@ -118,9 +120,13 @@ function NodeRowContentInner({
           </span>
         )}
         {visibleTags.map((tag, i) => (
-          <span key={i} className="text-xs font-mono text-muted-foreground/80 bg-muted/50 px-1.5 py-0.5 rounded-sm truncate max-w-[6rem] flex-shrink-0">
-            {tag}
-          </span>
+          <TagPill
+            key={i}
+            label={tag.label}
+            color={tag.color}
+            size="sm"
+            className="truncate max-w-[6rem]"
+          />
         ))}
         {hiddenTagCount > 0 && (
           <Tooltip>
@@ -130,7 +136,7 @@ function NodeRowContentInner({
               </span>
             </TooltipTrigger>
             <TooltipContent side="right" className="text-xs font-mono">
-              {tagList.slice(maxVisibleTags).join(', ')}
+              {tagList.slice(maxVisibleTags).map(t => t.label).join(', ')}
             </TooltipContent>
           </Tooltip>
         )}
@@ -652,16 +658,14 @@ function NodeDetailView({
           )}
           {/* Tags */}
           {node.tags && (() => {
-            const tagList = node.tags.split(/[,;]/).map(t => t.trim()).filter(Boolean);
+            const tagList = parseTagList(node.tags);
             const maxTags = 5;
             const visibleTags = tagList.slice(0, maxTags);
             const hiddenCount = tagList.length - visibleTags.length;
             return tagList.length > 0 ? (
               <div className="flex flex-wrap gap-1">
                 {visibleTags.map((tag, i) => (
-                  <span key={i} className="text-xs font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded-sm">
-                    {tag}
-                  </span>
+                  <TagPill key={i} label={tag.label} color={tag.color} size="sm" />
                 ))}
                 {hiddenCount > 0 && (
                   <Tooltip>
@@ -671,7 +675,7 @@ function NodeDetailView({
                       </span>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="text-xs font-mono">
-                      {tagList.slice(maxTags).join(', ')}
+                      {tagList.slice(maxTags).map(t => t.label).join(', ')}
                     </TooltipContent>
                   </Tooltip>
                 )}

@@ -8,6 +8,8 @@ import { CircularGauge } from './components/CircularGauge'
 import { HudSpinner } from './components/HudSpinner'
 import { RegionFlag } from './components/RegionFlag'
 import { RemarkNote } from './components/RemarkNote'
+import { TagPill } from './components/TagPill'
+import { parseTagList } from './lib/parseTags'
 import { Button } from './components/ui/button'
 import { useNodes } from './hooks/useNodes'
 import { useEffects } from './hooks/useEffects'
@@ -195,13 +197,11 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
 
       {/* Tags row */}
       {(() => {
-        const tagList = node.tags ? node.tags.split(/[,;]/).map(t => t.trim()).filter(Boolean) : [];
+        const tagList = parseTagList(node.tags);
         return tagList.length > 0 ? (
           <div className="flex flex-wrap items-center gap-1.5">
             {tagList.map((tag, i) => (
-              <span key={i} className="text-xs font-mono text-muted-foreground/80 bg-muted/50 px-1.5 py-0.5 rounded-sm">
-                {tag}
-              </span>
+              <TagPill key={i} label={tag.label} color={tag.color} size="sm" />
             ))}
           </div>
         ) : null;

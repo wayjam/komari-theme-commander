@@ -11,6 +11,8 @@ import type { TrafficLimitType } from '@/lib/utils';
 import { useAppConfig } from '@/hooks/useAppConfig';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { RegionFlag } from './RegionFlag';
+import { TagPill } from './TagPill';
+import { parseTagList } from '@/lib/parseTags';
 import dayjs from 'dayjs';
 
 interface NodeCardProps {
@@ -148,10 +150,7 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
   const cpuSparkline = isOnline ? getCpuSparkline(node.uuid) : null;
   const navigate = useNavigate();
 
-  const tagList = useMemo(() => {
-    if (!node.tags) return [];
-    return node.tags.split(/[,;]/).map(t => t.trim()).filter(Boolean);
-  }, [node.tags]);
+  const tagList = useMemo(() => parseTagList(node.tags), [node.tags]);
 
   const cpuUsage = stats?.cpu?.usage ?? 0;
   const ramUsage = stats ? (stats.ram.used / stats.ram.total) * 100 : 0;
@@ -247,9 +246,7 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
               </span>
             )}
             {tagList.slice(0, 5).map((tag, i) => (
-              <span key={i} className="text-xs font-mono text-muted-foreground/80 bg-muted/50 px-1.5 py-0.5 rounded-sm">
-                {tag}
-              </span>
+              <TagPill key={i} label={tag.label} color={tag.color} size="sm" />
             ))}
             {tagList.length > 5 && (
               <Tooltip>
@@ -259,7 +256,7 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
                   </span>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-xs font-mono">
-                  {tagList.slice(5).join(', ')}
+                  {tagList.slice(5).map(t => t.label).join(', ')}
                 </TooltipContent>
               </Tooltip>
             )}

@@ -108,6 +108,26 @@
   --sidebar-accent-foreground: oklch(0.25 0.02 235);
   --sidebar-border: oklch(0.88 0.015 220 / 60%);
   --sidebar-ring: oklch(0.65 0.15 195);
+  /* ── Tag pill palette ──
+     Opt-in via `label<color>` suffix in the Komari `tags` field.
+     Lumina = light bg, soft watercolor swatches — keep chroma mid (~0.05-0.12)
+     so pills feel like part of the cool aqua family, not stickers. */
+  --tag-red-bg:     oklch(0.93 0.05 27);
+  --tag-red-fg:     oklch(0.42 0.13 27);
+  --tag-amber-bg:   oklch(0.93 0.06 78);
+  --tag-amber-fg:   oklch(0.42 0.11 70);
+  --tag-green-bg:   oklch(0.93 0.06 150);
+  --tag-green-fg:   oklch(0.38 0.10 152);
+  --tag-cyan-bg:    oklch(0.93 0.05 200);
+  --tag-cyan-fg:    oklch(0.40 0.10 200);
+  --tag-blue-bg:    oklch(0.93 0.05 250);
+  --tag-blue-fg:    oklch(0.42 0.12 250);
+  --tag-violet-bg:  oklch(0.93 0.05 295);
+  --tag-violet-fg:  oklch(0.42 0.12 295);
+  --tag-pink-bg:    oklch(0.93 0.05 350);
+  --tag-pink-fg:    oklch(0.42 0.13 350);
+  --tag-gray-bg:    oklch(0.92 0.012 230);
+  --tag-gray-fg:    oklch(0.40 0.018 230);
   font-size: 16px;
 }
 
@@ -156,6 +176,26 @@
   --sidebar-accent-foreground: oklch(0.9 0.018 220);
   --sidebar-border: oklch(0.4 0.055 270 / 72%);
   --sidebar-ring: oklch(0.78 0.17 195);
+  /* ── Tag pill palette ──
+     DeepSpace = void bg; pills use translucent dark fill + neon fg so they
+     read as backlit HUD chips, never paper labels. Alpha keeps the
+     starfield faintly visible underneath. */
+  --tag-red-bg:     oklch(0.28 0.07 27 / 0.6);
+  --tag-red-fg:     oklch(0.82 0.16 27);
+  --tag-amber-bg:   oklch(0.28 0.07 78 / 0.6);
+  --tag-amber-fg:   oklch(0.86 0.15 78);
+  --tag-green-bg:   oklch(0.28 0.07 150 / 0.6);
+  --tag-green-fg:   oklch(0.83 0.16 150);
+  --tag-cyan-bg:    oklch(0.28 0.07 200 / 0.6);
+  --tag-cyan-fg:    oklch(0.83 0.15 200);
+  --tag-blue-bg:    oklch(0.28 0.07 250 / 0.6);
+  --tag-blue-fg:    oklch(0.82 0.16 250);
+  --tag-violet-bg:  oklch(0.28 0.07 295 / 0.6);
+  --tag-violet-fg:  oklch(0.82 0.16 295);
+  --tag-pink-bg:    oklch(0.28 0.07 340 / 0.6);
+  --tag-pink-fg:    oklch(0.83 0.17 340);
+  --tag-gray-bg:    oklch(0.25 0.02 230 / 0.7);
+  --tag-gray-fg:    oklch(0.82 0.02 230);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -201,6 +241,26 @@
   --sidebar-accent-foreground: oklch(0.2 0.02 250);
   --sidebar-border: oklch(0.9 0 0);
   --sidebar-ring: oklch(0.45 0.12 250);
+  /* ── Tag pill palette ──
+     Clean = office-safe, near-white surfaces. Keep both bg & fg low
+     chroma (~0.02-0.10) so pills read like ink stamps on paper, not
+     candy. Hue carries the semantic, saturation is deliberately quiet. */
+  --tag-red-bg:     oklch(0.95 0.025 27);
+  --tag-red-fg:     oklch(0.42 0.11 27);
+  --tag-amber-bg:   oklch(0.95 0.030 75);
+  --tag-amber-fg:   oklch(0.42 0.09 70);
+  --tag-green-bg:   oklch(0.95 0.025 152);
+  --tag-green-fg:   oklch(0.36 0.075 152);
+  --tag-cyan-bg:    oklch(0.95 0.022 200);
+  --tag-cyan-fg:    oklch(0.38 0.075 200);
+  --tag-blue-bg:    oklch(0.95 0.025 250);
+  --tag-blue-fg:    oklch(0.40 0.09 250);
+  --tag-violet-bg:  oklch(0.95 0.025 290);
+  --tag-violet-fg:  oklch(0.42 0.085 290);
+  --tag-pink-bg:    oklch(0.95 0.025 350);
+  --tag-pink-fg:    oklch(0.42 0.10 350);
+  --tag-gray-bg:    oklch(0.94 0.006 230);
+  --tag-gray-fg:    oklch(0.40 0.012 230);
 }
 
 /* Clean theme: remove backdrop-blur, use solid card backgrounds, strip rounded corners and unnecessary decorations */
