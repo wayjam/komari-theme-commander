@@ -59,25 +59,54 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
           apiService.getPublicSettings().catch(() => null),
         ]);
 
-        // Parse theme configuration from public settings
+        // Parse theme configuration from public settings.
+        //
+        // Newer Komari builds nest every managed theme value inside a
+        // `theme_settings` object (sometimes serialized as a JSON string),
+        // while older builds expose the same keys at the top level. Read
+        // from the nested source when available and fall back to the flat
+        // shape so both backends keep working.
         const tc: ThemeConfig = { ...defaultThemeConfig };
         if (publicSettings) {
-          if (typeof publicSettings.default_view === 'string' && ['globe', 'grid', 'table', 'uptime'].includes(publicSettings.default_view as string)) {
-            tc.default_view = publicSettings.default_view as ThemeConfig['default_view'];
+          let themeSettings: Record<string, unknown> = {};
+          const rawTs = publicSettings.theme_settings;
+          if (rawTs && typeof rawTs === 'object' && !Array.isArray(rawTs)) {
+            themeSettings = rawTs as Record<string, unknown>;
+          } else if (typeof rawTs === 'string' && rawTs.trim()) {
+            try {
+              const parsed = JSON.parse(rawTs);
+              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                themeSettings = parsed as Record<string, unknown>;
+              }
+            } catch {
+              // ignore — fall back to flat keys
+            }
           }
-          if (typeof publicSettings.enable_globe === 'boolean') tc.enable_globe = publicSettings.enable_globe;
-          if (publicSettings.enable_globe === 'true') tc.enable_globe = true;
-          if (publicSettings.enable_globe === 'false') tc.enable_globe = false;
-          if (typeof publicSettings.enable_uptime === 'boolean') tc.enable_uptime = publicSettings.enable_uptime;
-          if (publicSettings.enable_uptime === 'true') tc.enable_uptime = true;
-          if (publicSettings.enable_uptime === 'false') tc.enable_uptime = false;
-          if (typeof publicSettings.default_theme === 'string' && ['lumina', 'deepspace', 'clean', 'auto'].includes(publicSettings.default_theme as string)) {
-            tc.default_theme = publicSettings.default_theme as ThemeConfig['default_theme'];
+          const pick = (key: string): unknown =>
+            themeSettings[key] !== undefined ? themeSettings[key] : publicSettings[key];
+
+          const dv = pick('default_view');
+          if (typeof dv === 'string' && ['globe', 'grid', 'table', 'uptime'].includes(dv)) {
+            tc.default_view = dv as ThemeConfig['default_view'];
           }
-          if (typeof publicSettings.custom_footer === 'string') tc.custom_footer = publicSettings.custom_footer as string;
-          if (typeof publicSettings.enable_privacy_mode === 'boolean') tc.enable_privacy_mode = publicSettings.enable_privacy_mode;
-          if (publicSettings.enable_privacy_mode === 'true') tc.enable_privacy_mode = true;
-          if (publicSettings.enable_privacy_mode === 'false') tc.enable_privacy_mode = false;
+          const eg = pick('enable_globe');
+          if (typeof eg === 'boolean') tc.enable_globe = eg;
+          if (eg === 'true') tc.enable_globe = true;
+          if (eg === 'false') tc.enable_globe = false;
+          const eu = pick('enable_uptime');
+          if (typeof eu === 'boolean') tc.enable_uptime = eu;
+          if (eu === 'true') tc.enable_uptime = true;
+          if (eu === 'false') tc.enable_uptime = false;
+          const dt = pick('default_theme');
+          if (typeof dt === 'string' && ['lumina', 'deepspace', 'clean', 'auto'].includes(dt)) {
+            tc.default_theme = dt as ThemeConfig['default_theme'];
+          }
+          const cf = pick('custom_footer');
+          if (typeof cf === 'string') tc.custom_footer = cf;
+          const epm = pick('enable_privacy_mode');
+          if (typeof epm === 'boolean') tc.enable_privacy_mode = epm;
+          if (epm === 'true') tc.enable_privacy_mode = true;
+          if (epm === 'false') tc.enable_privacy_mode = false;
         }
 
         // Fallback: if default_view references a disabled view, pick first available

@@ -654,7 +654,7 @@ function App() {
   const { activeEffects } = useEffects();
   const appConfig = useAppConfig();
   const { setTheme } = useTheme();
-  const { privacyMode, setPrivacyMode, togglePrivacyMode, maskNodes } = usePrivacyMode();
+  const { privacyMode, togglePrivacyMode, maskNodes, setDefaultPrivacyMode } = usePrivacyMode();
 
   const { themeConfig } = appConfig;
 
@@ -667,15 +667,14 @@ function App() {
     }
   }, [appConfig.loaded, themeConfig.default_theme, setTheme]);
 
-  // Apply enable_privacy_mode from server config if user hasn't set a local preference
-  // When enabled: logged-in users default to off, non-logged-in users default to on
+  // Push enable_privacy_mode from server config as the privacy-mode default.
+  // The hook keeps a separate "user override" so logged-in admins can opt out
+  // of the masking for their own session via the toggle button without
+  // affecting other viewers.
   useEffect(() => {
     if (!appConfig.loaded) return;
-    const savedPrivacy = localStorage.getItem('privacy-mode');
-    if (savedPrivacy === null && themeConfig.enable_privacy_mode) {
-      setPrivacyMode(!appConfig.isLoggedIn);
-    }
-  }, [appConfig.loaded, themeConfig.enable_privacy_mode, appConfig.isLoggedIn, setPrivacyMode]);
+    setDefaultPrivacyMode(themeConfig.enable_privacy_mode);
+  }, [appConfig.loaded, themeConfig.enable_privacy_mode, setDefaultPrivacyMode]);
 
   const maskedNodes = useMemo(() => maskNodes(nodes), [maskNodes, nodes]);
 
