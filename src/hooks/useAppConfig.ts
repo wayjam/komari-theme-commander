@@ -13,6 +13,11 @@ export interface ThemeConfig {
    *  (pre-privacy-mask) node name — the matching is done before names are
    *  replaced. Empty string disables arcs. */
   globe_hub_node: string;
+  /** When true, viewers with `prefers-reduced-motion: reduce` see a static
+   *  globe (auto-rotation disabled, manual drag still works). When false
+   *  (default), the globe always auto-rotates regardless of the visitor's
+   *  system motion preference. */
+  globe_respect_reduced_motion: boolean;
 }
 
 const defaultThemeConfig: ThemeConfig = {
@@ -23,6 +28,7 @@ const defaultThemeConfig: ThemeConfig = {
   custom_footer: '',
   enable_privacy_mode: false,
   globe_hub_node: '',
+  globe_respect_reduced_motion: false,
 };
 
 export interface AppConfig {
@@ -114,6 +120,10 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
           if (epm === 'false') tc.enable_privacy_mode = false;
           const ghn = pick('globe_hub_node');
           if (typeof ghn === 'string') tc.globe_hub_node = ghn.trim();
+          const grrm = pick('globe_respect_reduced_motion');
+          if (typeof grrm === 'boolean') tc.globe_respect_reduced_motion = grrm;
+          if (grrm === 'true') tc.globe_respect_reduced_motion = true;
+          if (grrm === 'false') tc.globe_respect_reduced_motion = false;
         }
 
         // Fallback: if default_view references a disabled view, pick first available

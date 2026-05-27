@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowUp, ArrowDown, AlertTriangle, WifiOff, Link2, Minus } from 'lucide-react';
 import type { NodeWithStatus } from '@/services/api';
@@ -384,7 +384,7 @@ export function GlobeTelemetryFeed({ nodes, enabled }: GlobeTelemetryFeedProps) 
           );
         })}
         {queueDepth > 3 && (
-          <span className="ml-1 font-metric text-[0.6rem] tabular-nums opacity-70 self-center leading-none">
+          <span className="ml-1 font-metric text-xxs tabular-nums opacity-70 self-center leading-none">
             +{queueDepth - 3}
           </span>
         )}
@@ -393,15 +393,23 @@ export function GlobeTelemetryFeed({ nodes, enabled }: GlobeTelemetryFeedProps) 
   );
 }
 
-/* ─────────── Single row (entering or leaving) ─────────── */
-
+/* ─────────── Single row (entering or leaving) ───────────
+ *
+ * `FeedRow` and `LogBody` are wrapped in `memo`. Why this is a real win:
+ * the parent `GlobeTelemetryFeed` re-renders on every WS tick (~every 2s)
+ * because `nodes` is a new array reference. But the visible row only
+ * changes every HOLD_MS (3.5s) — for the 1-2 ticks in between, `current`
+ * is the same object identity (set once via `setCurrent(next)`), so all
+ * of `FeedRow`'s props are === to last render. Memo lets the whole
+ * subtree (including the lucide icons inside `LogBody`) bail out.
+ */
 interface FeedRowProps {
   item: FeedItem;
   phase: 'enter' | 'leave';
   t: ReturnType<typeof useTranslation>['t'];
 }
 
-function FeedRow({ item, phase, t }: FeedRowProps) {
+const FeedRow = memo(function FeedRow({ item, phase, t }: FeedRowProps) {
   return (
     <span
       className={`globe-feed-row absolute inset-0 inline-flex items-center gap-1.5 whitespace-nowrap ${
@@ -425,7 +433,7 @@ function FeedRow({ item, phase, t }: FeedRowProps) {
       <LogBody item={item} t={t} />
     </span>
   );
-}
+});
 
 /* ─────────── Body renderer (per-kind) ─────────── */
 
@@ -447,7 +455,7 @@ function DeltaArrow({ delta }: { delta: number }) {
   return <Minus className="inline h-2.5 w-2.5 -mt-px opacity-60" />;
 }
 
-function LogBody({ item, t }: { item: FeedItem; t: ReturnType<typeof useTranslation>['t'] }) {
+const LogBody = memo(function LogBody({ item, t }: { item: FeedItem; t: ReturnType<typeof useTranslation>['t'] }) {
   switch (item.kind) {
     case 'signal-lost':
       return (
@@ -508,4 +516,4 @@ function LogBody({ item, t }: { item: FeedItem; t: ReturnType<typeof useTranslat
       );
     }
   }
-}
+});

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, useCallback, useImperativeHandle, useState, forwardRef } from 'react';
+import { useEffect, useRef, useMemo, useCallback, useImperativeHandle, useState, forwardRef, memo } from 'react';
 import { createPortal } from 'react-dom';
 import createGlobe, { type Marker, type Arc } from 'cobe';
 import type { NodeWithStatus } from '@/services/api';
@@ -17,6 +17,14 @@ interface GlobeProps {
    *  cobe v2 arcs are drawn from every other online region toward this hub.
    *  `null`/undefined disables arcs entirely. */
   hubNodeUuid?: string | null;
+  /** Opt-in: when true, viewers whose system has `prefers-reduced-motion:
+   *  reduce` enabled will see a static globe (no auto-rotation). Manual drag
+   *  and selection slerp still work because those are explicit user intent.
+   *  Default false: the globe always auto-rotates regardless of system
+   *  motion preference. Driven by the `globe_respect_reduced_motion` theme
+   *  setting so admins can decide per deployment whether to honour the OS
+   *  signal. */
+  respectReducedMotion?: boolean;
 }
 
 export interface GlobeHandle {
@@ -148,7 +156,16 @@ function latLngToAngles(lat: number, lng: number): [number, number] {
 }
 
 export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
-  { nodes, theme, className, selectedNodeId, onSelectNode, onClearSelection, hubNodeUuid = null },
+  {
+    nodes,
+    theme,
+    className,
+    selectedNodeId,
+    onSelectNode,
+    onClearSelection,
+    hubNodeUuid = null,
+    respectReducedMotion = false,
+  },
   ref
 ) {
   // `canvasHostRef` is a stable square element we own. cobe will wrap our
@@ -322,18 +339,35 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
    * values without restarting). */
   const selectedNodeIdRef = useRef(selectedNodeId);
   selectedNodeIdRef.current = selectedNodeId;
+  // Mirror the `respectReducedMotion` prop into a ref so toggling the theme
+  // setting at runtime (or simply re-deriving it during a re-render) is
+  // picked up by the long-lived RAF tick + media-query change handler
+  // without tearing the cobe instance down. The handler re-reads this on
+  // every `change` event and on every frame's `else if` branch.
+  const respectReducedMotionRef = useRef(respectReducedMotion);
+  respectReducedMotionRef.current = respectReducedMotion;
+  // Mirror `nodes` into a ref so the auto-rotate effect can look up the
+  // selected node's coordinates without re-firing every WS tick (every 2s).
+  // Without this, the effect was re-depending on `nodes`, which meant every
+  // websocket update re-armed the slerp toward the same target — wasted
+  // work because the target hasn't actually moved.
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
 
   /* ─────────── Auto-rotate to selected node ─────────── */
+  // Only fires when the user *changes* selection. Reading nodes via ref
+  // means a 2s WS tick (which mints a new `nodes` array even when no
+  // status changed) doesn't restart the rotation animation.
   useEffect(() => {
     if (!selectedNodeId) return;
-    const node = nodes.find(n => n.uuid === selectedNodeId);
+    const node = nodesRef.current.find(n => n.uuid === selectedNodeId);
     if (!node) return;
     const emoji = extractRegionEmoji(node.region);
     if (!emoji) return;
     const coords = getCoords(emoji);
     if (coords[0] === 0 && coords[1] === 0) return;
     rotateToLocation(coords[0], coords[1]);
-  }, [selectedNodeId, nodes, rotateToLocation]);
+  }, [selectedNodeId, rotateToLocation]);
 
   useEffect(() => {
     if (!selectedNodeId) return;
@@ -404,27 +438,163 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
     /* RAF loop. v2 removed `onRender` — caller drives the loop and pushes
      * camera state via `globe.update()`. We only push phi/theta here;
      * markers/theme/size each get their own dedicated useEffect so we don't
-     * pay the per-frame cost of re-uploading data that hasn't changed. */
+     * pay the per-frame cost of re-uploading data that hasn't changed.
+     *
+     * Why we render at the display refresh rate (60/120Hz) for auto-spin:
+     *   An earlier revision throttled auto-spin to 30fps to halve cobe's
+     *   per-frame cost. On 60Hz monitors that produced a textbook judder
+     *   pattern — every other refresh shows the same frame, so a slow
+     *   continuous rotation reads as a step-step-step stutter instead of
+     *   smooth motion. Eyes are extremely sensitive to non-uniform motion
+     *   at low fps. The fix is the inverse: don't fight the display, just
+     *   skip whole-frame work when there's *truly* nothing to draw.
+     *
+     * The CPU-saving behaviors that remain:
+     *
+     *   1. **Idle frame skip.** If a node is selected (no auto-spin), no
+     *      slerp in flight, and no drag, phi/theta haven't moved since
+     *      last frame — calling `globe.update()` would do a full WebGL
+     *      redraw + CSS-anchor reposition for nothing. We bail out before
+     *      `globe.update()`. The rAF callback still fires (cheap branches).
+     *
+     *   2. **prefers-reduced-motion ⇒ no auto-spin (opt-in).** Disabled
+     *      by default — the globe always rotates, because for many
+     *      deployments the motion *is* the product. When the
+     *      `globe_respect_reduced_motion` theme setting is enabled by the
+     *      admin, viewers whose OS reports `prefers-reduced-motion: reduce`
+     *      see a static globe (idle-skip branch above kicks in, per-frame
+     *      cost drops to near zero). They can still drag manually and
+     *      slerp on selection, both of which are explicit user intents.
+     *
+     *   3. **Visibility & viewport gates.** rAF is paused outright when
+     *      the tab is hidden or the canvas scrolls offscreen — browsers
+     *      already throttle hidden-tab rAF to ~1Hz, but each tick still
+     *      ran cobe's full WebGL redraw + CSS-anchor write. Suspending
+     *      entirely drops the floor to zero.
+     *
+     * The ~2s WebSocket tick separately tries to push markers/arcs into
+     * cobe; we dedupe those via stable signatures further down so a
+     * stats-only update doesn't cause a redundant WebGL upload.
+     */
     let rafId = 0;
+    const reduceMotionMQ =
+      typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+        ? window.matchMedia('(prefers-reduced-motion: reduce)')
+        : null;
+    /* Auto-spin gating.
+     *
+     * Default: `autoSpin = true`. The globe rotates regardless of the OS
+     * "reduce motion" setting, because for many deployments the rotating
+     * globe *is* the product — a static one looks broken.
+     *
+     * Opt-in via `respectReducedMotion` (theme setting
+     * `globe_respect_reduced_motion`): when ON *and* the visitor's OS
+     * reports `prefers-reduced-motion: reduce`, we pause auto-spin. Manual
+     * drag and selection slerp still work, so the globe is not "frozen" —
+     * just calm.
+     *
+     * The decision is recomputed both on the MQ `change` event and on
+     * every render via `respectReducedMotionRef`, so flipping the admin
+     * switch (or the OS preference) takes effect immediately without
+     * destroying the cobe instance. */
+    const computeAutoSpin = () =>
+      !(respectReducedMotionRef.current && (reduceMotionMQ?.matches ?? false));
+    let autoSpin = computeAutoSpin();
+    let visibilityPaused = typeof document !== 'undefined' && document.hidden;
+    let inViewport = true;
+    let running = false;
+
     const tick = () => {
-      if (pointerInteracting.current !== null) {
-        // dragging — phi is being mutated by handlePointerMove
-      } else if (targetPhiRef.current !== null && targetThetaRef.current !== null) {
-        const dphi = targetPhiRef.current - phiRef.current;
-        const dtheta = targetThetaRef.current - thetaRef.current;
+      rafId = requestAnimationFrame(tick);
+
+      const dragging = pointerInteracting.current !== null;
+      const slerping =
+        targetPhiRef.current !== null && targetThetaRef.current !== null;
+
+      if (slerping) {
+        const dphi = targetPhiRef.current! - phiRef.current;
+        const dtheta = targetThetaRef.current! - thetaRef.current;
         phiRef.current += dphi * 0.08;
         thetaRef.current += dtheta * 0.08;
         if (Math.abs(dphi) < 0.001 && Math.abs(dtheta) < 0.001) {
           targetPhiRef.current = null;
           targetThetaRef.current = null;
         }
-      } else if (!selectedNodeIdRef.current) {
-        phiRef.current += 0.003;
+      } else if (!dragging && !selectedNodeIdRef.current) {
+        // Default: per-frame auto-spin. Match display refresh so motion
+        // reads smooth. The original 0.003 step at 60Hz (~0.18 rad/s) is
+        // restored here; on 120Hz panels rAF fires twice as often and the
+        // globe will appear to rotate ~2× faster, which is fine — that's
+        // the same trade-off cobe's stock implementation makes.
+        //
+        // Re-evaluate `autoSpin` from the ref each frame so a runtime
+        // toggle of the `globe_respect_reduced_motion` admin switch (or a
+        // user flipping their OS reduce-motion preference) is picked up
+        // without restarting the loop. This is a single ref read + bool
+        // AND per frame — negligible cost.
+        autoSpin = computeAutoSpin();
+        if (autoSpin) phiRef.current += 0.003;
+        else return; // reduced-motion (opt-in): behave like "selected idle" — no redraw
+      } else if (!dragging) {
+        // Selected + no slerp = idle. phi/theta unchanged since last frame
+        // → the WebGL redraw would be visually identical. Skip it entirely.
+        // This is the deepest CPU-saving branch and is the common state
+        // while a user is reading a node's details.
+        return;
       }
+      // Dragging falls through with phi already mutated by handlePointerMove.
+
       globe.update({ phi: phiRef.current, theta: thetaRef.current });
+    };
+
+    const handleMotionChange = () => {
+      autoSpin = computeAutoSpin();
+    };
+    reduceMotionMQ?.addEventListener?.('change', handleMotionChange);
+
+    const start = () => {
+      if (running) return;
+      if (visibilityPaused) return;
+      if (!inViewport) return;
+      running = true;
       rafId = requestAnimationFrame(tick);
     };
-    tick();
+
+    const stop = () => {
+      if (!running) return;
+      running = false;
+      cancelAnimationFrame(rafId);
+    };
+
+    start();
+
+    /* Visibility — explicit stop in addition to browser's rAF throttling.
+     * Browsers throttle hidden tabs to ~1Hz, but cobe still does a full
+     * WebGL redraw + CSS anchor write on each tick. Suspending entirely
+     * drops the floor to zero. */
+    const onVisibility = () => {
+      visibilityPaused = document.hidden;
+      if (visibilityPaused) stop();
+      else start();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    /* IntersectionObserver — when the canvas scrolls out of view (or the
+     * stage is hidden by another absolutely-positioned overlay), suspend
+     * the loop. Uses a tiny rootMargin so we wake up just before the
+     * canvas re-enters the viewport, avoiding a visible "first paint
+     * lag" when scrolling back. */
+    const intersectionObserver = new IntersectionObserver(
+      entries => {
+        for (const entry of entries) {
+          inViewport = entry.isIntersecting;
+        }
+        if (inViewport) start();
+        else stop();
+      },
+      { rootMargin: '64px', threshold: 0 },
+    );
+    intersectionObserver.observe(host);
 
     /* Resize. v2 supports live `update({ width, height })` so we no longer
      * destroy/rebuild the globe (which would have leaked cobe's wrapper
@@ -445,7 +615,10 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
     resizeObserver.observe(host);
 
     return () => {
-      cancelAnimationFrame(rafId);
+      stop();
+      document.removeEventListener('visibilitychange', onVisibility);
+      reduceMotionMQ?.removeEventListener?.('change', handleMotionChange);
+      intersectionObserver.disconnect();
       if (resizeTimer) clearTimeout(resizeTimer);
       resizeObserver.disconnect();
       // cobe.destroy() releases WebGL resources and removes the anchor
@@ -461,15 +634,60 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ─────────── Push marker updates ─────────── */
+  /* When a node becomes/stops being selected, the RAF loop's "truly idle"
+   * branch may have been skipping all redraws. After clearing selection we
+   * resume auto-spin (which the loop already throttles), and after newly
+   * selecting we want one fresh redraw so the slerp begins from the
+   * current camera state. cobe internally only does work when `update()`
+   * is called, so this nudge guarantees a paint. */
   useEffect(() => {
-    globeRef.current?.update({ markers: regionMarkers });
+    globeRef.current?.update({});
+  }, [selectedNodeId]);
+
+  /* ─────────── Push marker updates ───────────
+   *
+   * `regionMarkers` is recomputed on every WS tick (every ~2s) because the
+   * `nodes` array reference changes whenever any node's stats move. That
+   * doesn't mean cobe has anything new to draw — markers only depend on
+   * id / location / status / count, not CPU%. Compute a stable signature
+   * and skip the WebGL upload + CSS-anchor recompute when it hasn't
+   * changed. Each push goes through cobe's `te()`, which does:
+   *   - Float32Array allocation + bufferData(DYNAMIC_DRAW)
+   *   - per-marker `O()` projection math + DOM style writes for anchors
+   *   - injected <style> textContent rebuild
+   * — none of which is free at 30+ region count.
+   */
+  const markerSignature = useMemo(() => {
+    let sig = '';
+    for (const m of regionMarkers) {
+      sig += `${m.id}:${m.status}:${m.totalNodes}:${m.onlineNodes}:${m.size.toFixed(3)}|`;
+    }
+    return sig;
   }, [regionMarkers]);
 
+  useEffect(() => {
+    globeRef.current?.update({ markers: regionMarkers });
+    // Intentionally depend on the structural signature, not the array
+    // reference — we don't want to re-upload markers just because the
+    // parent rerendered with stat-only changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [markerSignature]);
+
   /* ─────────── Push arc updates (deepspace data-stream lines) ─────────── */
+  const arcSignature = useMemo(() => {
+    let sig = '';
+    for (const a of arcs) {
+      // `to` is fixed (the hub) but we include it for correctness on hub
+      // changes; cheap relative to the rest of the work skipped.
+      sig += `${a.id}:${a.from[0]},${a.from[1]}->${a.to[0]},${a.to[1]}|`;
+    }
+    return sig;
+  }, [arcs]);
+
   useEffect(() => {
     globeRef.current?.update({ arcs });
-  }, [arcs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [arcSignature]);
 
   /* ─────────── Push theme updates (no destroy/rebuild) ─────────── */
   useEffect(() => {
@@ -487,16 +705,23 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
     });
   }, [theme]);
 
-  /* ─────────── Pointer drag ─────────── */
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+  /* ─────────── Pointer drag ───────────
+   * Cursor mutation uses `currentTarget` (the canvas), not `target`. Once
+   * cobe v2 paints anchored HTML overlays into the same wrapper, a pointer
+   * event that began on the canvas may report a child overlay as `target`
+   * if the drag finishes over one — writing `cursor` onto that child does
+   * nothing useful and may even change the wrong element's cursor style.
+   * `currentTarget` is always the canvas because that's where the handler
+   * is bound. */
+  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     pointerInteracting.current = e.clientX;
     pointerInteractionMovement.current = 0;
     targetPhiRef.current = null;
     targetThetaRef.current = null;
-    (e.target as HTMLElement).style.cursor = 'grabbing';
+    e.currentTarget.style.cursor = 'grabbing';
   }, []);
 
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     if (pointerInteracting.current === null) return;
     const delta = e.clientX - pointerInteracting.current;
     pointerInteractionMovement.current = delta;
@@ -504,9 +729,9 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
     pointerInteracting.current = e.clientX;
   }, []);
 
-  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     pointerInteracting.current = null;
-    (e.target as HTMLElement).style.cursor = 'grab';
+    e.currentTarget.style.cursor = 'grab';
   }, []);
 
   const handleGlobeClick = useCallback((e: React.MouseEvent) => {
@@ -595,7 +820,15 @@ interface RegionPulseOverlayProps {
   onSelect?: (uuid: string) => void;
 }
 
-function RegionPulseOverlay({
+/* memo() with default shallow compare is the right tool here: every prop
+ * is a primitive or a stable useCallback. On a WS tick where only stats
+ * changed (CPU%, RAM%) — i.e. the common case — every prop on every
+ * region's overlay is === to last render and React skips the entire
+ * subtree. Without this, all 30+ pulse buttons re-render every 2s and
+ * the (cheap-but-not-free) className concat / style object allocation
+ * happens for every one.
+ */
+const RegionPulseOverlay = memo(function RegionPulseOverlay({
   regionId,
   status,
   selected,
@@ -633,7 +866,7 @@ function RegionPulseOverlay({
       <span className="globe-region-pulse-ring globe-region-pulse-ring-delay" />
     </button>
   );
-}
+});
 
 /* ─────────── Selection overlay ───────────
  * Renders a satellite-style label anchored above the selected region's marker
@@ -662,7 +895,7 @@ interface SelectionOverlayProps {
   onSelectNode?: (uuid: string) => void;
 }
 
-function SelectionOverlay({
+const SelectionOverlay = memo(function SelectionOverlay({
   regionId,
   emoji,
   regionText,
@@ -730,4 +963,4 @@ function SelectionOverlay({
       </div>
     </div>
   );
-}
+});

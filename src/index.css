@@ -638,10 +638,11 @@
     background: conic-gradient(
       from 0deg,
       var(--primary) 0deg,
+      color-mix(in oklch, var(--primary) 50%, transparent) 30deg,
+      color-mix(in oklch, var(--primary) 18%, transparent) 70deg,
       transparent 120deg,
       transparent 360deg
     );
-    filter: blur(2px);
   }
 
   [data-theme="deepspace"] .radar-scan::after {

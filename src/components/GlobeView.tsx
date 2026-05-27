@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef, useCallback, memo } from 'react';
 // Note: useState retained for selectedNodeId; useRef now used by FrameCounter for direct DOM writes.
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { Globe } from '@/components/Globe';
 import { Sidebar } from '@/components/Sidebar';
 import { HudSpinner } from './HudSpinner';
 import { GlobeTopStrip } from './GlobeTopStrip';
 import { GlobeTelemetryFeed } from './GlobeTelemetryFeed';
 import { useTheme } from '@/hooks/useTheme';
+import type { VisualTheme } from '@/hooks/useTheme';
+import { useAppConfig } from '@/hooks/useAppConfig';
 import type { NodeWithStatus } from '@/services/api';
 
 interface GlobeViewProps {
@@ -22,21 +25,28 @@ interface GlobeViewProps {
 export function GlobeView({ nodes, loading = false, onViewCharts, hubNodeUuid = null }: GlobeViewProps) {
   const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
+  const { themeConfig } = useAppConfig();
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const clearSelection = useCallback(() => setSelectedNodeId(null), []);
 
   // Feed enabled on themes with HUD aesthetic. Clean theme stays minimal.
   const showFeed = resolvedTheme === 'deepspace' || resolvedTheme === 'lumina';
 
-  // Threats list (recomputed every render — small N, cheap)
-  const threats = nodes
-    .filter(
-      n =>
-        n.status === 'online' &&
-        ((n.stats?.cpu.usage ?? 0) > 90 ||
-          (n.stats ? n.stats.ram.used / n.stats.ram.total > 0.95 : false)),
-    )
-    .slice(0, 3);
+  /* Threats list — top-3 nodes either spiking CPU or starving RAM.
+   * Single-pass scan with early exit; small N, microsecond cost. Not
+   * memoised because the result is only consumed inline in this render's
+   * JSX (no memoed child receives it as a prop), so reference stability
+   * wouldn't buy us anything. */
+  const threats: NodeWithStatus[] = [];
+  for (const n of nodes) {
+    if (n.status !== 'online' || !n.stats) continue;
+    const cpu = n.stats.cpu.usage;
+    const ram = n.stats.ram.total > 0 ? n.stats.ram.used / n.stats.ram.total : 0;
+    if (cpu > 90 || ram > 0.95) {
+      threats.push(n);
+      if (threats.length >= 3) break;
+    }
+  }
 
   return (
     <div className="relative z-10 flex flex-col lg:flex-row gap-4 lg:gap-5 w-full h-[calc(100vh-theme(spacing.10)-theme(spacing.8)-theme(spacing.9)-2rem)] sm:h-[calc(100vh-theme(spacing.12)-theme(spacing.9)-3rem)]">
@@ -51,50 +61,17 @@ export function GlobeView({ nodes, loading = false, onViewCharts, hubNodeUuid = 
 
         {/* ② Stage (globe + ambient layers) */}
         <div className="relative flex-1 min-w-0 min-h-0 flex items-center justify-center overflow-hidden">
-          {/* DeepSpace ambient */}
-          {resolvedTheme === 'deepspace' && (
-            <>
-              <div className="deepspace-nebula" />
-              <div className="deepspace-grid" />
-              <div className="deepspace-circles" style={{ width: '90%', height: '90%' }} />
-              <div
-                className="deepspace-circles"
-                style={{ width: '70%', height: '70%', animationDelay: '-5s' }}
-              />
-            </>
-          )}
+          {/* All static decoration (ambient, radar, cardinals, sector label,
+              frame counter) is grouped in a memoed sub-component so the WS
+              tick that mints a new `nodes` array doesn't cause React to
+              re-evaluate ~15 div elements + className concat + style
+              objects every 2s. They depend only on theme + locale. */}
+          <StageChrome theme={resolvedTheme} t={t} />
 
-          {/* Lumina ambient */}
-          {resolvedTheme === 'lumina' && (
-            <>
-              <div className="lumina-hex-grid" />
-              <div className="lumina-orbit" style={{ width: '85%', height: '85%' }} />
-              <div
-                className="lumina-orbit lumina-orbit-reverse"
-                style={{ width: '65%', height: '65%', animationDelay: '-3s' }}
-              />
-              <div className="lumina-pulse-ring" />
-            </>
-          )}
-
-          {/* Radar background */}
-          <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
-            <div className="radar-scan" />
-            <div className="absolute w-[60%] aspect-square border border-primary/10 rounded-full" />
-            <div className="absolute w-[40%] aspect-square border border-primary/10 rounded-full" />
-            <div className="absolute w-[20%] aspect-square border border-primary/10 rounded-full" />
-          </div>
-
-          {/* Cardinal markers — N / E / S / W */}
-          <CardinalMarkers />
-
-          {/* Sector + Frame counter (mission-control chrome) */}
-          <div className="absolute top-3 left-3 z-20 pointer-events-none text-xs font-mono text-primary/45 uppercase tracking-[0.22em]">
-            ▌{t('hud.sector')} ALPHA
-          </div>
-          <FrameCounter />
-
-          {/* Threats — top right (compact, single column) */}
+          {/* Threats — top right (compact, single column).
+              Pulses are staggered by index so the four red elements (header
+              dot + up to three rows) read as a rolling wave instead of a
+              single synchronised blink. Same period, different phase. */}
           {threats.length > 0 && (
             <div className="absolute top-3 right-3 z-20 pointer-events-none text-right">
               <div className="text-xs font-mono text-destructive/75 uppercase tracking-[0.22em] mb-1.5 flex items-center gap-2 justify-end">
@@ -102,17 +79,27 @@ export function GlobeView({ nodes, loading = false, onViewCharts, hubNodeUuid = 
                 {t('hud.activeThreats')}
               </div>
               <div className="space-y-1">
-                {threats.map(node => (
-                  <div
-                    key={node.uuid}
-                    className="text-xxs font-mono text-destructive/70 flex gap-2 items-center justify-end"
-                  >
-                    <span className="motion-safe:animate-pulse">{t('hud.criticalLoad')}{' << '}</span>
-                    <span className="bg-destructive/10 px-1.5 py-0.5 border border-destructive/30">
-                      {node.name.substring(0, 12)}
-                    </span>
-                  </div>
-                ))}
+                {threats.map((node, i) => {
+                  const tag = node.name.length > 12
+                    ? `${node.name.slice(0, 11)}…`
+                    : node.name;
+                  return (
+                    <div
+                      key={node.uuid}
+                      className="text-xxs font-mono text-destructive/70 flex gap-2 items-center justify-end"
+                    >
+                      <span
+                        className="motion-safe:animate-pulse"
+                        style={{ animationDelay: `${(i + 1) * 0.2}s` }}
+                      >
+                        {t('hud.criticalLoad')}{' << '}
+                      </span>
+                      <span className="bg-destructive/10 px-1.5 py-0.5 border border-destructive/30">
+                        {tag}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -125,14 +112,18 @@ export function GlobeView({ nodes, loading = false, onViewCharts, hubNodeUuid = 
             onSelectNode={setSelectedNodeId}
             onClearSelection={clearSelection}
             hubNodeUuid={hubNodeUuid}
+            respectReducedMotion={themeConfig.globe_respect_reduced_motion}
             className="w-full h-full"
           />
 
-          {/* Loading overlay */}
+          {/* Loading overlay — letterspacing matches the rest of the stage
+              chrome (sector label, threats, frame counter all at 0.22em) so
+              the loading state doesn't read as a different typographic
+              system from the panels it sits between. */}
           {loading && nodes.length === 0 && (
             <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-background/30 backdrop-blur-sm">
               <HudSpinner size="lg" />
-              <div className="text-xs font-mono text-primary/60 uppercase tracking-[0.15em]">
+              <div className="text-xs font-mono text-primary/60 uppercase tracking-[0.22em]">
                 {t('telemetry.acquiring')}
               </div>
             </div>
@@ -155,6 +146,70 @@ export function GlobeView({ nodes, loading = false, onViewCharts, hubNodeUuid = 
     </div>
   );
 }
+
+/* ─────────── Static stage decoration ───────────
+ * The DeepSpace / Lumina ambient layers, radar background, cardinal markers,
+ * sector label and frame counter are all driven entirely by `theme` (and the
+ * sector label by `t`). Pulled into a memoed sub-component so the every-2s
+ * WS tick — which mutates `nodes` and thus re-renders `GlobeView` — doesn't
+ * re-evaluate ~15 div elements with new className strings and style objects
+ * just to produce the same DOM. React.memo with default shallow compare is
+ * fine: `theme` is a primitive and `t` is stable for the session (only
+ * changes on language switch).
+ */
+interface StageChromeProps {
+  theme: VisualTheme;
+  t: TFunction;
+}
+
+const StageChrome = memo(function StageChrome({ theme, t }: StageChromeProps) {
+  return (
+    <>
+      {/* DeepSpace ambient */}
+      {theme === 'deepspace' && (
+        <>
+          <div className="deepspace-nebula" />
+          <div className="deepspace-grid" />
+          <div className="deepspace-circles" style={{ width: '90%', height: '90%' }} />
+          <div
+            className="deepspace-circles"
+            style={{ width: '70%', height: '70%', animationDelay: '-5s' }}
+          />
+        </>
+      )}
+
+      {/* Lumina ambient */}
+      {theme === 'lumina' && (
+        <>
+          <div className="lumina-hex-grid" />
+          <div className="lumina-orbit" style={{ width: '85%', height: '85%' }} />
+          <div
+            className="lumina-orbit lumina-orbit-reverse"
+            style={{ width: '65%', height: '65%', animationDelay: '-3s' }}
+          />
+          <div className="lumina-pulse-ring" />
+        </>
+      )}
+
+      {/* Radar background */}
+      <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
+        <div className="radar-scan" />
+        <div className="absolute w-[60%] aspect-square border border-primary/10 rounded-full" />
+        <div className="absolute w-[40%] aspect-square border border-primary/10 rounded-full" />
+        <div className="absolute w-[20%] aspect-square border border-primary/10 rounded-full" />
+      </div>
+
+      {/* Cardinal markers — N / E / S / W */}
+      <CardinalMarkers />
+
+      {/* Sector + Frame counter (mission-control chrome) */}
+      <div className="absolute top-3 left-3 z-20 pointer-events-none text-xs font-mono text-primary/45 uppercase tracking-[0.22em]">
+        ▌{t('hud.sector')} ALPHA
+      </div>
+      <FrameCounter />
+    </>
+  );
+});
 
 /* ─────────── Cardinal markers (N/E/S/W) ─────────── */
 const CARDINALS = [
