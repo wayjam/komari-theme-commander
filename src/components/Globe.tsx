@@ -1,6 +1,6 @@
 import { useEffect, useRef, useMemo, useCallback, useImperativeHandle, useState, forwardRef } from 'react';
 import { createPortal } from 'react-dom';
-import createGlobe, { type Marker } from 'cobe';
+import createGlobe, { type Marker, type Arc } from 'cobe';
 import type { NodeWithStatus } from '@/services/api';
 import { extractRegionEmoji, extractRegionText } from '@/lib/utils';
 import { getCoords } from '@/data/regionCoords';
@@ -13,35 +13,96 @@ interface GlobeProps {
   selectedNodeId?: string | null;
   onSelectNode?: (uuid: string) => void;
   onClearSelection?: () => void;
+  /** UUID of the configured "hub" node. When provided and the node is online,
+   *  cobe v2 arcs are drawn from every other online region toward this hub.
+   *  `null`/undefined disables arcs entirely. */
+  hubNodeUuid?: string | null;
 }
 
 export interface GlobeHandle {
   rotateToLocation: (lat: number, lng: number) => void;
 }
 
+/* Per-theme cobe configuration.
+ *
+ * Each theme tunes a small set of non-color parameters in addition to the
+ * three color triplets:
+ *
+ *   - `diffuse`         light directionality. Lumina stays low (soft
+ *                       overcast); deepspace pushes higher for a clear
+ *                       day/night terminator.
+ *   - `markerElevation` height markers float above the surface. Only the
+ *                       deepspace theme uses this to make markers feel
+ *                       like satellites; lumina's CSS pulse layer does
+ *                       the height work, so cobe markers stay flat.
+ *   - `scale`           globe size relative to canvas. Deepspace shrinks
+ *                       slightly so the surrounding void feels bigger.
+ *
+ * Arcs:
+ *   - `enableArcs`      whether this theme may show hub-and-spoke arcs at
+ *                       all. Clean stays minimal — even if the admin sets
+ *                       `globe_hub_node`, arcs are suppressed here.
+ *   - `arcColor`        per-theme tint of the data-stream lines. Lumina
+ *                       gets a confident teal for legibility against the
+ *                       light background; deepspace gets a neon mint that
+ *                       reads as energy distinct from the cyan glow.
+ */
 const THEME_CONFIG = {
   lumina: {
     dark: 0 as const,
-    baseColor: [0.85, 0.88, 0.95] as [number, number, number],
-    glowColor: [0.8, 0.9, 1] as [number, number, number],
-    markerColor: [0.2, 0.8, 0.9] as [number, number, number],
-    mapBrightness: 6,
+    baseColor: [0.82, 0.88, 0.95] as [number, number, number],
+    glowColor: [0.6, 0.86, 1.0] as [number, number, number],
+    markerColor: [0.12, 0.55, 0.72] as [number, number, number],
+    // Brighter, more saturated teal than the marker color — arcs need extra
+    // luminance to read as energy beams against the bright sphere.
+    arcColor: [0.1, 0.62, 0.82] as [number, number, number],
+    mapBrightness: 7,
+    diffuse: 1.0,
+    markerElevation: 0,
+    scale: 1.0,
+    enableArcs: true,
   },
   deepspace: {
     dark: 1 as const,
-    baseColor: [0.15, 0.18, 0.25] as [number, number, number],
-    glowColor: [0, 0.8, 1] as [number, number, number],
-    markerColor: [0, 1, 0.9] as [number, number, number],
-    mapBrightness: 2,
+    baseColor: [0.15, 0.18, 0.28] as [number, number, number],
+    glowColor: [0.0, 0.8, 1.0] as [number, number, number],
+    markerColor: [0.0, 1.0, 0.9] as [number, number, number],
+    // Slightly mint-shifted from the cyan glow so beams don't blend into
+    // the halo — preserves the "data is moving" silhouette against the
+    // ambient atmospheric glow.
+    arcColor: [0.35, 1.0, 0.85] as [number, number, number],
+    mapBrightness: 4.5,
+    diffuse: 1.4,
+    markerElevation: 0.012,
+    scale: 0.98,
+    enableArcs: true,
   },
   clean: {
     dark: 0 as const,
     baseColor: [0.9, 0.9, 0.92] as [number, number, number],
     glowColor: [0.85, 0.85, 0.9] as [number, number, number],
     markerColor: [0.3, 0.4, 0.8] as [number, number, number],
+    arcColor: [0.3, 0.4, 0.8] as [number, number, number],
     mapBrightness: 6,
+    diffuse: 1.2,
+    markerElevation: 0,
+    scale: 1.0,
+    // Clean stays visually minimal — no telemetry arcs even when a hub
+    // is configured. Admins who want arcs should use lumina/deepspace.
+    enableArcs: false,
   },
 };
+
+/** Arc geometry — kept thin and low-profile so the lines read as "data
+ *  beams" rather than rainbow trajectories. Width is multiplied by 0.005
+ *  in cobe internally, so 0.7 ≈ 3.5px of line at default scale. Height of
+ *  0.32 keeps the arc apex close to the surface so beams feel direct
+ *  rather than ballistic. */
+const ARC_WIDTH = 0.7;
+const ARC_HEIGHT = 0.32;
+/** Cap arcs so the globe stays legible — too many spokes turn into a star
+ *  burst and lose the "directional traffic" feel. */
+const MAX_ARCS = 8;
 
 const OFFLINE_MARKER_COLOR: [number, number, number] = [1, 0.2, 0.2];
 const MIXED_MARKER_COLOR: [number, number, number] = [1, 0.62, 0.16];
@@ -87,7 +148,7 @@ function latLngToAngles(lat: number, lng: number): [number, number] {
 }
 
 export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
-  { nodes, theme, className, selectedNodeId, onSelectNode, onClearSelection },
+  { nodes, theme, className, selectedNodeId, onSelectNode, onClearSelection, hubNodeUuid = null },
   ref
 ) {
   // `canvasHostRef` is a stable square element we own. cobe will wrap our
@@ -196,6 +257,46 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
     });
   }, [nodes, theme]);
 
+  /* ─────────── Resolve hub region ───────────
+   * Single source of truth for "which region contains the configured hub
+   * node?". Used both to (a) build the spoke arcs and (b) mark the hub's
+   * RegionPulseOverlay with `.is-hub` for CSS-driven data-arrival pulse.
+   * `null` whenever arcs are suppressed (no hub, hub offline/missing, or
+   * the current theme disables arcs altogether).
+   */
+  const hubRegionId = useMemo<string | null>(() => {
+    if (!THEME_CONFIG[theme].enableArcs) return null;
+    if (!hubNodeUuid) return null;
+    const hubRegion = regionMarkers.find(r =>
+      r.nodes.some(n => n.uuid === hubNodeUuid),
+    );
+    return hubRegion?.id ?? null;
+  }, [regionMarkers, hubNodeUuid, theme]);
+
+  /* ─────────── Build arcs (cobe v2 feature) ───────────
+   * Hub-and-spoke: every *other* online region draws an arc toward the hub
+   * region. Arc ids are derived from the *origin* region so cobe doesn't
+   * restart the animation when an unrelated region changes status — one
+   * node going offline shouldn't make every other arc jump.
+   */
+  const arcs = useMemo<Arc[]>(() => {
+    if (!hubRegionId) return [];
+    const hubRegion = regionMarkers.find(r => r.id === hubRegionId);
+    if (!hubRegion) return [];
+    const result: Arc[] = [];
+    for (const origin of regionMarkers) {
+      if (origin.id === hubRegion.id) continue; // skip self-loop
+      if (origin.status === 'offline') continue; // mixed is fine, dead is not
+      result.push({
+        from: origin.location,
+        to: hubRegion.location,
+        id: `arc-${origin.id}`,
+      });
+      if (result.length >= MAX_ARCS) break;
+    }
+    return result;
+  }, [regionMarkers, hubRegionId]);
+
   /* ─────────── Selected node lookup (for overlay) ─────────── */
   const selectedRegion = useMemo(() => {
     if (!selectedNodeId) return null;
@@ -277,17 +378,22 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
       phi: phiRef.current,
       theta: thetaRef.current,
       dark: initialConfig.dark,
-      diffuse: 1.2,
+      diffuse: initialConfig.diffuse,
       mapSamples,
       mapBrightness: initialConfig.mapBrightness,
       baseColor: initialConfig.baseColor,
       markerColor: initialConfig.markerColor,
       glowColor: initialConfig.glowColor,
-      // Keep marker geometry almost on the surface. The selected label is the
-      // only "satellite" element; normal markers should read like old cobe's
-      // flatter 2D surface dots.
-      markerElevation: 0.006,
+      markerElevation: initialConfig.markerElevation,
+      scale: initialConfig.scale,
       markers: regionMarkers,
+      // Arcs animate themselves. Initial array is whatever the useMemo
+      // computed on first render — the dedicated update effect below pushes
+      // any later changes (hub config / online regions).
+      arcs,
+      arcColor: initialConfig.arcColor,
+      arcWidth: ARC_WIDTH,
+      arcHeight: ARC_HEIGHT,
     });
     globeRef.current = globe;
 
@@ -360,15 +466,24 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
     globeRef.current?.update({ markers: regionMarkers });
   }, [regionMarkers]);
 
+  /* ─────────── Push arc updates (deepspace data-stream lines) ─────────── */
+  useEffect(() => {
+    globeRef.current?.update({ arcs });
+  }, [arcs]);
+
   /* ─────────── Push theme updates (no destroy/rebuild) ─────────── */
   useEffect(() => {
     const config = THEME_CONFIG[theme];
     globeRef.current?.update({
       dark: config.dark,
+      diffuse: config.diffuse,
       mapBrightness: config.mapBrightness,
       baseColor: config.baseColor,
       markerColor: config.markerColor,
       glowColor: config.glowColor,
+      markerElevation: config.markerElevation,
+      scale: config.scale,
+      arcColor: config.arcColor,
     });
   }, [theme]);
 
@@ -440,6 +555,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
             regionId={region.id}
             status={region.status}
             selected={selectedRegion?.region.id === region.id}
+            isHub={region.id === hubRegionId}
             primaryNodeId={region.primaryNodeId}
             totalNodes={region.totalNodes}
             onSelect={handleMarkerSelect}
@@ -470,6 +586,10 @@ interface RegionPulseOverlayProps {
   regionId: string;
   status: RegionStatus;
   selected: boolean;
+  /** True when this region contains the configured hub node and arcs are
+   *  active. The `.is-hub` class enables a stronger pulse animation in CSS
+   *  that visualizes data arriving from the spokes. */
+  isHub: boolean;
   primaryNodeId: string;
   totalNodes: number;
   onSelect?: (uuid: string) => void;
@@ -479,6 +599,7 @@ function RegionPulseOverlay({
   regionId,
   status,
   selected,
+  isHub,
   primaryNodeId,
   totalNodes,
   onSelect,
@@ -488,10 +609,18 @@ function RegionPulseOverlay({
     ['--vis' as string]: `var(--cobe-visible-${regionId}, 0)`,
   } as React.CSSProperties;
 
+  const classes = [
+    'globe-marker-hitbox',
+    'globe-region-pulse',
+    `globe-region-pulse-${status}`,
+    selected && 'is-selected',
+    isHub && 'is-hub',
+  ].filter(Boolean).join(' ');
+
   return (
     <button
       type="button"
-      className={`globe-marker-hitbox globe-region-pulse globe-region-pulse-${status}${selected ? ' is-selected' : ''}`}
+      className={classes}
       style={style}
       onClick={(e) => {
         e.stopPropagation();

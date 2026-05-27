@@ -2463,6 +2463,42 @@
     animation-delay: 1.2s;
   }
 
+  /* DeepSpace — magenta "warp signature" tail on online pulses.
+     Layers an outer --accent (magenta, oklch(0.72 0.22 330)) glow on top of
+     the cyan primary, so online nodes read as cyan→magenta gradients
+     against the deep indigo void. Subtle blend mode + low alpha keep the
+     effect ambient, not gaudy. */
+  [data-theme="deepspace"] .globe-region-pulse-online .globe-region-pulse-ring {
+    box-shadow:
+      inset 0 0 8px color-mix(in oklch, var(--primary) 30%, transparent),
+      0 0 12px color-mix(in oklch, var(--accent) 22%, transparent);
+  }
+
+  [data-theme="deepspace"] .globe-region-pulse-online .globe-region-core {
+    box-shadow:
+      0 0 0 1px color-mix(in oklch, var(--background) 82%, transparent),
+      0 0 8px color-mix(in oklch, var(--primary) 50%, transparent),
+      0 0 14px color-mix(in oklch, var(--accent) 28%, transparent);
+  }
+
+  /* Lumina — layered cyan + teal accent on online pulses.
+     Lumina's --accent (oklch(0.7 0.18 170)) is a complementary teal that
+     reads as "scientific instrument" against the light background. Adding
+     it as a faint outer halo gives the marker a double-tone glow without
+     muddying the primary cyan. */
+  [data-theme="lumina"] .globe-region-pulse-online .globe-region-pulse-ring {
+    box-shadow:
+      inset 0 0 8px color-mix(in oklch, var(--primary) 30%, transparent),
+      0 0 10px color-mix(in oklch, var(--accent) 18%, transparent);
+  }
+
+  [data-theme="lumina"] .globe-region-pulse-online .globe-region-core {
+    box-shadow:
+      0 0 0 1px color-mix(in oklch, var(--background) 82%, transparent),
+      0 0 6px color-mix(in oklch, var(--primary) 55%, transparent),
+      0 0 12px color-mix(in oklch, var(--accent) 26%, transparent);
+  }
+
   .globe-region-pulse-mixed .globe-region-pulse-ring {
     border: 1px solid color-mix(in oklch, var(--warning) 76%, transparent);
     box-shadow: inset 0 0 8px color-mix(in oklch, var(--warning) 26%, transparent);
@@ -2489,6 +2525,132 @@
 
   .globe-region-pulse.is-selected .globe-region-pulse-ring {
     border-width: 1.5px;
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     Hub marker — "command center reticle"
+     ════════════════════════════════════════════════════════════
+     The marker for the configured arc hub MUST be visually distinct from
+     every other marker, even when `prefers-reduced-motion` freezes all
+     animations. We layer four static signifiers so the differentiation
+     survives without motion:
+
+       1. Larger marker footprint (48px vs 34px)
+       2. Static dashed reticle ring (`::before`) — "target acquired"
+       3. Cardinal crosshair ticks N/E/S/W (`::after`) — "command center"
+       4. Brighter `--primary`-tinted core with stronger glow
+
+     On top of these statics, motion-allowed users also see the dashed
+     ring slowly rotating and the core breathing — but those are bonus,
+     not the primary differentiator.
+  */
+  .globe-region-pulse.is-hub {
+    width: 48px;
+    height: 48px;
+    z-index: 10;
+  }
+
+  /* Layer 1 — static dashed reticle. Sits between core and pulse rings,
+     at a stable size (no scale animation) so it always reads as a single
+     halo of identification. The slow rotation gives it life under normal
+     motion settings; reduced motion freezes it to a static dashed ring,
+     which is still distinctly "hub" thanks to the dash pattern. */
+  .globe-region-pulse.is-hub::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 28px;
+    height: 28px;
+    border: 1px dashed color-mix(in oklch, var(--primary) 75%, transparent);
+    border-radius: 50%;
+    translate: -50% -50%;
+    pointer-events: none;
+    animation: globe-hub-reticle-spin 24s linear infinite;
+  }
+
+  /* Layer 2 — cardinal crosshair ticks (N/E/S/W). Four 1×5px segments at
+     the marker edges, composed via stacked linear-gradient backgrounds so
+     no extra DOM is needed. They extend beyond the dashed ring, signaling
+     "alignment / command reference frame". Completely static. */
+  .globe-region-pulse.is-hub::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(color-mix(in oklch, var(--primary) 80%, transparent) 0 0) center top    / 1px 6px no-repeat,
+      linear-gradient(color-mix(in oklch, var(--primary) 80%, transparent) 0 0) center bottom / 1px 6px no-repeat,
+      linear-gradient(color-mix(in oklch, var(--primary) 80%, transparent) 0 0) left center   / 6px 1px no-repeat,
+      linear-gradient(color-mix(in oklch, var(--primary) 80%, transparent) 0 0) right center  / 6px 1px no-repeat;
+  }
+
+  /* Layer 3 — larger, brighter core with double-glow halo. Uses primary
+     theme color (vs the default online dot which is on a generic palette)
+     and sits above all rings via z-index inheritance from the button. */
+  .globe-region-pulse.is-hub .globe-region-core {
+    width: 10px;
+    height: 10px;
+    background: var(--primary);
+    box-shadow:
+      0 0 0 2px color-mix(in oklch, var(--background) 85%, transparent),
+      0 0 8px color-mix(in oklch, var(--primary) 70%, transparent),
+      0 0 16px color-mix(in oklch, var(--primary) 40%, transparent);
+    z-index: 2;
+    animation: globe-hub-core-breathe 1.6s ease-in-out infinite;
+  }
+
+  /* Layer 4 — faster pulse rings (motion-allowed users only).
+     Overrides the standard `.globe-region-pulse-online` 2.4s pulse with a
+     more rhythmic 1.6s "data arrival" cycle and `--primary` tint. */
+  .globe-region-pulse.is-hub .globe-region-pulse-ring {
+    border: 1px solid color-mix(in oklch, var(--primary) 85%, transparent);
+    box-shadow:
+      inset 0 0 10px color-mix(in oklch, var(--primary) 35%, transparent),
+      0 0 14px color-mix(in oklch, var(--primary) 22%, transparent);
+    animation: globe-hub-pulse 1.6s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
+  }
+
+  .globe-region-pulse.is-hub .globe-region-pulse-ring-delay {
+    animation-delay: 0.8s;
+  }
+
+  /* Faster, more aggressive expansion — reads as "intake" because the ring
+     starts very small (near core) and expands further than the standard
+     pulse; combined with the short cycle, the effect is rhythmic data
+     arrival rather than ambient idle pulsing. */
+  @keyframes globe-hub-pulse {
+    0% {
+      transform: scale(0.2);
+      opacity: 0.85;
+    }
+    60% {
+      opacity: 0.25;
+    }
+    100% {
+      transform: scale(1.55);
+      opacity: 0;
+    }
+  }
+
+  /* Slow rotation for the dashed reticle. Reduced motion freezes this to
+     a static dashed circle (still recognizable as "hub"). */
+  @keyframes globe-hub-reticle-spin {
+    to { rotate: 360deg; }
+  }
+
+  /* `.globe-region-core` uses the CSS `translate` property for centering
+     (`translate: -50% -50%`), so we animate `scale` on its own to avoid
+     fighting that translate via `transform`. */
+  @keyframes globe-hub-core-breathe {
+    0%, 100% {
+      scale: 1;
+      filter: brightness(1);
+    }
+    50% {
+      scale: 1.22;
+      filter: brightness(1.3);
+    }
   }
 
   .globe-region-pulse:focus-visible {

@@ -87,12 +87,19 @@ interface NodesContextType {
   nodes: NodeWithStatus[];
   loading: boolean;
   refreshNodes: () => Promise<void>;
+  /** UUID of the node configured as the globe-view "hub" (arcs anchor).
+   *  Resolved from `themeConfig.globe_hub_node` against the *unmasked* node
+   *  list, so the field always matches the original real name even after
+   *  privacy mode renames everything in the masked list. `null` when no
+   *  hub is configured or the configured name doesn't match any node. */
+  hubNodeUuid: string | null;
 }
 
 const NodesContext = createContext<NodesContextType>({
   nodes: [],
   loading: false,
   refreshNodes: async () => {},
+  hubNodeUuid: null,
 });
 
 function useNodesContext() {
@@ -559,7 +566,7 @@ function Dashboard() {
   const reduceMotion = useReducedMotion();
   const [chartModal, setChartModal] = useState<{ uuid: string; name: string } | null>(null);
   const navigate = useNavigate();
-  const { nodes, loading, refreshNodes } = useNodesContext();
+  const { nodes, loading, refreshNodes, hubNodeUuid } = useNodesContext();
 
   const handleViewCharts = useCallback((uuid: string, name: string) => {
     if (viewMode === 'globe') {
@@ -592,7 +599,12 @@ function Dashboard() {
             className="min-w-0"
           >
             {viewMode === 'globe' ? (
-              <GlobeView nodes={nodes} loading={loading} onViewCharts={handleViewCharts} />
+              <GlobeView
+                nodes={nodes}
+                loading={loading}
+                onViewCharts={handleViewCharts}
+                hubNodeUuid={hubNodeUuid}
+              />
             ) : viewMode === 'uptime' ? (
               <UptimeView nodes={nodes} />
             ) : (
@@ -677,6 +689,17 @@ function App() {
   }, [appConfig.loaded, themeConfig.enable_privacy_mode, setDefaultPrivacyMode]);
 
   const maskedNodes = useMemo(() => maskNodes(nodes), [maskNodes, nodes]);
+
+  /* Resolve the configured hub node *against the unmasked node list*, so
+   * the lookup stays correct even after privacy mode renames everything in
+   * the masked list downstream. Matching is case-insensitive and trimmed
+   * so admins don't get burned by trailing spaces in the backend setting. */
+  const hubNodeUuid = useMemo<string | null>(() => {
+    const target = themeConfig.globe_hub_node?.trim().toLowerCase();
+    if (!target) return null;
+    const match = nodes.find(n => n.name.trim().toLowerCase() === target);
+    return match?.uuid ?? null;
+  }, [nodes, themeConfig.globe_hub_node]);
 
   const handleSetViewMode = useCallback((mode: ViewMode) => {
     setViewMode(mode);
@@ -776,7 +799,7 @@ function App() {
   );
 
   return (
-    <NodesContext.Provider value={{ nodes: maskedNodes, loading, refreshNodes }}>
+    <NodesContext.Provider value={{ nodes: maskedNodes, loading, refreshNodes, hubNodeUuid }}>
       <RecentStatsProvider onlineUuids={onlineUuids}>
       <ViewModeContext.Provider value={{ viewMode, setViewMode: handleSetViewMode }}>
         <div className="min-h-screen flex flex-col bg-background text-foreground">

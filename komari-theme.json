@@ -30,6 +30,13 @@
                 "help": "Show the 3D globe view option"
             },
             {
+                "key": "globe_hub_node",
+                "name": "Globe Hub Node",
+                "type": "string",
+                "default": "",
+                "help": "Node name shown as the central hub on the globe. When set, animated arcs are drawn from every other online node to this hub. Use the node's real name — privacy-mode masking is applied after matching, so this field always references the original name. Leave empty to disable arcs."
+            },
+            {
                 "key": "enable_uptime",
                 "name": "Enable Uptime View",
                 "type": "switch",

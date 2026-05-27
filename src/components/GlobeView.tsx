@@ -13,9 +13,13 @@ interface GlobeViewProps {
   nodes: NodeWithStatus[];
   loading?: boolean;
   onViewCharts: (uuid: string, name: string) => void;
+  /** UUID of the hub node configured via `theme_settings.globe_hub_node`.
+   *  Forwarded to the Globe component so it can draw hub-and-spoke arcs.
+   *  `null` (the default) disables arcs. */
+  hubNodeUuid?: string | null;
 }
 
-export function GlobeView({ nodes, loading = false, onViewCharts }: GlobeViewProps) {
+export function GlobeView({ nodes, loading = false, onViewCharts, hubNodeUuid = null }: GlobeViewProps) {
   const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -120,6 +124,7 @@ export function GlobeView({ nodes, loading = false, onViewCharts }: GlobeViewPro
             selectedNodeId={selectedNodeId}
             onSelectNode={setSelectedNodeId}
             onClearSelection={clearSelection}
+            hubNodeUuid={hubNodeUuid}
             className="w-full h-full"
           />
 

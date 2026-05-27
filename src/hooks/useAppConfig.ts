@@ -9,6 +9,10 @@ export interface ThemeConfig {
   default_theme: 'lumina' | 'deepspace' | 'clean' | 'auto';
   custom_footer: string;
   enable_privacy_mode: boolean;
+  /** Name of the central hub node for globe-view arcs. Always the original
+   *  (pre-privacy-mask) node name — the matching is done before names are
+   *  replaced. Empty string disables arcs. */
+  globe_hub_node: string;
 }
 
 const defaultThemeConfig: ThemeConfig = {
@@ -18,6 +22,7 @@ const defaultThemeConfig: ThemeConfig = {
   default_theme: 'clean',
   custom_footer: '',
   enable_privacy_mode: false,
+  globe_hub_node: '',
 };
 
 export interface AppConfig {
@@ -107,6 +112,8 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
           if (typeof epm === 'boolean') tc.enable_privacy_mode = epm;
           if (epm === 'true') tc.enable_privacy_mode = true;
           if (epm === 'false') tc.enable_privacy_mode = false;
+          const ghn = pick('globe_hub_node');
+          if (typeof ghn === 'string') tc.globe_hub_node = ghn.trim();
         }
 
         // Fallback: if default_view references a disabled view, pick first available
