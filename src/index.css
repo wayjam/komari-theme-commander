@@ -2836,6 +2836,91 @@
     outline-offset: 2px;
   }
 
+  /* ════════════════════════════════════════════════════════════
+     Per-marker speed pill (visible only while hub arcs are active)
+     ════════════════════════════════════════════════════════════
+     Compact "↑1.2M  ↓340K" badge anchored below each online/mixed marker.
+     It quantifies the arc animation: arcs say "data is flowing"; this pill
+     says "how much, in which direction". Shares the `--vis` bridge with
+     the other overlays so it fades + blurs out when the marker rotates
+     onto the back hemisphere.
+  */
+  .globe-region-speed {
+    position: absolute;
+    top: anchor(center);
+    left: anchor(center);
+    /* Vertical offset (16px) pushes the pill clear of the 34px marker
+       hitbox (which extends 17px below center). The `is-hub` variant
+       bumps this further to clear the larger 48px hub footprint and its
+       southern crosshair tick. Horizontally centered via -50%. */
+    translate: -50% 16px;
+    z-index: 7;
+    pointer-events: none;
+    opacity: var(--vis, 0);
+    filter: blur(calc((1 - var(--vis, 0)) * 3px));
+    transition: opacity 0.28s ease, filter 0.28s ease;
+
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    padding: 0.18rem 0.42rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.56rem;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    color: color-mix(in oklch, var(--foreground) 80%, transparent);
+    background: color-mix(in oklch, var(--background) 78%, transparent);
+    border: 1px solid color-mix(in oklch, var(--primary) 24%, transparent);
+    border-radius: 999px;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    box-shadow:
+      0 4px 10px rgba(0, 0, 0, 0.18),
+      0 0 0 1px color-mix(in oklch, var(--primary) 10%, transparent);
+  }
+
+  /* Hub marker is 48px (vs 34px standard) — give its pill more clearance
+     so the southern crosshair tick doesn't poke through. */
+  .globe-region-speed.is-hub {
+    translate: -50% 22px;
+    border-color: color-mix(in oklch, var(--primary) 38%, transparent);
+    box-shadow:
+      0 4px 12px rgba(0, 0, 0, 0.22),
+      0 0 0 1px color-mix(in oklch, var(--primary) 18%, transparent),
+      0 0 14px color-mix(in oklch, var(--primary) 18%, transparent);
+  }
+
+  /* Upload uses the success/chart-2 hue; download uses the primary/chart-1
+     hue. Mirrors the conventions in NodeCard / NodeTable / sidebar so the
+     same arrow + color pair always means the same direction. */
+  .globe-region-speed-up {
+    color: color-mix(in oklch, var(--chart-2, var(--success)) 92%, var(--foreground));
+  }
+
+  .globe-region-speed-down {
+    color: color-mix(in oklch, var(--chart-1, var(--primary)) 92%, var(--foreground));
+  }
+
+  /* Thin vertical divider between up / down — keeps the pill scannable
+     without resorting to extra whitespace or punctuation. */
+  .globe-region-speed-sep {
+    width: 1px;
+    height: 0.55rem;
+    background: color-mix(in oklch, var(--foreground) 22%, transparent);
+  }
+
+  /* Clean theme stays visually quiet — arcs are disabled here anyway, so
+     this rule only matters defensively. Strip the colored glow + soften
+     the border to fit the minimalist palette. */
+  [data-theme="clean"] .globe-region-speed {
+    background: color-mix(in oklch, var(--background) 88%, transparent);
+    border-color: color-mix(in oklch, var(--foreground) 14%, transparent);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  }
+
   @keyframes globe-ground-pulse-online {
     0% {
       transform: scale(0.35);
@@ -2874,6 +2959,7 @@
 
   @supports not (anchor-name: --test) {
     .globe-region-pulse,
+    .globe-region-speed,
     .globe-selected-overlay {
       display: none;
     }

@@ -134,6 +134,13 @@ interface RegionMarker extends Marker {
   onlineNodes: number;
   status: RegionStatus;
   primaryNodeId: string;
+  /** Aggregated upload / download speed (bytes per second) summed across
+   *  every *online* node in this region. Zero for offline-only regions.
+   *  Drives the small speed pill that floats below each marker while the
+   *  hub-and-spoke arc system is active — gives viewers an at-a-glance
+   *  sense of which spoke is actually moving data. */
+  netUp: number;
+  netDown: number;
   nodes: {
     uuid: string;
     name: string;
@@ -207,6 +214,8 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
       location: [number, number];
       total: number;
       online: number;
+      netUp: number;
+      netDown: number;
       primaryNodeId: string;
       primaryNodeOnline: boolean;
       nodes: {
@@ -222,12 +231,21 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
       const coords = getCoords(emoji);
       if (coords[0] === 0 && coords[1] === 0) continue;
 
+      // Only count traffic from online nodes — offline `stats` is stale by
+      // definition, and including it would make the pill claim a region is
+      // "moving data" when nothing is actually responding.
+      const isOnline = node.status === 'online';
+      const nodeUp = isOnline ? (node.stats?.network.up ?? 0) : 0;
+      const nodeDown = isOnline ? (node.stats?.network.down ?? 0) : 0;
+
       const existing = byEmoji.get(emoji);
       if (existing) {
         existing.total += 1;
         existing.nodes.push({ uuid: node.uuid, name: node.name, status: node.status });
-        if (node.status === 'online') {
+        if (isOnline) {
           existing.online += 1;
+          existing.netUp += nodeUp;
+          existing.netDown += nodeDown;
           if (!existing.primaryNodeOnline) {
             existing.primaryNodeId = node.uuid;
             existing.primaryNodeOnline = true;
@@ -239,9 +257,11 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
           regionText: extractRegionText(node.region),
           location: coords,
           total: 1,
-          online: node.status === 'online' ? 1 : 0,
+          online: isOnline ? 1 : 0,
+          netUp: nodeUp,
+          netDown: nodeDown,
           primaryNodeId: node.uuid,
-          primaryNodeOnline: node.status === 'online',
+          primaryNodeOnline: isOnline,
           nodes: [{ uuid: node.uuid, name: node.name, status: node.status }],
         });
       }
@@ -269,6 +289,8 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
         onlineNodes: r.online,
         status,
         primaryNodeId: r.primaryNodeId,
+        netUp: r.netUp,
+        netDown: r.netDown,
         nodes: r.nodes,
       };
     });
@@ -787,6 +809,22 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
           />,
           cobeWrapper
         ))}
+        {/* Per-marker speed pill — only mounted while the hub-and-spoke arc
+            system is active. Offline-only regions are excluded (no
+            meaningful traffic to show). The hub itself keeps a pill too:
+            it tells viewers what's coming in across the arcs in aggregate. */}
+        {cobeWrapper && hubRegionId && regionMarkers
+          .filter(region => region.status !== 'offline')
+          .map(region => createPortal(
+            <RegionSpeedOverlay
+              key={`speed-${region.id}`}
+              regionId={region.id}
+              netUp={region.netUp}
+              netDown={region.netDown}
+              isHub={region.id === hubRegionId}
+            />,
+            cobeWrapper
+          ))}
         {cobeWrapper && selectedRegion && createPortal(
           <SelectionOverlay
             regionId={selectedRegion.region.id}
@@ -865,6 +903,69 @@ const RegionPulseOverlay = memo(function RegionPulseOverlay({
       <span className="globe-region-pulse-ring" />
       <span className="globe-region-pulse-ring globe-region-pulse-ring-delay" />
     </button>
+  );
+});
+
+/* ─────────── Per-marker speed pill ───────────
+ * A compact mono "↑X ↓Y" badge anchored below each region marker while the
+ * hub-and-spoke arc system is active. It answers the question the arcs
+ * themselves can't: "which spokes are actually moving data right now, and
+ * how much?". The arc animation alone reads as binary (line is there / not
+ * there) — the pill turns that into a quantitative signal.
+ *
+ * Design choices:
+ *   - Anchored BELOW the marker via `top: anchor(center)` + translate, so it
+ *     never collides with the `SelectionOverlay` label which floats above.
+ *   - Same `--vis` bridge as the other overlays: invisible + blurred when
+ *     the marker rotates to the back of the globe.
+ *   - Two color-coded values (up = positive/success, down = primary/cyan)
+ *     match the conventions used elsewhere (NodeCard, NodeTable, sidebar).
+ *   - memo() so the 2s WebSocket tick only re-renders pills whose numbers
+ *     actually changed (most regions are idle most of the time).
+ */
+interface RegionSpeedOverlayProps {
+  regionId: string;
+  netUp: number;
+  netDown: number;
+  /** Hub marker is visually larger (48px vs 34px), so its pill needs a
+   *  bigger offset to stay clear of the southern crosshair tick. */
+  isHub: boolean;
+}
+
+/** Compact byte-rate formatter — matches `GlobeTelemetryFeed`'s `fmtSpeed`
+ *  so the same value rendered in the bottom ticker and on a marker pill
+ *  reads identically. Drops the "/s" suffix to keep the pill narrow. */
+function fmtSpeedCompact(bps: number): string {
+  if (bps >= 1_073_741_824) return (bps / 1_073_741_824).toFixed(1) + 'G';
+  if (bps >= 1_048_576) return (bps / 1_048_576).toFixed(1) + 'M';
+  if (bps >= 1024) return (bps / 1024).toFixed(0) + 'K';
+  return Math.round(bps) + 'B';
+}
+
+const RegionSpeedOverlay = memo(function RegionSpeedOverlay({
+  regionId,
+  netUp,
+  netDown,
+  isHub,
+}: RegionSpeedOverlayProps) {
+  const style = {
+    positionAnchor: `--cobe-${regionId}`,
+    ['--vis' as string]: `var(--cobe-visible-${regionId}, 0)`,
+  } as React.CSSProperties;
+
+  const up = fmtSpeedCompact(netUp);
+  const down = fmtSpeedCompact(netDown);
+
+  return (
+    <div
+      className={`globe-region-speed${isHub ? ' is-hub' : ''}`}
+      style={style}
+      aria-hidden
+    >
+      <span className="globe-region-speed-up">↑{up}</span>
+      <span className="globe-region-speed-sep" aria-hidden />
+      <span className="globe-region-speed-down">↓{down}</span>
+    </div>
   );
 });
 

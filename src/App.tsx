@@ -633,23 +633,6 @@ function Dashboard() {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   Clock — isolated to avoid re-rendering entire App every second
-   ══════════════════════════════════════════════════════════════ */
-const ClockDisplay = memo(function ClockDisplay() {
-  const [time, setTime] = useState(new Date());
-  useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-  return (
-    <div className="flex items-center gap-2 px-1.5 py-0.5 rounded text-muted-foreground">
-      <Clock className="h-3 w-3 shrink-0 opacity-80" aria-hidden />
-      <span className="font-metric tabular-nums text-foreground/90">{time.toLocaleTimeString()}</span>
-    </div>
-  );
-});
-
-/* ══════════════════════════════════════════════════════════════
    App Shell
    ══════════════════════════════════════════════════════════════ */
 function App() {
@@ -972,8 +955,6 @@ function App() {
               <div className="flex items-center gap-3">
                 <WebSocketStatus />
                 <span className="hidden sm:inline text-muted-foreground/30">|</span>
-                <span className="hidden sm:inline"><ClockDisplay /></span>
-                <span className="hidden sm:inline text-muted-foreground/60">|</span>
                 <div className="hidden sm:flex items-center gap-2 font-metric tabular-nums">
                   <span>↑ {formatSpeed(networkStats.totalUp)}</span>
                   <span>↓ {formatSpeed(networkStats.totalDown)}</span>
