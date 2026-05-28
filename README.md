@@ -3,94 +3,92 @@
 ![GitHub License](https://img.shields.io/github/license/wayjam/komari-theme-commander)
 ![GitHub Release](https://img.shields.io/github/v/release/wayjam/komari-theme-commander)
 
-![screenshot](https://raw.githubusercontent.com/wayjam/komari-theme-commander/main/preview.png)
+![Commander Theme — DeepSpace + Lumina preview](https://raw.githubusercontent.com/wayjam/komari-theme-commander/main/preview.png)
 
 > 一个为 [Komari Monitor](https://github.com/komari-monitor/komari) 量身打造的现代化指挥官主题，融合赛博朋克美学与终端 HUD 风格，提供沉浸式的服务器监控体验。
 
 ## 🚀 Quick Start
 
-- 从 Release 下载主题 zip 包，上传到 Komari 后台即可。
-- 或在 Komari 后台填写主题 URL：`https://github.com/wayjam/komari-theme-commander` 
+- 从 [Release](https://github.com/wayjam/komari-theme-commander/releases) 下载主题 zip 包，上传到 Komari 后台即可。
+- 或在 Komari 后台填写主题 URL：`https://github.com/wayjam/komari-theme-commander`
 
 ## ✨ 核心特性
 
 ### 🎨 三款精心设计的主题
 
-- **Lumina（光明）** — 清新明亮的浅色主题，适合日间使用
-- **DeepSpace（深空）** — 赛博朋克风格的深色主题，带有星空特效和扫描线
-- **Clean（简洁）** — 极简主义设计，专注信息呈现
+| Lumina（光明） | DeepSpace（深空） | Clean（简洁） |
+| :---: | :---: | :---: |
+| 清新明亮的浅色主题<br/>带极简扫描线与发光描边 | 赛博朋克风格的深色主题<br/>星空背景 + 终端 HUD 装饰 | 极简主义浅色主题<br/>无装饰，专注信息呈现 |
+
+> 支持 **auto** 模式，自动跟随系统配色（light → Lumina，dark → DeepSpace）。
 
 ### 🌍 多维视图体系
 
-- **Globe View（地球视图）** — 基于 3D 地球可视化展示全球服务器分布，支持交互式旋转和节点选择
-- **Grid View（网格视图）** — 卡片式布局，展示节点实时状态和资源使用情况
-- **Table View（表格视图）** — 紧凑型表格，适合管理大量节点
-- **Uptime View（在线时长视图）** — 节点可用性排行榜，快速识别稳定性
+- **Globe View（地球视图）** — 基于 3D 点状地球可视化展示全球服务器分布，支持交互式旋转、节点高亮、Hub 节点弧线动画
+- **Grid View（网格视图）** — 卡片式布局，三段式阈值告警（normal / warning / critical），单卡即可看全实时指标
+- **Table View（表格视图）** — 紧凑型表格 + 内嵌迷你流量趋势图，适合管理大量节点
+- **Uptime View（在线时长视图）** — 节点可用性时间线 + SLO 评分，快速识别稳定性问题
 
 ### 📊 强大的数据可视化
 
 - **实时监控面板** — WebSocket 2 秒轮询，展示 CPU/RAM/Disk/Network/Uptime 实时数据
-- **历史图表分析** — 支持 1h/6h/24h/7d 时间范围切换，包含：
-  - CPU 使用率趋势
-  - 系统负载（Load 1/5/15）
-  - 内存与 Swap 使用情况
-  - 磁盘空间变化
-  - TCP/UDP 连接数
-  - 网络流量（双向上下行）
-  - Ping 延迟监控
-- **智能状态指示** — 三级阈值告警（正常/警告/严重），颜色编码清晰易读
+- **节点详情页（Charts）** — 环形进度 + 系统硬件信息卡片 + 时序图表（CPU、负载、内存 + Swap、磁盘、TCP/UDP 连接数、网络流量、Ping 延迟）
+- **专属网络页（Network）** — 上传/下载实时速率、累计流量、连接数变化、面积式流量图
+- **智能状态指示** — 三级阈值告警（正常 / 警告 / 严重），颜色编码清晰易读
+- **时间范围切换** — 1H / 6H / 24H / 7D / 30D 灵活回溯
 
 ### 🎯 高级功能
 
-- **智能过滤系统** — 支持按组、标签、在线状态多维度筛选节点
-- **侧边栏详情视图** — Globe 视图中点击节点可在侧边栏展开完整系统信息和资源图表
-- **流量限制监控** — 可视化展示流量配额使用情况（支持上行/下行/总量）
+- **智能过滤系统** — 支持按组、标签、在线状态多维度筛选节点；侧边节点流支持按 CPU / 流量排序
+- **Globe Hub 模式** — 配置任意节点为「中枢」后，地球上会以该节点为中心绘制到其它在线节点的弧线动画
+- **隐私模式（Privacy Mode）** — 一键将所有节点名替换为随机假名（如 `Sierra-Host-426`），适合公开分享演示
+- **流量配额监控** — 可视化展示流量使用情况（支持 MAX / ↑+↓ 多种统计口径）
 - **到期时间提醒** — 自动计算并高亮显示即将到期的节点
 - **自动重连机制** — WebSocket 断线自动重连，保证数据连续性
 - **响应式设计** — 完美适配桌面端、平板和移动设备
 
 ### 🌐 国际化支持
 
-- 内置简体中文、繁体中文、英文三语言
+- 内置 **English / 简体中文 / 繁體中文** 三语
 - 基于 i18next，浏览器语言自动检测
-- 用户偏好持久化存储
+- 用户偏好持久化存储（`localStorage`）
 
-### 📸 主题预览
+## 📸 主题预览
 
-更多截图请参见 [`images/screenshot/`](./images/screenshot/) 目录。
+完整截图预览请参见 [`images/screenshot/README.md`](./images/screenshot/README.md)。
 
 ## ⚙️ 主题配置
 
-主题提供后台可视化配置面板：
+主题在 Komari 后台的 **Theme Settings** 面板提供可视化配置，所有修改实时生效。
 
 ### 视图设置（View Settings）
 
 | 配置项 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
-| Default View | 下拉选择 | `globe` | 用户首次访问时展示的视图模式（globe/grid/table/uptime） |
-| Enable Globe View | 开关 | ✅ | 是否显示 3D 地球视图选项 |
-| Enable Uptime View | 开关 | ✅ | 是否显示在线时长排行视图选项 |
+| `default_view` | select | `globe` | 首次访问时展示的视图模式（`globe` / `grid` / `table` / `uptime`） |
+| `enable_globe` | switch | ✅ | 是否显示 3D 地球视图选项 |
+| `globe_hub_node` | string | 空 | 指定一个节点名作为地球中枢；启用后该节点会被点亮，并绘制到其它在线节点的弧线动画。即使开启隐私模式，此处仍需填写**真实节点名** |
+| `globe_respect_reduced_motion` | switch | ❌ | 开启后，对偏好「减少动效」的用户暂停地球自动旋转（仍可手动拖拽） |
+| `enable_uptime` | switch | ✅ | 是否显示在线时长排行视图选项 |
 
 ### 外观设置（Appearance）
 
 | 配置项 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
-| Default Theme | 下拉选择 | `lumina` | 首次访问者的默认颜色主题（lumina/deepspace/clean） |
-| Custom Footer Text | 文本 | 空 | 自定义页脚区域显示的文本内容 |
+| `default_theme` | select | `clean` | 首次访问者的默认配色主题（`lumina` / `deepspace` / `clean` / `auto`）。`auto` 会跟随系统：light → Lumina，dark → DeepSpace |
+| `custom_footer` | string | 空 | 自定义页脚区域显示的文本内容 |
 
 ### 隐私设置（Privacy）
 
 | 配置项 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
-| Enable Privacy Mode | 开关 | ❌ | 开启后，未登录用户看到的所有节点名称将自动替换为随机生成的假名称以保护隐私；已登录用户默认不启用，但可通过头部按钮手动切换 |
-
-配置项通过 Komari 后台的 `Theme Settings` 面板进行调整，实时生效。
+| `enable_privacy_mode` | switch | ❌ | 开启后，未登录用户看到的所有节点名称将自动替换为随机生成的假名称以保护隐私；已登录用户默认不启用，但可通过头部按钮手动切换 |
 
 ## ⚙️ Development
 
 ### 前置要求
 
-- Node.js 18+ 
+- Node.js 18+
 - pnpm 8+
 
 ### 安装依赖
@@ -107,7 +105,7 @@ pnpm install
 pnpm run dev
 ```
 
-Vite 开发服务器将在 `http://localhost:5173` 启动，支持 HMR 热更新。
+Vite 开发服务器将在 `http://localhost:5173` 启动，支持 HMR 热更新。开发环境通过环境变量 `VITE_KOMARI_BACKEND_URL` 指向真实 Komari 后端（参考 `.env.example`）。
 
 ### 构建生产版本
 
@@ -122,6 +120,8 @@ pnpm run build
 ```bash
 pnpm run package
 ```
+
+将 `dist/`、`komari-theme.json`、`preview.png` 打包成 `komari-theme-commander.zip`，可直接上传至 Komari 后台。
 
 ## 🤝 贡献指南
 
