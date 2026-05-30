@@ -16,8 +16,6 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip
 import { RemarkNote } from './RemarkNote';
 import { TagPill } from './TagPill';
 import { parseTagList } from '@/lib/parseTags';
-import prettyBytes from 'pretty-bytes';
-
 interface SidebarProps {
   nodes: NodeWithStatus[];
   loading?: boolean;
@@ -767,7 +765,7 @@ function NodeDetailView({
                     <MemoryStick className="h-3.5 w-3.5 text-primary" />
                     <span className="text-xs font-mono font-bold">{t('label.ram')}</span>
                     <span className="text-xs text-muted-foreground font-metric">
-                      {prettyBytes(stats.ram.used)}/{prettyBytes(stats.ram.total)}
+                      {formatBytes(stats.ram.used)}/{formatBytes(stats.ram.total)}
                     </span>
                   </div>
                   <span className={cn('text-xs font-metric font-bold', {
@@ -788,7 +786,7 @@ function NodeDetailView({
                       <Layers className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="text-xs font-mono font-bold">{t('label.swap')}</span>
                     <span className="text-xs text-muted-foreground font-metric">
-                        {prettyBytes(stats.swap.used)}/{prettyBytes(stats.swap.total)}
+                        {formatBytes(stats.swap.used)}/{formatBytes(stats.swap.total)}
                     </span>
                     </div>
                     <span className="text-xs font-metric font-bold">
@@ -806,7 +804,7 @@ function NodeDetailView({
                     <HardDrive className="h-3.5 w-3.5 text-primary" />
                     <span className="text-xs font-mono font-bold">{t('label.disk')}</span>
                     <span className="text-xs text-muted-foreground font-metric">
-                      {prettyBytes(stats.disk.used)}/{prettyBytes(stats.disk.total)}
+                      {formatBytes(stats.disk.used)}/{formatBytes(stats.disk.total)}
                     </span>
                   </div>
                   <span className={cn('text-xs font-metric font-bold', {

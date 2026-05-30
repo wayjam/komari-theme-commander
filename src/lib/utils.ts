@@ -79,9 +79,17 @@ export function formatSpeedParts(bytesPerSecond: number): { value: string; unit:
   return { value, unit: `${units[i]}/s` };
 }
 
-/** Format bytes */
+/**
+ * Format a byte count using binary (1024-based) IEC units (GiB/MiB/KiB).
+ *
+ * Komari reports all capacity/total byte values in binary units — e.g.
+ * `traffic_limit = 214748364800 = 200 * 1024^3` (200 GiB). A decimal
+ * (1000-based) formatter would render that as "215 GB", so capacities must use
+ * the binary base. Network *speed* stays decimal/SI (see `formatSpeed`).
+ */
 export function formatBytes(bytes: number): string {
-  return prettyBytes(bytes);
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+  return prettyBytes(bytes, { binary: true });
 }
 
 export type UptimePrecision = 'year' | 'month' | 'day' | 'hour' | 'minute';
