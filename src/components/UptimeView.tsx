@@ -610,7 +610,6 @@ export function UptimeView({ nodes }: UptimeViewProps) {
       { label: t('uptime.axisThreeQuarter') },
       { label: t('time.now') },
     ];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [range.hours, t]);
 
   return (

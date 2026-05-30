@@ -149,11 +149,11 @@ export default defineConfig(({ mode }) => {
           // visitors only re-download the small `entry` chunk. Lazy view code
           // (charts/globe) stays isolated so it never enters first paint.
           manualChunks: {
-            "react-vendor": ["react", "react-dom", "react-router", "react-router-dom"],
+            "react-vendor": ["react", "react-dom", "react-router-dom"],
             i18n: ["i18next", "react-i18next", "i18next-browser-languagedetector"],
             charts: ["recharts"],
             globe: ["cobe", "world-countries"],
-            motion: ["motion", "framer-motion"],
+            motion: ["motion"],
             icons: ["react-icons/si", "react-icons/fa", "lucide-react"],
             sonner: ["sonner"],
           },

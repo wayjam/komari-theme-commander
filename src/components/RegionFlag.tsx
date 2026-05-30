@@ -5,7 +5,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 type RegionFlagSize = 'sm' | 'md' | 'lg';
 type RegionFlagTooltipSide = 'top' | 'right' | 'bottom' | 'left';
 
-export function getRegionDisplayName(region?: string): string {
+function getRegionDisplayName(region?: string): string {
   if (!region) return '';
   const text = extractRegionText(region);
   if (text) return text;
