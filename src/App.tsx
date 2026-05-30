@@ -144,7 +144,7 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
     <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl p-4 sm:p-5 commander-corners relative overflow-hidden">
       <div className="commander-scanner-effect" />
       <span className="corner-bottom" />
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-2">
       {hasTagStrip && (
         <div className="flex flex-wrap items-center gap-1.5 text-xs font-mono">
           {node.group && (
