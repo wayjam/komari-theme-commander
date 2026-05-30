@@ -77,7 +77,7 @@ export function ViewTabs<T extends string>({
       role="tablist"
       aria-label={t('view.tablistLabel', { defaultValue: 'View mode' })}
       className={cn(
-        'relative inline-flex items-center rounded-md p-0.5',
+        'relative inline-flex max-w-full min-w-0 items-center rounded-md p-0.5',
         // Restrained tinted background — sits at the same visual weight as ghost icon buttons next to it.
         'bg-muted/40 border border-border/40',
         // Theme-specific finishing
@@ -119,7 +119,7 @@ export function ViewTabs<T extends string>({
             onClick={() => onChange(mode)}
             title={label}
             className={cn(
-              'relative z-10 inline-flex items-center justify-center gap-1.5 h-7 px-2 rounded',
+              'relative z-10 inline-flex h-9 min-w-9 shrink-0 items-center justify-center gap-1.5 rounded px-2.5 sm:h-7 sm:min-w-0 sm:px-2',
               'text-xxs font-mono font-bold uppercase tracking-[0.14em]',
               'transition-colors duration-200 ease-out cursor-pointer',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1 focus-visible:ring-offset-background',

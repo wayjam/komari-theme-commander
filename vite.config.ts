@@ -3,6 +3,7 @@ import fs from "fs"
 import { defineConfig, loadEnv, type Plugin } from "vite"
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react-swc"
+import { VitePWA } from "vite-plugin-pwa"
 import { worldCountriesFilter } from "./scripts/vite-plugin-world-countries-filter"
 
 /**
@@ -56,10 +57,80 @@ export default defineConfig(({ mode }) => {
       // scanner entirely, switch to `mode: "manual"`.
       worldCountriesFilter({
         mode: "merge",
-        fields: ["flag", "latlng"],
+        fields: ["flag", "latlng", "name"],
       }),
       tailwindcss(),
       react(),
+      // ── PWA ────────────────────────────────────────────────────────────
+      // This is a *Komari theme*, served at the site root "/". The service
+      // worker therefore has scope "/" and could otherwise hijack pages that
+      // are NOT controlled by the theme (`/admin`, `/terminal`) and the live
+      // RPC2 data channel (`/api/*`, including the WebSocket). We deliberately:
+      //   • precache only the static app shell (+ remote Orbitron font),
+      //   • use `prompt` updates (user-driven, no silent reload),
+      //   • deny-list `/admin`, `/terminal`, `/api` from the SPA navigate
+      //     fallback so those keep hitting the real backend,
+      //   • never runtime-cache the live API/WebSocket (offline data is
+      //     handled at the app layer via localStorage snapshots instead).
+      VitePWA({
+        registerType: "prompt",
+        injectRegister: null,
+        includeAssets: ["favicon.ico", "favicon.svg", "apple-touch-icon.png"],
+        manifest: {
+          id: "/",
+          name: "Komari Monitor",
+          short_name: "Komari",
+          description: "A simple server monitor tool.",
+          lang: "en",
+          theme_color: "#0a0e14",
+          background_color: "#0a0e14",
+          display: "standalone",
+          orientation: "any",
+          scope: "/",
+          start_url: "/",
+          icons: [
+            { src: "/pwa-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+            { src: "/pwa-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+            { src: "/maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+          ],
+        },
+        workbox: {
+          globPatterns: ["**/*.{js,css,html,svg,png,ico,webp,woff,woff2}"],
+          // Globe / charts chunks can be large; precache them for offline shell.
+          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+          cleanupOutdatedCaches: true,
+          clientsClaim: true,
+          // SPA fallback — but keep non-theme + live API routes off the SW.
+          navigateFallback: "index.html",
+          navigateFallbackDenylist: [/^\/admin/, /^\/terminal/, /^\/api/],
+          runtimeCaching: [
+            {
+              // Orbitron stylesheet (Google Fonts CSS)
+              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+              handler: "StaleWhileRevalidate",
+              options: {
+                cacheName: "google-fonts-stylesheets",
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+            {
+              // Orbitron font files (gstatic)
+              urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+              handler: "CacheFirst",
+              options: {
+                cacheName: "google-fonts-webfonts",
+                expiration: { maxEntries: 16, maxAgeSeconds: 60 * 60 * 24 * 365 },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+          ],
+        },
+        devOptions: {
+          // Keep the SW off during `vite dev` so it can't interfere with the
+          // /api proxy or HMR. Enable manually when debugging PWA behaviour.
+          enabled: false,
+        },
+      }),
     ],
     resolve: {
       alias: {
@@ -71,10 +142,20 @@ export default defineConfig(({ mode }) => {
       chunkSizeWarningLimit: 800,
       rollupOptions: {
         output: {
+          // Split long-lived, rarely-changing vendor code into its own
+          // cacheable chunks. First-paint download size is unchanged (all of
+          // these are needed on first paint), but shipping an app-code edit no
+          // longer busts the hash of React/router/i18n/motion/icons — repeat
+          // visitors only re-download the small `entry` chunk. Lazy view code
+          // (charts/globe) stays isolated so it never enters first paint.
           manualChunks: {
+            "react-vendor": ["react", "react-dom", "react-router", "react-router-dom"],
+            i18n: ["i18next", "react-i18next", "i18next-browser-languagedetector"],
             charts: ["recharts"],
             globe: ["cobe", "world-countries"],
-            ui: ["motion", "sonner"],
+            motion: ["motion", "framer-motion"],
+            icons: ["react-icons/si", "react-icons/fa", "lucide-react"],
+            sonner: ["sonner"],
           },
           chunkFileNames: "assets/chunk-[name]-[hash].js",
           entryFileNames: "assets/entry-[name]-[hash].js",

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, useCallback, useImperativeHandle, useState, forwardRef, memo } from 'react';
+import { useEffect, useLayoutEffect, useRef, useMemo, useCallback, useImperativeHandle, useState, forwardRef, memo } from 'react';
 import { createPortal } from 'react-dom';
 import createGlobe, { type Marker, type Arc } from 'cobe';
 import type { NodeWithStatus } from '@/services/api';
@@ -196,6 +196,14 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
   // selection overlay must portal into that same wrapper for CSS
   // `position-anchor: --cobe-{id}` to resolve against cobe's anchors.
   const [cobeWrapper, setCobeWrapper] = useState<HTMLElement | null>(null);
+
+  // Mobile portrait exposed a subtle sizing bug: CSS `height: 100%` +
+  // `aspect-ratio: 1` can still resolve to a non-square used size when the
+  // parent is taller than it is wide and `max-width: 100%` clamps only one
+  // axis. cobe then renders into a square backing buffer but CSS stretches
+  // it into a rectangle. Measure the available slot and force the host to a
+  // concrete square: min(parent width, parent height).
+  const globeSlotRef = useRef<HTMLDivElement>(null);
 
   const rotateToLocation = useCallback((lat: number, lng: number) => {
     const [phi, theta] = latLngToAngles(lat, lng);
@@ -401,6 +409,44 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [selectedNodeId, onClearSelection]);
+
+  /* ─────────── Measure square viewport ─────────── */
+  useLayoutEffect(() => {
+    const slot = globeSlotRef.current;
+    const host = canvasHostRef.current;
+    if (!slot || !host) return;
+
+    let rafId = 0;
+    let lastSize = 0;
+    const applySquareSizeNow = () => {
+      const rect = slot.getBoundingClientRect();
+      const next = Math.floor(Math.max(0, Math.min(rect.width, rect.height)));
+      if (!next || next === lastSize) return;
+      lastSize = next;
+      // Concrete pixel dimensions beat the ambiguous `height:100% +
+      // aspect-ratio` combination and keep cobe's wrapper/canvas/anchors
+      // in the same square coordinate system on every viewport.
+      host.style.width = `${next}px`;
+      host.style.height = `${next}px`;
+    };
+    const scheduleSquareSize = () => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(applySquareSizeNow);
+    };
+
+    // Synchronous first measurement: passive cobe init below reads
+    // `host.clientWidth`, so the host must already be square before then.
+    applySquareSizeNow();
+    const resizeObserver = new ResizeObserver(scheduleSquareSize);
+    resizeObserver.observe(slot);
+    window.addEventListener('orientationchange', scheduleSquareSize);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      resizeObserver.disconnect();
+      window.removeEventListener('orientationchange', scheduleSquareSize);
+    };
+  }, []);
 
   /* ─────────── Create globe (once on mount) ─────────── */
   useEffect(() => {
@@ -769,21 +815,20 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
   }, [onSelectNode]);
 
   return (
-    <div className={`relative flex items-center justify-center ${className ?? ''}`}>
-      {/* Stable square host. The aspect-ratio constraint + min sizing keeps
-          the host a perfect square regardless of parent aspect ratio, so
+    <div ref={globeSlotRef} className={`relative flex items-center justify-center ${className ?? ''}`}>
+      {/* Stable square host. The layout effect above writes concrete
+          `width`/`height` pixels based on min(slot width, slot height), so
           cobe's wrapper (and the canvas + anchor divs inside it) all share
-          the same square coordinate space. Without this the parent's flex
-          centering is defeated by cobe's `width:100%; height:100%` wrapper
-          and the globe drifts to the upper-left corner. */}
+          the same square coordinate space. The inline CSS below is only a
+          non-distorting fallback before JS runs. */}
       <div
         ref={canvasHostRef}
-        className="relative"
+        className="relative shrink-0"
         onClick={handleGlobeClick}
         style={{
-          aspectRatio: '1',
-          height: '100%',
-          maxHeight: '100%',
+          aspectRatio: '1 / 1',
+          width: 'min(100%, 100svh)',
+          height: 'auto',
           maxWidth: '100%',
         }}
       >

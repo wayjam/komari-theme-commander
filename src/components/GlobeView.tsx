@@ -4,12 +4,15 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { Globe } from '@/components/Globe';
 import { Sidebar } from '@/components/Sidebar';
+import { MobileFleetSheet } from '@/components/MobileFleetSheet';
 import { HudSpinner } from './HudSpinner';
 import { GlobeTopStrip } from './GlobeTopStrip';
 import { GlobeTelemetryFeed } from './GlobeTelemetryFeed';
 import { useTheme } from '@/hooks/useTheme';
 import type { VisualTheme } from '@/hooks/useTheme';
 import { useAppConfig } from '@/hooks/useAppConfig';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { cn } from '@/lib/utils';
 import type { NodeWithStatus } from '@/services/api';
 
 interface GlobeViewProps {
@@ -26,6 +29,7 @@ export function GlobeView({ nodes, loading = false, onViewCharts, hubNodeUuid = 
   const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const { themeConfig } = useAppConfig();
+  const isMobile = useIsMobile(1024); // < lg → mobile/tablet portrait
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const clearSelection = useCallback(() => setSelectedNodeId(null), []);
 
@@ -49,7 +53,20 @@ export function GlobeView({ nodes, loading = false, onViewCharts, hubNodeUuid = 
   }
 
   return (
-    <div className="relative z-10 flex flex-col lg:flex-row gap-4 lg:gap-5 w-full h-[calc(100vh-theme(spacing.10)-theme(spacing.8)-theme(spacing.9)-2rem)] sm:h-[calc(100vh-theme(spacing.12)-theme(spacing.9)-3rem)]">
+    // Mobile (<lg): single column, globe stage owns full height; the
+    // fleet panel rides on top as a bottom sheet. Desktop (lg+): the
+    // original two-column row with a 22rem fixed-width sidebar.
+    //
+    // Height: use 100dvh on mobile so iOS Safari's address-bar collapse
+    // doesn't cause layout jumps, and subtract the visible header (~9 +
+    // mobile row 2 ~10 = ~76px) + footer (~36px) + main vertical padding
+    // (~40px). Desktop preserves the original 100vh-based formula.
+    <div
+      className={cn(
+        'relative z-10 flex flex-col lg:flex-row gap-4 lg:gap-5 w-full',
+        'h-[calc(100dvh-9.5rem)] sm:h-[calc(100dvh-10.5rem)] lg:h-[calc(100vh-theme(spacing.12)-theme(spacing.9)-3rem)]',
+      )}
+    >
       {/* Globe column — Top strip + Stage + Bottom feed */}
       {/* `min-w-0` is critical: stops nowrap children (top strip, telemetry feed)
           from inflating this flex item's intrinsic width and breaking layout. */}
@@ -130,19 +147,39 @@ export function GlobeView({ nodes, loading = false, onViewCharts, hubNodeUuid = 
           )}
         </div>
 
-        {/* ③ Bottom Telemetry Feed */}
-        <GlobeTelemetryFeed nodes={nodes} enabled={showFeed} />
+        {/* ③ Bottom Telemetry Feed — hidden on mobile so the bottom-sheet
+             handle isn't competing with another small chrome strip for the
+             user's eye. Desktop keeps the feed for ambience. */}
+        <div className="hidden lg:block">
+          <GlobeTelemetryFeed nodes={nodes} enabled={showFeed} />
+        </div>
       </div>
 
-      {/* Sidebar */}
+      {/* Sidebar — desktop right column */}
       <Sidebar
         nodes={nodes}
         loading={loading}
         selectedNodeId={selectedNodeId}
         onSelectNode={setSelectedNodeId}
         onViewCharts={onViewCharts}
-        className="w-full lg:w-[22rem] h-[50%] sm:h-[55%] lg:h-full shrink-0"
+        className="hidden lg:flex w-full lg:w-[22rem] h-full shrink-0"
       />
+
+      {/* Mobile fleet — bottom sheet overlay (handled inside MobileFleetSheet
+          which is `lg:hidden` itself). The Sidebar below is reused verbatim
+          inside the sheet, so the list/detail logic stays in one place. */}
+      {isMobile && (
+        <MobileFleetSheet nodes={nodes} selectedNodeId={selectedNodeId}>
+          <Sidebar
+            nodes={nodes}
+            loading={loading}
+            selectedNodeId={selectedNodeId}
+            onSelectNode={setSelectedNodeId}
+            onViewCharts={onViewCharts}
+            className="h-full"
+          />
+        </MobileFleetSheet>
+      )}
     </div>
   );
 }

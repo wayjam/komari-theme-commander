@@ -1,6 +1,7 @@
 // API Service — communicates with Komari backend via RPC2
 
 import { rpc2Client } from '@/lib/rpc2';
+import { offlineCache } from '@/lib/offlineCache';
 import type {
   RPC2NodeData,
   RPC2NodeStatus,
@@ -189,11 +190,19 @@ class ApiService {
         const result = await rpc2Client.call<undefined, Record<string, RPC2NodeData>>(
           'common:getNodes'
         );
-        if (!result) return [];
-        return Object.entries(result).map(([uuid, client]) => adaptNodeData(uuid, client));
+        if (!result) {
+          // Empty/missing payload — fall back to the last good snapshot so
+          // the UI keeps showing nodes when the backend is briefly down.
+          const cached = offlineCache.getNodes();
+          return cached?.data ?? [];
+        }
+        const nodes = Object.entries(result).map(([uuid, client]) => adaptNodeData(uuid, client));
+        if (nodes.length > 0) offlineCache.setNodes(nodes);
+        return nodes;
       } catch (error) {
         console.error('RPC2 getNodes failed:', error);
-        return [];
+        const cached = offlineCache.getNodes();
+        return cached?.data ?? [];
       }
     });
   }
@@ -326,10 +335,15 @@ class ApiService {
   async getPublicSettings(): Promise<Record<string, unknown> | null> {
     return dedup('getPublicSettings', async () => {
       try {
-        return await rpc2Client.call('common:getPublicInfo');
+        const result = await rpc2Client.call<undefined, Record<string, unknown>>('common:getPublicInfo');
+        if (result && Object.keys(result).length > 0) {
+          offlineCache.setPublicInfo(result);
+          return result;
+        }
+        return offlineCache.getPublicInfo()?.data ?? result ?? null;
       } catch (error) {
         console.error('RPC2 getPublicSettings failed:', error);
-        return null;
+        return offlineCache.getPublicInfo()?.data ?? null;
       }
     });
   }
@@ -379,6 +393,13 @@ export class WebSocketService {
   private onlineNodes: Set<string> = new Set();
   private nodeData: Map<string, NodeStats> = new Map();
   private pollingInterval: ReturnType<typeof setInterval> | null = null;
+  /** True once we've delivered at least one *fresh* snapshot from the
+   *  backend. Used to decide whether an offline-cache replay is still
+   *  useful (we don't want to overwrite live data with stale data). */
+  private hasFreshSnapshot = false;
+  /** ms epoch of the most recent successful fetch, or 0 when we've only
+   *  ever served from the offline cache. Exposed for "stale data" UI. */
+  private lastUpdatedAt = 0;
 
   connect() {
     // Ensure RPC2 client is connected
@@ -388,6 +409,12 @@ export class WebSocketService {
     if (import.meta.env.DEV) {
       console.info('[Komari] WebSocket (RPC2) connected');
     }
+    // Warm the UI with the most recent persisted snapshot — this avoids
+    // an empty dashboard for the first ~RTT after a cold load and is
+    // the primary "offline data" experience: when the backend is truly
+    // unreachable the live fetch below will fail and we'll keep this
+    // pre-rendered state on screen instead of showing nothing.
+    this.replayFromCache();
     // Initial data fetch
     this.fetchLatestStatus();
   }
@@ -398,7 +425,11 @@ export class WebSocketService {
       const result = await rpc2Client.call<undefined, Record<string, RPC2NodeStatus>>(
         'common:getNodesLatestStatus'
       );
-      if (!result) return;
+      if (!result) {
+        // Backend returned nothing — keep whatever we already have
+        // (either a cache replay or a previous fresh snapshot).
+        return;
+      }
 
       // Extract online node list
       const onlineList: string[] = [];
@@ -413,6 +444,12 @@ export class WebSocketService {
 
       this.onlineNodes = new Set(onlineList);
       this.nodeData = new Map(Object.entries(dataMap));
+      this.hasFreshSnapshot = true;
+      this.lastUpdatedAt = Date.now();
+
+      // Persist for next cold load (throttled internally to avoid
+      // serialising on every 2 s tick).
+      offlineCache.setStatuses(onlineList, dataMap);
 
       // Notify all listeners (format compatible with original WebSocket)
       this.listeners.forEach(listener => listener({
@@ -421,7 +458,30 @@ export class WebSocketService {
       }));
     } catch (error) {
       console.error('RPC2 fetchLatestStatus failed:', error);
+      // Surface the cached snapshot if we never got a fresh one this
+      // session — gives the user "last known" data instead of an empty
+      // dashboard while the backend is unreachable.
+      if (!this.hasFreshSnapshot) this.replayFromCache();
     }
+  }
+
+  /**
+   * Restore the most recent persisted snapshot into in-memory state and
+   * notify listeners. Cheap & idempotent — the sets/maps are simply
+   * rebuilt; if the cache is empty this is a no-op. We deliberately do
+   * NOT mark `hasFreshSnapshot` here so that a successful fetch can still
+   * overwrite us with live data.
+   */
+  private replayFromCache() {
+    const cached = offlineCache.getStatuses();
+    if (!cached || cached.data.online.length === 0 && Object.keys(cached.data.data).length === 0) {
+      return;
+    }
+    const { online, data } = cached.data;
+    this.onlineNodes = new Set(online);
+    this.nodeData = new Map(Object.entries(data));
+    this.lastUpdatedAt = cached.capturedAt;
+    this.listeners.forEach(listener => listener({ online, data }));
   }
 
   send(data: string) {
@@ -448,6 +508,16 @@ export class WebSocketService {
 
   getNodeData(uuid: string): NodeStats | undefined {
     return this.nodeData.get(uuid);
+  }
+
+  /** ms epoch of the most recent successful fetch (0 if only cache served). */
+  getLastUpdatedAt(): number {
+    return this.lastUpdatedAt;
+  }
+
+  /** True once at least one fresh snapshot has been delivered this session. */
+  hasFreshData(): boolean {
+    return this.hasFreshSnapshot;
   }
 
   /** Expose ws property for WebSocketStatus component compatibility */

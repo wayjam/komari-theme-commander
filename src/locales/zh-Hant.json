@@ -34,6 +34,11 @@
     "region": "區域",
     "kernel": "核心",
     "load1m": "1 分鐘",
+    "netFlow": "網路流量",
+    "uploadShort": "上行",
+    "downloadShort": "下行",
+    "total": "累計",
+    "coreBaseline": "{{count}} 核基準",
     "load5m": "5 分鐘",
     "load15m": "15 分鐘",
     "lastReport": "上次更新",
@@ -70,7 +75,10 @@
     "retry": "重試",
     "charts": "圖表",
     "detail": "詳情",
-    "refresh": "重新整理"
+    "refresh": "重新整理",
+    "close": "關閉",
+    "collapse": "收起艦隊",
+    "expand": "展開艦隊"
   },
   "view": {
     "globe": "地球",
@@ -257,5 +265,19 @@
       "linkEstablished": "鏈路建立",
       "critical": "危急"
     }
+  },
+  "pwa": {
+    "updateAvailable": "發現新版本",
+    "updateBody": "重新整理以載入最新建置",
+    "updateAction": "立即重新整理",
+    "later": "稍後",
+    "offlineReady": "已可離線使用",
+    "offlineReadyBody": "應用外殼已快取到本裝置"
+  },
+  "offline": {
+    "badge": "離線",
+    "stale": "資料過時",
+    "tooltip": "已中斷連線 — 顯示 {{time}} 的最後快照",
+    "lastUpdated": "最後更新於 {{time}}"
   }
 }

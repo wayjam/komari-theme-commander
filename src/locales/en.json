@@ -34,6 +34,11 @@
     "region": "Region",
     "kernel": "Kernel",
     "load1m": "1 min",
+    "netFlow": "Network flow",
+    "uploadShort": "Up",
+    "downloadShort": "Down",
+    "total": "Total",
+    "coreBaseline": "{{count}}C baseline",
     "load5m": "5 min",
     "load15m": "15 min",
     "lastReport": "Last updated",
@@ -70,7 +75,10 @@
     "retry": "RETRY",
     "charts": "CHARTS",
     "detail": "DETAIL",
-    "refresh": "REFRESH"
+    "refresh": "REFRESH",
+    "close": "Close",
+    "collapse": "Collapse fleet",
+    "expand": "Expand fleet"
   },
   "view": {
     "globe": "GLOBE",
@@ -257,5 +265,19 @@
       "linkEstablished": "Link established",
       "critical": "Critical"
     }
+  },
+  "pwa": {
+    "updateAvailable": "New version available",
+    "updateBody": "Reload to switch to the latest build.",
+    "updateAction": "Reload",
+    "later": "Later",
+    "offlineReady": "Ready to work offline",
+    "offlineReadyBody": "The app shell is cached on this device."
+  },
+  "offline": {
+    "badge": "OFFLINE",
+    "stale": "STALE DATA",
+    "tooltip": "Lost connection — showing the last snapshot from {{time}}",
+    "lastUpdated": "Last update {{time}}"
   }
 }

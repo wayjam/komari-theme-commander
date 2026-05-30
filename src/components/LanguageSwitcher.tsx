@@ -18,7 +18,7 @@ function resolveLanguage(lang: string): SupportedLanguage {
 const MENU_ID = 'language-switcher-menu';
 
 const menuItemClass = cn(
-  'w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-left transition-colors cursor-pointer',
+  'w-full flex min-h-9 items-center gap-2.5 px-3 py-2 sm:py-1.5 rounded-md text-left transition-colors cursor-pointer',
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-popover',
 );
 
@@ -54,7 +54,7 @@ export function LanguageSwitcher() {
         variant="ghost"
         size="sm"
         onClick={() => setDropdownOpen(!dropdownOpen)}
-        className="h-7 w-7 p-0 text-xs font-mono cursor-pointer hover:bg-muted/50 transition-colors duration-200 ease-out"
+        className="h-9 w-9 p-0 text-xs font-mono cursor-pointer hover:bg-muted/50 transition-colors duration-200 ease-out sm:h-7 sm:w-7"
         aria-label={t('lang.select')}
         aria-expanded={dropdownOpen}
         aria-haspopup="menu"

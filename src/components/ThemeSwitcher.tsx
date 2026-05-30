@@ -16,7 +16,7 @@ const themeIcons: Record<VisualTheme, typeof Sun> = {
 };
 
 const menuItemClass = cn(
-  'w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-left transition-colors cursor-pointer',
+  'w-full flex min-h-9 items-center gap-2.5 px-3 py-2 sm:py-1.5 rounded-md text-left transition-colors cursor-pointer',
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-popover',
 );
 
@@ -85,7 +85,7 @@ export function ThemeSwitcher() {
               defaultValue: `Switch to ${nextLabel} theme`,
             })}
             className={cn(
-              'group relative h-7 w-7 inline-flex items-center justify-center',
+              'group relative h-9 w-9 sm:h-7 sm:w-7 inline-flex items-center justify-center',
               'rounded-l-md rounded-r-none',
               'text-foreground hover:text-primary hover:bg-muted/60',
               'transition-colors duration-200 ease-out cursor-pointer overflow-hidden',
@@ -137,7 +137,7 @@ export function ThemeSwitcher() {
             aria-controls={menuId}
             aria-label={t('theme.select')}
             className={cn(
-              'h-7 w-5 inline-flex items-center justify-center',
+              'h-9 w-8 sm:h-7 sm:w-5 inline-flex items-center justify-center',
               'rounded-r-md rounded-l-none',
               'text-muted-foreground hover:text-foreground hover:bg-muted/60',
               'transition-colors duration-200 ease-out cursor-pointer',

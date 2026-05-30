@@ -171,7 +171,7 @@ function ChartTooltipContent({
   return (
     <div
       className={cn(
-        "border-border/50 bg-background grid min-w-[8rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl",
+        "border-border/50 bg-background grid min-w-32 max-w-[calc(100vw-2rem)] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl wrap-break-word",
         className
       )}
     >
@@ -295,7 +295,7 @@ function ChartLegendContent({
   return (
     <div
       className={cn(
-        "flex items-center justify-center gap-4",
+        "flex max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-2 sm:gap-4",
         verticalAlign === "top" ? "pb-3" : "pt-3",
         className
       )}
@@ -310,7 +310,7 @@ function ChartLegendContent({
           <div
             key={dk || String(item.value)}
             className={cn(
-              "[&>svg]:text-muted-foreground flex items-center gap-1.5 [&>svg]:h-3 [&>svg]:w-3",
+              "[&>svg]:text-muted-foreground flex min-h-9 max-w-full items-center gap-1.5 rounded px-1.5 text-xs [&>svg]:h-3 [&>svg]:w-3 sm:min-h-0 sm:px-0",
               interactive && "cursor-pointer select-none transition-opacity",
               isInactive && "opacity-40 line-through decoration-muted-foreground/50"
             )}
@@ -332,7 +332,7 @@ function ChartLegendContent({
                 }}
               />
             )}
-            {itemConfig?.label}
+            <span className="min-w-0 truncate">{itemConfig?.label}</span>
           </div>
         )
       })}

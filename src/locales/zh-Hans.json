@@ -34,6 +34,11 @@
     "region": "区域",
     "kernel": "内核",
     "load1m": "1 分钟",
+    "netFlow": "网络流量",
+    "uploadShort": "上行",
+    "downloadShort": "下行",
+    "total": "累计",
+    "coreBaseline": "{{count}} 核基准",
     "load5m": "5 分钟",
     "load15m": "15 分钟",
     "lastReport": "上次更新",
@@ -70,7 +75,10 @@
     "retry": "重试",
     "charts": "图表",
     "detail": "详情",
-    "refresh": "刷新"
+    "refresh": "刷新",
+    "close": "关闭",
+    "collapse": "收起舰队",
+    "expand": "展开舰队"
   },
   "view": {
     "globe": "地球",
@@ -257,5 +265,19 @@
       "linkEstablished": "链路建立",
       "critical": "危急"
     }
+  },
+  "pwa": {
+    "updateAvailable": "发现新版本",
+    "updateBody": "刷新以加载最新构建",
+    "updateAction": "立即刷新",
+    "later": "稍后",
+    "offlineReady": "已可离线使用",
+    "offlineReadyBody": "应用外壳已缓存到本设备"
+  },
+  "offline": {
+    "badge": "离线",
+    "stale": "数据陈旧",
+    "tooltip": "已断开连接 — 显示 {{time}} 的最后快照",
+    "lastUpdated": "最后更新于 {{time}}"
   }
 }

@@ -10,6 +10,7 @@ import { RegionFlag } from './components/RegionFlag'
 import { RemarkNote } from './components/RemarkNote'
 import { TagPill } from './components/TagPill'
 import { parseTagList } from './lib/parseTags'
+import { getCommanderLogoDataUri } from './lib/commanderLogo'
 import { Button } from './components/ui/button'
 import { useNodes } from './hooks/useNodes'
 import { useEffects } from './hooks/useEffects'
@@ -23,7 +24,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 import { Routes, Route, useNavigate, useParams, useLocation, Link } from 'react-router-dom'
 import { apiService } from './services/api'
-import { formatSpeed, formatBytes, formatUptime, getUsageStatus, calcTrafficUsage, formatTrafficType, getExpiryStatus, formatExpiry, cn, extractRegionEmoji, extractRegionText } from './lib/utils'
+import { formatSpeed, formatBytes, formatUptime, getUsageStatus, calcTrafficUsage, formatTrafficType, getExpiryStatus, formatExpiry, cn } from './lib/utils'
 import { usePrivacyMode } from './hooks/usePrivacyMode'
 import type { TrafficLimitType } from './lib/utils'
 import type { NodeWithStatus } from './services/api'
@@ -158,15 +159,6 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
           {tagList.map((tag, i) => (
             <TagPill key={i} label={tag.label} color={tag.color} size="sm" />
           ))}
-          {node.region && (() => {
-            const regionText = extractRegionText(node.region);
-            const emoji = extractRegionEmoji(node.region);
-            const display = regionText || (emoji ? '' : node.region);
-            if (!display) return null;
-            return (
-              <span className="text-muted-foreground">{display}</span>
-            );
-          })()}
         </div>
       )}
 
@@ -544,7 +536,7 @@ function NodeDetailRoute() {
               aria-hidden
             />
           )}
-          {node?.region && <RegionFlag region={node.region} size="lg" />}
+          {node?.region && <RegionFlag region={node.region} size="lg" tooltipSide="bottom" />}
           {node && appConfig.isLoggedIn ? (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -695,10 +687,11 @@ function App() {
   const { nodes, loading, refreshNodes } = useNodes();
   const { activeEffects } = useEffects();
   const appConfig = useAppConfig();
-  const { setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const { privacyMode, togglePrivacyMode, maskNodes, setDefaultPrivacyMode } = usePrivacyMode();
 
   const { themeConfig } = appConfig;
+  const logoSrc = useMemo(() => getCommanderLogoDataUri(resolvedTheme), [resolvedTheme]);
 
   // Apply default_theme from server config if user hasn't set a preference
   useEffect(() => {
@@ -832,9 +825,9 @@ function App() {
     <NodesContext.Provider value={{ nodes: maskedNodes, loading, refreshNodes, hubNodeUuid }}>
       <RecentStatsProvider onlineUuids={onlineUuids}>
       <ViewModeContext.Provider value={{ viewMode, setViewMode: handleSetViewMode }}>
-        <div className="min-h-screen flex flex-col bg-background text-foreground">
+        <div className="min-h-dvh flex flex-col bg-background text-foreground">
           {/* ═══ Header ═══ */}
-          <header className="sticky top-0 z-50 border-b border-border/50 bg-background/85 backdrop-blur-xl relative">
+          <header className="sticky top-0 z-50 border-b border-border/50 bg-background/85 backdrop-blur-xl relative pt-safe">
             <div className="commander-scanner-effect" />
             <div className="header-neon-line" />
             <div className="container mx-auto px-3 sm:px-4 relative z-10">
@@ -844,11 +837,12 @@ function App() {
                   <button
                     type="button"
                     onClick={() => navigate('/')}
-                    className="text-xl font-bold font-display truncate rounded-sm hover:text-primary transition-colors duration-200 ease-out cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    className="flex min-w-0 items-center gap-2 rounded-sm hover:text-primary transition-colors duration-200 ease-out cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     title={siteDescription || siteName}
                     aria-label={`${t('action.home')}: ${siteName}`}
                   >
-                    {siteName}
+                    <img src={logoSrc} alt="" aria-hidden className="h-7 w-7 shrink-0 rounded-md" />
+                    <span className="truncate text-xl font-bold font-display">{siteName}</span>
                   </button>
                   {hasCriticalNode && (
                     <div
@@ -918,16 +912,17 @@ function App() {
                 </div>
               </div>
 
-              {/* Mobile: Row 1 — title only */}
-              <div className="sm:hidden flex items-center justify-between h-9 pt-1">
+              {/* Mobile: Row 1 — compact brand lockup */}
+              <div className="sm:hidden flex items-center justify-between h-9 pt-1.5 pb-1 mb-1 min-w-0">
                 <button
                   type="button"
                   onClick={() => navigate('/')}
-                  className="text-lg font-bold font-display truncate rounded-sm hover:text-primary transition-colors duration-200 ease-out cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  className="min-w-0 flex flex-1 items-center gap-1.5 text-left rounded-sm hover:text-primary transition-colors duration-200 ease-out cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   title={siteDescription || siteName}
                   aria-label={`${t('action.home')}: ${siteName}`}
                 >
-                  {siteName}
+                  <img src={logoSrc} alt="" aria-hidden className="h-6 w-6 shrink-0 rounded-[0.4rem] ring-1 ring-primary/15" />
+                  <span className="truncate text-[clamp(1rem,4.6vw,1.125rem)] font-bold font-display leading-none tracking-[-0.02em]">{siteName}</span>
                 </button>
                 {hasCriticalNode && (
                   <div
@@ -940,15 +935,16 @@ function App() {
                 )}
               </div>
               {/* Mobile: Row 2 — view switcher + controls */}
-              <div className="sm:hidden flex items-center justify-between pb-2.5">
+              <div className="sm:hidden flex items-center justify-between border-t border-border/25 pt-1.5 pb-2.5 gap-2 min-w-0">
                 <ViewTabs
                   tabs={viewButtons}
                   value={viewMode}
                   onChange={handleViewTabChange}
                   onHoverIntent={handleViewTabHover}
                   labelBreakpoint="never"
+                  className="min-w-0 max-w-full overflow-x-auto scrollbar-none shrink"
                 />
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 shrink-0">
                   <LanguageSwitcher />
                   <ThemeSwitcher />
                   {appConfig.isLoggedIn && (
@@ -957,21 +953,21 @@ function App() {
                       size="sm"
                       onClick={togglePrivacyMode}
                       className={cn(
-                        'h-7 w-7 p-0 text-xs font-mono cursor-pointer',
+                        'h-9 w-9 sm:h-8 sm:w-8 p-0 text-xs font-mono cursor-pointer',
                         privacyMode ? 'bg-primary/15 text-primary hover:bg-primary/25' : 'hover:bg-muted/50'
                       )}
                       title={privacyMode ? t('privacy.on') : t('privacy.off')}
                       aria-label={t('privacy.label')}
                       aria-pressed={privacyMode}
                     >
-                      <Fingerprint className={cn("h-3.5 w-3.5", privacyMode && "text-primary")} aria-hidden />
+                      <Fingerprint className={cn("h-4 w-4", privacyMode && "text-primary")} aria-hidden />
                     </Button>
                   )}
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => window.location.href = '/admin'}
-                    className="h-7 w-7 p-0 text-xs font-mono hover:bg-primary/15 hover:text-primary cursor-pointer"
+                    className="h-9 w-9 sm:h-8 sm:w-8 p-0 text-xs font-mono hover:bg-primary/15 hover:text-primary cursor-pointer"
                     title={appConfig.isLoggedIn ? (appConfig.username || t('action.admin')) : t('action.admin')}
                     aria-label={
                       appConfig.isLoggedIn && appConfig.username
@@ -979,7 +975,7 @@ function App() {
                         : t('action.admin')
                     }
                   >
-                    {appConfig.isLoggedIn ? <User className="h-3.5 w-3.5" aria-hidden /> : <Settings className="h-3.5 w-3.5" aria-hidden />}
+                    {appConfig.isLoggedIn ? <User className="h-4 w-4" aria-hidden /> : <Settings className="h-4 w-4" aria-hidden />}
                   </Button>
                 </div>
               </div>
@@ -996,7 +992,7 @@ function App() {
           </main>
 
           {/* ═══ Footer ═══ */}
-          <footer className="sticky bottom-0 z-40 border-t border-border/50 bg-background/85 backdrop-blur-xl relative">
+          <footer className="sticky bottom-0 z-40 border-t border-border/50 bg-background/85 backdrop-blur-xl relative pb-safe">
             <div className="footer-neon-line" />
             <div className="container mx-auto px-3 sm:px-4 h-9 flex items-center justify-between text-xs font-mono text-muted-foreground">
               <div className="flex items-center gap-3">

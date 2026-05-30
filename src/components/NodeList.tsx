@@ -51,7 +51,7 @@ function FilterDropdown({
         aria-haspopup="listbox"
         aria-label={`${label}: ${currentLabel}`}
         className={cn(
-          'flex items-center gap-1.5 h-7 px-2.5 rounded text-xs font-mono transition-colors cursor-pointer',
+          'flex items-center gap-1.5 h-9 sm:h-7 px-2.5 rounded text-xs font-mono transition-colors cursor-pointer shrink-0',
           'border border-border/40 hover:border-primary/40 hover:text-primary',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
           value !== 'all'
@@ -68,7 +68,7 @@ function FilterDropdown({
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
           <div
             role="listbox"
-            className="absolute top-full left-0 mt-1 z-50 min-w-[140px] py-1 rounded-md border border-border/50 bg-popover backdrop-blur-none shadow-lg commander-dropdown"
+            className="fixed inset-x-3 bottom-[calc(3rem+env(safe-area-inset-bottom,0px))] z-50 max-h-[45svh] min-w-[140px] overflow-y-auto py-1 rounded-md border border-border/50 bg-popover backdrop-blur-none shadow-lg commander-dropdown sm:absolute sm:inset-x-auto sm:bottom-auto sm:left-0 sm:top-full sm:mt-1"
           >
             {options.map(opt => (
               <button
@@ -78,7 +78,7 @@ function FilterDropdown({
                 aria-selected={value === opt.value}
                 onClick={() => { onChange(opt.value); setOpen(false); }}
                 className={cn(
-                  'w-full px-3 py-1.5 text-left text-xs font-mono transition-colors cursor-pointer',
+                  'w-full min-h-9 px-3 py-2 sm:py-1.5 text-left text-xs font-mono transition-colors cursor-pointer',
                   'hover:bg-primary/10 hover:text-primary',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset',
                   value === opt.value && 'text-primary bg-primary/5 font-bold'
@@ -117,10 +117,11 @@ function VirtualGrid({ nodes }: { nodes: NodeWithStatus[] }) {
   }, [updateCols]);
 
   const rowCount = Math.ceil(nodes.length / cols);
+  const estimatedRowHeight = cols === 1 ? 235 : 320;
 
   const virtualizer = useWindowVirtualizer({
     count: rowCount,
-    estimateSize: () => 320,
+    estimateSize: () => estimatedRowHeight,
     overscan: 3,
     scrollMargin: containerRef.current?.offsetTop ?? 0,
   });
@@ -304,7 +305,7 @@ export function NodeList({ nodes = [], loading = false, onRefresh, defaultView =
                     </div>
                   ))}
                   {/* Data cells */}
-                  <div className="grid grid-cols-4 gap-1 pt-1">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 pt-1">
                     {[0, 1, 2, 3].map(j => (
                       <div key={j} className="text-center p-1.5 rounded bg-muted/10 border border-border/15">
                         <div className="h-2 w-6 mx-auto rounded bg-muted/20 motion-safe:animate-pulse mb-1" />
@@ -352,7 +353,7 @@ export function NodeList({ nodes = [], loading = false, onRefresh, defaultView =
             {hasFilters && (
               <button
                 onClick={() => { setGroupFilter('all'); setTagFilter('all'); setStatusFilter('all'); setSearchQuery(''); }}
-                className="text-xs font-mono text-destructive hover:text-destructive/80 transition-colors px-1.5 py-0.5 rounded hover:bg-destructive/10 cursor-pointer"
+                className="text-xs font-mono text-destructive hover:text-destructive/80 transition-colors h-9 sm:h-6 px-2 rounded hover:bg-destructive/10 cursor-pointer"
               >
                 {t('action.clear')}
               </button>
@@ -361,7 +362,7 @@ export function NodeList({ nodes = [], loading = false, onRefresh, defaultView =
               <button
                 onClick={handleRefresh}
                 className={cn(
-                  'fleet-refresh-btn flex items-center gap-1.5 h-6 px-2 rounded text-xs font-mono border transition-colors duration-200 cursor-pointer',
+                  'fleet-refresh-btn flex items-center gap-1.5 h-9 sm:h-6 px-2 rounded text-xs font-mono border transition-colors duration-200 cursor-pointer',
                   isRefreshing
                     ? 'border-primary/40 text-primary bg-primary/10'
                     : 'border-border/30 text-muted-foreground/70 hover:border-primary/50 hover:text-primary hover:bg-primary/5'
@@ -375,32 +376,37 @@ export function NodeList({ nodes = [], loading = false, onRefresh, defaultView =
           </div>
         </div>
 
-        {/* Filter row */}
-        <div className="flex items-center gap-2 px-3 py-2 flex-wrap overflow-visible relative z-50">
+        {/* Filter row — search owns its own row on phones; dropdowns scroll
+            horizontally so adding extra group/tag chips never wraps the
+            command bar into 3+ tall rows. */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 px-3 py-2 sm:flex-wrap relative z-50">
           {/* Search input */}
-          <div className="relative flex-1 min-w-[160px] max-w-[280px]">
+          <div className="relative w-full sm:flex-1 sm:min-w-[160px] sm:max-w-[280px]">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/50" />
             <input
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder={t('placeholder.searchNodes')}
-              className="w-full h-7 pl-7 pr-7 text-xs font-mono bg-muted/20 border border-border/30 rounded placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-colors"
+              className="w-full h-8 sm:h-7 pl-7 pr-7 text-xs font-mono bg-muted/20 border border-border/30 rounded placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-colors"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-muted/50 cursor-pointer"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-muted/50 cursor-pointer"
+                aria-label={t('action.clear')}
               >
                 <X className="h-3 w-3 text-muted-foreground/50" />
               </button>
             )}
           </div>
 
-          {/* Filter dropdowns */}
-          <FilterDropdown label={t('filter.group')} value={groupFilter} options={groupOptions} onChange={setGroupFilter} />
-          <FilterDropdown label={t('filter.tag')} value={tagFilter} options={tagOptions} onChange={setTagFilter} />
-          <FilterDropdown label={t('filter.status')} value={statusFilter} options={statusOptions} onChange={setStatusFilter} />
+          {/* Filter dropdowns — horizontal scroll on phones, wrap on desktop */}
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none -mx-3 px-3 sm:mx-0 sm:px-0 sm:overflow-visible">
+            <FilterDropdown label={t('filter.group')} value={groupFilter} options={groupOptions} onChange={setGroupFilter} />
+            <FilterDropdown label={t('filter.tag')} value={tagFilter} options={tagOptions} onChange={setTagFilter} />
+            <FilterDropdown label={t('filter.status')} value={statusFilter} options={statusOptions} onChange={setStatusFilter} />
+          </div>
         </div>
       </div>
 

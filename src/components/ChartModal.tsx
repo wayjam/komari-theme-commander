@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { HudSpinner } from './HudSpinner';
 import { motion, useReducedMotion } from 'motion/react';
 import { apiService } from '@/services/api';
+import { cn } from '@/lib/utils';
 import {
   CpuUsageLineChart,
   SystemLoadLineChart,
@@ -177,7 +178,7 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
     : { duration: 0.25, ease: [0.16, 1, 0.3, 1] as const };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-[100] flex items-stretch sm:items-center justify-center" onClick={onClose}>
       <motion.div
         className="absolute inset-0 bg-background/60 backdrop-blur-sm"
         initial={{ opacity: reduceMotion ? 1 : 0 }}
@@ -185,7 +186,13 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
         transition={backdropTransition}
       />
       <motion.div
-        className="relative w-[90vw] max-w-3xl overflow-hidden rounded-lg border border-border/50 bg-card/95 shadow-2xl backdrop-blur-xl commander-corners"
+        className={cn(
+          // Mobile: full-screen sheet anchored to safe-area for clean look
+          // on devices with notch / home indicator. Desktop: centred modal.
+          "relative w-full sm:w-[90vw] sm:max-w-3xl overflow-hidden border border-border/50 bg-card/95 shadow-2xl backdrop-blur-xl commander-corners flex flex-col",
+          "h-svh sm:h-auto sm:rounded-lg",
+          "pt-safe pb-safe",
+        )}
         onClick={e => e.stopPropagation()}
         initial={
           reduceMotion
@@ -197,19 +204,19 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
       >
         <span className="corner-bottom" />
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border/50 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-xs font-bold">{nodeName}</span>
-            <span className="text-xxs font-mono text-muted-foreground">{t('chart.nodeMonitor')}</span>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-border/50 px-4 py-3 gap-2">
+          <div className="flex items-center gap-2 min-w-0 w-full sm:w-auto">
+            <span className="font-mono text-xs font-bold truncate">{nodeName}</span>
+            <span className="hidden sm:inline text-xxs font-mono text-muted-foreground shrink-0">{t('chart.nodeMonitor')}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-0.5">
+          <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end sm:shrink-0">
+            <div className="scrollbar-none flex min-w-0 items-center gap-0.5 overflow-x-auto">
               {[1, 6, 24, 168].map(h => (
                 <button
                   key={h}
                   type="button"
                   onClick={() => setTimeRange(h)}
-                  className={`rounded px-2 py-0.5 font-mono text-xs transition-colors ${
+                  className={`rounded h-9 min-w-9 px-2 font-mono text-xs transition-colors cursor-pointer sm:h-7 sm:min-w-0 ${
                     timeRange === h
                       ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:bg-muted/50'
@@ -219,7 +226,12 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
                 </button>
               ))}
             </div>
-            <button type="button" onClick={onClose} className="rounded p-1 transition-colors hover:bg-muted/50">
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={t('action.close', 'Close')}
+              className="rounded h-9 w-9 sm:h-8 sm:w-8 flex shrink-0 items-center justify-center transition-colors hover:bg-muted/50 cursor-pointer"
+            >
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -234,7 +246,7 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
                   key={id}
                   type="button"
                   onClick={() => setActiveChart(id)}
-                  className={`whitespace-nowrap rounded px-3 py-1 font-mono text-xs font-bold transition-colors ${
+                  className={`whitespace-nowrap rounded px-3 h-9 sm:h-7 font-mono text-xs font-bold transition-colors cursor-pointer ${
                     activeChart === id
                       ? 'border border-primary/30 bg-primary/15 text-primary'
                       : 'text-muted-foreground hover:bg-muted/30 hover:text-foreground'
@@ -249,7 +261,7 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
                 type="button"
                 onClick={() => setSmooth(s => !s)}
                 title={t('chart.ewmaTooltip')}
-                className={`flex shrink-0 cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 font-mono text-xs tracking-widest transition-all duration-200 ${
+                className={`flex shrink-0 cursor-pointer items-center gap-1 rounded px-2 h-9 sm:h-7 font-mono text-xs tracking-widest transition-all duration-200 ${
                   smooth ? 'bg-primary/10 text-primary/80' : 'text-muted-foreground/40 hover:text-muted-foreground/60'
                 }`}
               >
@@ -265,8 +277,10 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
           <div className="pointer-events-none absolute top-0 right-0 bottom-0 w-6 bg-gradient-to-l from-card/95 to-transparent sm:hidden" />
         </div>
 
-        {/* Chart area */}
-        <div className="h-[300px] p-4 sm:h-[360px] sm:p-5">{renderChart()}</div>
+        {/* Chart area — flex-1 lets the panel fill remaining height on
+            mobile (full-screen sheet). Fixed height keeps the desktop
+            modal from collapsing. */}
+        <div className="flex-1 min-h-0 p-4 sm:h-[360px] sm:min-h-0 sm:p-5">{renderChart()}</div>
       </motion.div>
     </div>
   );

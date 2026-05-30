@@ -277,6 +277,48 @@
   background: var(--background);
 }
 
+/* ══════════════════════════════════════════════════════════════
+   Safe-area utilities (notch / home indicator)
+   ══════════════════════════════════════════════════════════════
+   `viewport-fit=cover` is set in index.html so we receive the full
+   viewport on devices with a notch / home indicator. These utilities
+   keep sticky chrome out from under the system UI.
+   • `pt-safe` / `pb-safe`  — additive padding on top/bottom
+   • `h-svh-safe`           — full visual-viewport height accounting
+                              for both safe-area insets, replaces 100vh
+                              on iOS Safari where the address bar would
+                              otherwise cause layout jumps. */
+.pt-safe {
+  padding-top: max(env(safe-area-inset-top, 0px), 0px);
+}
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 0px);
+}
+.pl-safe {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+.pr-safe {
+  padding-right: env(safe-area-inset-right, 0px);
+}
+.px-safe {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+.h-svh-safe {
+  height: 100svh;
+  height: calc(100svh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+}
+
+/* Hide the scrollbar on horizontal-scroll utility containers but keep
+   the area scrollable. Used by mobile filter rails and chart tab strips
+   so users can swipe through with no visual chrome. */
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 /* ── Mobile: degrade expensive backdrop-blur to lighter variant ── */
 @media (max-width: 768px) {
   .backdrop-blur-xl {

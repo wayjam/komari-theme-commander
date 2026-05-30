@@ -171,12 +171,12 @@ const MobileRow = memo(function MobileRow({ node, isLast, onOpen, t }: MobileRow
           <RegionFlag region={node.region} size="sm" />
           <button
             type="button"
-            className="text-base font-display font-bold truncate cursor-pointer text-foreground hover:text-primary hover:underline underline-offset-4 decoration-primary/40 transition-colors text-left"
+            className="min-w-0 flex-1 text-base font-display font-bold truncate cursor-pointer text-foreground hover:text-primary hover:underline underline-offset-4 decoration-primary/40 transition-colors text-left"
             onClick={() => onOpen(node.uuid)}
           >{node.name}</button>
         </div>
         {(node.group || tagList.length > 0 || node.hidden) && (
-          <div className="flex flex-wrap items-center gap-1 ml-4">
+          <div className="flex flex-wrap items-center gap-1 ml-0 sm:ml-4">
             {node.group && (
               <span className="text-xxs font-mono text-primary/85 bg-primary/15 px-1.5 py-0.5 rounded-sm">
                 {node.group}
@@ -206,7 +206,7 @@ const MobileRow = memo(function MobileRow({ node, isLast, onOpen, t }: MobileRow
         )}
       </div>
       {stats && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-metric text-muted-foreground ml-4 tabular-nums">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-metric text-muted-foreground ml-0 sm:ml-4 tabular-nums">
           <span className={cn('whitespace-nowrap', textByStatus[getUsageStatus(cpuUsage, { warning: 60, critical: 80 })])}>{t('label.cpu')} {cpuUsage.toFixed(0).padStart(2, '0')}%</span>
           <span className={cn('whitespace-nowrap', textByStatus[getUsageStatus(ramUsage, { warning: 70, critical: 85 })])}>{t('label.ram')} {ramUsage.toFixed(0).padStart(2, '0')}%</span>
           <span className={cn('whitespace-nowrap', textByStatus[getUsageStatus(diskUsage, { warning: 75, critical: 90 })])}>{t('label.disk')} {diskUsage.toFixed(0).padStart(2, '0')}%</span>

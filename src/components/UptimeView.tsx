@@ -188,8 +188,8 @@ const UptimeBar = memo(function UptimeBar({ slots }: UptimeBarProps) {
       {slotEls}
       {tooltip && slots[tooltip.idx] && (
         <div
-          className="absolute -top-9 z-10 px-2 py-1 rounded border border-border bg-popover text-xxs font-mono text-popover-foreground whitespace-nowrap pointer-events-none shadow-lg"
-          style={{ left: tooltip.left, transform: 'translateX(-50%)' }}
+          className="absolute -top-9 z-10 max-w-[calc(100vw-2rem)] px-2 py-1 rounded border border-border bg-popover text-xxs font-mono text-popover-foreground whitespace-nowrap pointer-events-none shadow-lg"
+          style={{ left: `clamp(5rem, ${tooltip.left}px, calc(100% - 5rem))`, transform: 'translateX(-50%)' }}
         >
           {formatTooltipDate(slots[tooltip.idx].start)} — {slots[tooltip.idx].status.toUpperCase()}
         </div>
@@ -231,7 +231,7 @@ const NodeRow = memo(function NodeRow({ node, uptime, loading, onNavigate }: Nod
       onClick={handleClick}
     >
       <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <span
             className={cn(
               'w-1.5 h-1.5 rounded-full flex-shrink-0',
@@ -239,16 +239,16 @@ const NodeRow = memo(function NodeRow({ node, uptime, loading, onNavigate }: Nod
             )}
           />
           <RegionFlag region={node.region} size="sm" />
-          <span className="text-sm font-display font-bold truncate group-hover:text-primary transition-colors">
+          <span className="min-w-0 flex-1 text-sm font-display font-bold truncate group-hover:text-primary transition-colors">
             {node.name}
           </span>
           {node.group && (
-            <span className="text-[10px] font-mono text-primary/80 bg-primary/10 px-1 rounded">
+            <span className="max-w-28 shrink-0 truncate text-[10px] font-mono text-primary/80 bg-primary/10 px-1 rounded">
               [{node.group}]
             </span>
           )}
 
-          <span className="ml-auto flex items-center gap-2">
+          <span className="ml-auto flex shrink-0 items-center gap-2">
             {incidents > 0 && (
               <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-metric font-bold text-destructive bg-destructive/10 border border-destructive/30 px-1.5 py-0.5 rounded">
                 <AlertTriangle className="h-3 w-3" />
@@ -738,7 +738,7 @@ export function UptimeView({ nodes }: UptimeViewProps) {
             <button
               onClick={() => setSortMode((m) => (m === 'weight' ? 'uptime' : 'weight'))}
               className={cn(
-                'p-1.5 rounded transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/50',
+                'inline-flex h-9 w-9 sm:h-7 sm:w-7 items-center justify-center rounded transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/50',
                 sortMode === 'uptime' && 'text-primary bg-primary/10',
               )}
               title={sortMode === 'weight' ? t('uptime.sortByUptime') : t('uptime.sortByWeight')}
@@ -753,7 +753,7 @@ export function UptimeView({ nodes }: UptimeViewProps) {
                   key={r.label}
                   onClick={() => setRangeIdx(idx)}
                   className={cn(
-                    'px-2 py-1 text-[11px] font-mono transition-colors',
+                    'min-h-9 px-2.5 py-1 text-[11px] font-mono transition-colors sm:min-h-7 sm:px-2',
                     rangeIdx === idx
                       ? 'bg-primary text-primary-foreground'
                       : 'hover:bg-muted/50 text-muted-foreground',
@@ -766,7 +766,7 @@ export function UptimeView({ nodes }: UptimeViewProps) {
 
             <button
               onClick={handleRefresh}
-              className="p-1.5 rounded hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground"
+              className="inline-flex h-9 w-9 sm:h-7 sm:w-7 items-center justify-center rounded hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground"
               title={t('action.refresh')}
             >
               <RefreshCw className={cn('h-3.5 w-3.5', isLoading && 'motion-safe:animate-spin')} />

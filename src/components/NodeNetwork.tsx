@@ -319,18 +319,18 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
 
       {/* 与 NodeCharts 同一时间范围条样式与位置（在实时面板与图表区之前） */}
       <div className="overflow-hidden rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl">
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <Clock className="h-3.5 w-3.5 text-primary" />
             <span className="font-display text-xs font-bold tracking-wider text-muted-foreground uppercase">{t('chart.timeRange')}</span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="scrollbar-none flex max-w-full items-center gap-1 overflow-x-auto">
             {timeRanges.map(tr => (
               <button
                 key={tr.value}
                 type="button"
                 onClick={() => setTimeRange(tr.value)}
-                className={`cursor-pointer rounded px-2.5 py-1 font-mono text-xs transition-all duration-200 ${
+                className={`cursor-pointer rounded h-9 sm:h-7 min-w-9 sm:min-w-0 px-2.5 font-mono text-xs transition-all duration-200 shrink-0 ${
                   timeRange === tr.value
                     ? 'border border-primary/30 bg-primary/15 text-primary'
                     : 'text-muted-foreground hover:bg-muted/30 hover:text-foreground'
@@ -343,7 +343,7 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
             <button
               type="button"
               onClick={fetchData}
-              className="cursor-pointer rounded px-2 py-1 font-mono text-xs text-muted-foreground transition-colors hover:bg-primary/15 hover:text-primary"
+              className="cursor-pointer rounded h-9 w-9 sm:h-7 sm:w-7 inline-flex shrink-0 items-center justify-center font-mono text-xs text-muted-foreground transition-colors hover:bg-primary/15 hover:text-primary"
             >
               ↻
             </button>
@@ -457,13 +457,13 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
             const tone = pct >= 90 ? 'destructive' : pct >= 70 ? 'warning' : 'primary';
             return (
               <div className="relative border-t border-border/20 px-4 py-3 sm:px-5 flex flex-col gap-1.5">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-xxs font-display font-bold uppercase tracking-wider text-muted-foreground/70 sm:text-xs">
                     {t('label.traffic')}
                   </span>
                   <span
                     className={cn(
-                      'text-xs font-metric font-bold tabular-nums',
+                      'min-w-0 text-right text-xs font-metric font-bold tabular-nums wrap-break-word',
                       tone === 'destructive' && 'text-destructive',
                       tone === 'warning' && 'text-warning',
                     )}
@@ -551,10 +551,8 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span
-                    role="button"
-                    tabIndex={0}
                     onClick={(e) => e.stopPropagation()}
-                    className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground/50 hover:bg-muted/30 hover:text-muted-foreground cursor-help"
+                    className="ml-1 inline-flex h-9 w-9 sm:h-5 sm:w-5 items-center justify-center rounded-full text-muted-foreground/50 hover:bg-muted/30 hover:text-muted-foreground cursor-help"
                     aria-label={t('chart.lossDisclaimer')}
                   >
                     <Info className="h-3 w-3" />
@@ -570,7 +568,7 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
           {!latencyCollapsed && (
             <>
               <div className="overflow-x-auto max-h-128 overflow-y-auto">
-                <table className="w-full">
+                <table className="w-full min-w-140">
                   <thead className="sticky top-0 bg-card/95 backdrop-blur-sm z-10">
                     <tr className="border-b border-border/20">
                       <th className="w-8 px-2 py-2.5"></th>
@@ -778,7 +776,7 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
                   type="button"
                   onClick={() => setSmooth(s => !s)}
                   title={t('chart.ewmaTooltip')}
-                  className={`flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 font-mono text-xs tracking-widest transition-all duration-200 ${
+                  className={`flex h-9 sm:h-7 cursor-pointer items-center gap-1 rounded px-3 sm:px-1.5 font-mono text-xs tracking-widest transition-all duration-200 ${
                     smooth
                       ? 'bg-primary/10 text-primary/80'
                       : 'text-muted-foreground/40 hover:text-muted-foreground/60'

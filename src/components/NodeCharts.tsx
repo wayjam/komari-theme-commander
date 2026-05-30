@@ -118,7 +118,7 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
             {t('chart.timeRange')}
           </span>
         </div>
-        <div className="flex items-center gap-0.5 rounded-md border border-border/40 bg-background/40 p-0.5">
+        <div className="flex items-center gap-0.5 rounded-md border border-border/40 bg-background/40 p-0.5 overflow-x-auto scrollbar-none max-w-full">
           {timeRanges.map(tr => (
             <button
               key={tr.value}
@@ -126,7 +126,7 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
               onClick={() => setTimeRange(tr.value)}
               aria-pressed={timeRange === tr.value}
               className={cn(
-                'cursor-pointer rounded px-2.5 py-1 font-mono text-xs tabular-nums transition-all duration-150',
+                'cursor-pointer rounded h-9 sm:h-6 min-w-9 sm:min-w-0 px-2.5 font-mono text-xs tabular-nums transition-all duration-150 shrink-0',
                 timeRange === tr.value
                   ? 'bg-primary/15 text-primary shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_30%,transparent)]'
                   : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground',
@@ -135,12 +135,12 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
               {tr.label}
             </button>
           ))}
-          <div className="mx-0.5 h-4 w-px bg-border/40" />
+          <div className="mx-0.5 h-4 w-px bg-border/40 shrink-0" />
           <button
             type="button"
             onClick={fetchLoadData}
             aria-label={t('action.retry')}
-            className="cursor-pointer rounded p-1.5 text-muted-foreground transition-colors hover:bg-primary/15 hover:text-primary"
+            className="cursor-pointer rounded h-9 w-9 sm:h-6 sm:w-6 inline-flex items-center justify-center text-muted-foreground transition-colors hover:bg-primary/15 hover:text-primary shrink-0"
           >
             <RotateCw className="h-3 w-3" aria-hidden />
           </button>
@@ -250,7 +250,7 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
                   <Link
                     to={`/node/${nodeUuid}/network`}
                     aria-label={t('label.viewNetworkTrafficHint')}
-                    className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-xxs font-mono font-bold uppercase tracking-wider text-primary ring-1 ring-primary/25 transition-colors hover:bg-primary/18 hover:ring-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                    className="inline-flex min-h-9 sm:min-h-0 items-center gap-1 rounded-md bg-primary/10 px-2.5 sm:px-1.5 py-1 sm:py-0.5 text-xxs font-mono font-bold uppercase tracking-wider text-primary ring-1 ring-primary/25 transition-colors hover:bg-primary/18 hover:ring-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
                   >
                     {t('label.viewNetworkTraffic')}
                     <ExternalLink className="h-2.5 w-2.5" aria-hidden />

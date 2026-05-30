@@ -106,13 +106,13 @@ function TrafficBar({
   const clamped = Math.min(Math.max(pct, 0), 100);
   return (
     <div className="hud-gauge" data-channel="traffic" data-status={status}>
-      <div className="flex items-baseline justify-between gap-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
         <span className="text-xs font-mono text-muted-foreground hud-gauge__label">
           {label} <span className="text-muted-foreground/60">({formatTrafficType(type)})</span>
         </span>
         <span
           className={cn(
-            'text-xs font-metric font-bold tabular-nums leading-none',
+            'min-w-0 text-right text-xs font-metric font-bold tabular-nums leading-none wrap-break-word',
             status === 'critical'
               ? 'text-destructive'
               : status === 'warning'
@@ -134,6 +134,138 @@ function TrafficBar({
         <div className="hud-gauge__track">
           <div className="hud-gauge__fill" style={{ width: `${clamped}%` }}>
             <span className="hud-gauge__cursor" aria-hidden="true" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MobileResourcePill({
+  label,
+  value,
+  status,
+  channel,
+}: {
+  label: string;
+  value: number;
+  status: GaugeStatus;
+  channel: GaugeChannel;
+}) {
+  const pct = Math.min(Math.max(value, 0), 100);
+  const tone =
+    status === 'critical'
+      ? 'text-destructive border-destructive/25 bg-destructive/8'
+      : status === 'warning'
+        ? 'text-warning border-warning/25 bg-warning/8'
+        : 'text-foreground border-border/25 bg-muted/20';
+
+  return (
+    <div className={cn('min-w-0 rounded-md border px-2 py-1.5', tone)} data-channel={channel}>
+      <div className="flex items-baseline justify-between gap-1">
+        <span className="truncate text-xxs font-mono uppercase tracking-wider text-muted-foreground/75">
+          {label}
+        </span>
+        <span className="shrink-0 text-xs font-metric font-bold tabular-nums">
+          {value.toFixed(0)}<span className="text-[10px] opacity-60">%</span>
+        </span>
+      </div>
+      <div className="mt-1 h-1 overflow-hidden rounded-full bg-background/45">
+        <div
+          className={cn(
+            'h-full rounded-full',
+            status === 'critical'
+              ? 'bg-destructive'
+              : status === 'warning'
+                ? 'bg-warning'
+                : channel === 'cpu'
+                  ? 'bg-chart-1'
+                  : channel === 'ram'
+                    ? 'bg-chart-2'
+                    : 'bg-chart-3',
+          )}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function MobileTelemetryTile({
+  icon: Icon,
+  label,
+  value,
+  tone,
+  sub,
+}: {
+  icon: typeof Activity;
+  label: string;
+  value: string;
+  tone?: string;
+  sub?: string;
+}) {
+  return (
+    <div className="min-w-0 rounded-md border border-border/20 bg-background/35 px-2.5 py-1.5 shadow-[inset_0_1px_0_color-mix(in_oklch,var(--foreground)_5%,transparent)] hud-data-cell">
+      <div className="mb-1 flex items-center gap-1.5 text-xxs font-mono uppercase tracking-wider text-muted-foreground/70">
+        <Icon className="h-3 w-3 shrink-0 opacity-75" aria-hidden />
+        <span className="truncate">{label}</span>
+      </div>
+      <div className={cn('truncate text-sm font-metric font-bold leading-none tabular-nums', tone)}>
+        {value}
+      </div>
+      {sub && <div className="mt-1 truncate text-xxs font-metric text-muted-foreground/60">{sub}</div>}
+    </div>
+  );
+}
+
+function MobileNetworkTile({
+  up,
+  down,
+  totalUp,
+  totalDown,
+  label,
+  upLabel,
+  downLabel,
+  totalLabel,
+}: {
+  up: number;
+  down: number;
+  totalUp: number;
+  totalDown: number;
+  label: string;
+  upLabel: string;
+  downLabel: string;
+  totalLabel: string;
+}) {
+  return (
+    <div className="col-span-2 min-w-0 rounded-md border border-border/20 bg-background/35 px-2.5 py-1.5 shadow-[inset_0_1px_0_color-mix(in_oklch,var(--foreground)_5%,transparent)] hud-data-cell">
+      <div className="mb-1.5 flex items-center gap-1.5 text-xxs font-mono uppercase tracking-wider text-muted-foreground/70">
+        <Activity className="h-3 w-3 shrink-0 opacity-75" aria-hidden />
+        <span>{label}</span>
+      </div>
+      <div className="grid min-w-0 grid-cols-2 gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1 text-xxs font-mono text-success/80">
+            <ArrowUp className="h-3 w-3 shrink-0" aria-hidden />
+            <span>{upLabel}</span>
+          </div>
+          <div className="truncate text-sm font-metric font-bold leading-none tabular-nums">
+            {formatSpeed(up)}
+          </div>
+          <div className="mt-1 truncate text-xxs font-metric text-muted-foreground/60">
+            {totalLabel} {formatBytes(totalUp)}
+          </div>
+        </div>
+        <div className="min-w-0 border-l border-border/20 pl-2">
+          <div className="flex items-center gap-1 text-xxs font-mono text-primary/80">
+            <ArrowDown className="h-3 w-3 shrink-0" aria-hidden />
+            <span>{downLabel}</span>
+          </div>
+          <div className="truncate text-sm font-metric font-bold leading-none tabular-nums">
+            {formatSpeed(down)}
+          </div>
+          <div className="mt-1 truncate text-xxs font-metric text-muted-foreground/60">
+            {totalLabel} {formatBytes(totalDown)}
           </div>
         </div>
       </div>
@@ -189,7 +321,7 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
       <div className="p-3 sm:p-4 relative z-10">
         <div className="min-w-0 flex flex-col gap-2">
           {/* Node name row — status · flag · name */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             <span className={cn(
               'w-2 h-2 rounded-full flex-shrink-0',
               isOnline ? 'bg-success motion-safe:animate-pulse' : 'bg-destructive'
@@ -197,7 +329,7 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
             <RegionFlag region={node.region} size="md" />
             <h3
               className={cn(
-                "text-base font-display font-bold truncate cursor-pointer hover:text-primary transition-colors",
+                "min-w-0 flex-1 text-base font-display font-bold truncate cursor-pointer hover:text-primary transition-colors",
                 (cpuStatus === 'critical' || ramStatus === 'critical') && "text-destructive"
               )}
               onClick={() => navigate(`/node/${node.uuid}`)}
@@ -239,7 +371,7 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
             )}
           </div>
           {/* Tags row */}
-          <div className="flex items-center gap-2 ml-4 flex-wrap">
+          <div className="flex items-center gap-1.5 sm:gap-2 ml-0 sm:ml-4 flex-wrap">
             {node.group && (
               <span className="text-xs font-mono text-primary/80 bg-primary/15 px-1.5 py-0.5 rounded-sm">
                 {node.group}
@@ -270,7 +402,7 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
           {(node.os || node.arch) && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex items-center gap-1.5 text-xs font-mono text-muted-foreground/60 truncate ml-4 cursor-default">
+                <div className="flex items-center gap-1.5 text-xs font-mono text-muted-foreground/60 truncate ml-0 sm:ml-4 cursor-default">
                   <SystemIcon kind="os" value={node.os} className="h-3 w-3 shrink-0 opacity-70" />
                   <span className="truncate">
                     {node.os}{node.os && node.arch && ' · '}{node.virtualization && `${node.virtualization}/`}{node.arch}
@@ -283,7 +415,7 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
             </Tooltip>
           )}
           {node.public_remark && (
-            <p className="text-xs text-muted-foreground/70 ml-4 line-clamp-1 leading-relaxed">
+            <p className="text-xs text-muted-foreground/70 ml-0 sm:ml-4 line-clamp-1 leading-relaxed">
               {node.public_remark}
             </p>
           )}
@@ -294,8 +426,15 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
       <div className="px-3 pb-3 sm:px-4 relative z-10">
         {stats ? (
           <div className="space-y-2">
-            {/* Resource gauges */}
-            <div className="space-y-2">
+            {/* Mobile summary — compact scan-first layout for GRID view. */}
+            <div className="grid grid-cols-3 gap-1.5 sm:hidden">
+              <MobileResourcePill channel="cpu" label={t('label.cpu')} value={cpuUsage} status={cpuStatus} />
+              <MobileResourcePill channel="ram" label={t('label.ram')} value={ramUsage} status={ramStatus} />
+              <MobileResourcePill channel="disk" label={t('label.disk')} value={diskUsage} status={diskStatus} />
+            </div>
+
+            {/* Desktop/tablet resource gauges */}
+            <div className="hidden space-y-2 sm:block">
               <HudGauge channel="cpu" label={t('label.cpu')} value={cpuUsage} status={cpuStatus} total={`${node.cpu_cores}C`} />
               <HudGauge channel="ram" label={t('label.ram')} value={ramUsage} status={ramStatus} total={formatBytes(stats.ram.total)} />
               <HudGauge channel="disk" label={t('label.disk')} value={diskUsage} status={diskStatus} total={formatBytes(stats.disk.total)} />
@@ -314,43 +453,69 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
 
             {/* CPU Sparkline (login required) */}
             {isLoggedIn && cpuSparkline && (
-              <div className="flex items-center gap-2 pt-0.5">
-              <span className="text-xxs font-mono text-muted-foreground">{t('label.cpu1m')}</span>
+              <div className="hidden sm:flex items-center gap-2 pt-0.5">
+                <span className="text-xxs font-mono text-muted-foreground">{t('label.cpu1m')}</span>
                 <Sparkline data={cpuSparkline} width={80} height={18} />
               </div>
             )}
 
-            {/* Data grid — 4 columns HUD */}
-            <div className="grid grid-cols-4 gap-1 pt-1">
-              <div className="text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
+            {/* Mobile telemetry — clarify ambiguous UP by separating UPTIME from NET FLOW. */}
+            <div className="grid grid-cols-2 gap-1.5 pt-1 sm:hidden">
+              <MobileTelemetryTile
+                icon={Activity}
+                label={`${t('label.load')} · ${t('label.load1m')}`}
+                value={stats.load.load1.toFixed(2)}
+                tone={stats.load.load1 / (node.cpu_cores || 1) >= 1.5 ? 'text-destructive' : stats.load.load1 / (node.cpu_cores || 1) >= 1 ? 'text-warning' : undefined}
+                sub={t('label.coreBaseline', { count: node.cpu_cores || 1 })}
+              />
+              <MobileTelemetryTile
+                icon={Clock}
+                label={t('label.uptime')}
+                value={formatUptime(stats.uptime)}
+              />
+              <MobileNetworkTile
+                up={stats.network.up}
+                down={stats.network.down}
+                totalUp={stats.network.totalUp}
+                totalDown={stats.network.totalDown}
+                label={t('label.netFlow')}
+                upLabel={t('label.uploadShort')}
+                downLabel={t('label.downloadShort')}
+                totalLabel={t('label.total')}
+              />
+            </div>
+
+            {/* Desktop/tablet HUD metric strip */}
+            <div className="hidden sm:grid grid-cols-4 gap-1 pt-1">
+              <div className="min-w-0 text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
                 <div className="flex items-center justify-center gap-1 text-xs font-mono text-muted-foreground">
                   <Activity className="h-2.5 w-2.5 opacity-70" />
                   <span>{t('label.load')}</span>
                 </div>
                 <div className="text-xs font-metric font-bold">{stats.load.load1.toFixed(2)}</div>
               </div>
-              <div className="text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
+              <div className="min-w-0 text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
                 <div className="flex items-center justify-center gap-1 text-xs font-mono text-muted-foreground">
                   <ArrowUp className="h-2.5 w-2.5 opacity-70" style={{ color: 'var(--chart-2)' }} />
                   <span>{t('label.netUp')}</span>
                 </div>
-                <div className="text-xs font-metric font-bold">{formatSpeed(stats.network.up).replace('/s','')}</div>
-                <div className="text-xxs font-metric text-muted-foreground/60">{formatBytes(stats.network.totalUp)}</div>
+                <div className="truncate text-xs font-metric font-bold">{formatSpeed(stats.network.up).replace('/s','')}</div>
+                <div className="truncate text-xxs font-metric text-muted-foreground/60">{formatBytes(stats.network.totalUp)}</div>
               </div>
-              <div className="text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
+              <div className="min-w-0 text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
                 <div className="flex items-center justify-center gap-1 text-xs font-mono text-muted-foreground">
                   <ArrowDown className="h-2.5 w-2.5 opacity-70" style={{ color: 'var(--chart-1)' }} />
                   <span>{t('label.netDown')}</span>
                 </div>
-                <div className="text-xs font-metric font-bold">{formatSpeed(stats.network.down).replace('/s','')}</div>
-                <div className="text-xxs font-metric text-muted-foreground/60">{formatBytes(stats.network.totalDown)}</div>
+                <div className="truncate text-xs font-metric font-bold">{formatSpeed(stats.network.down).replace('/s','')}</div>
+                <div className="truncate text-xxs font-metric text-muted-foreground/60">{formatBytes(stats.network.totalDown)}</div>
               </div>
-              <div className="text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
+              <div className="min-w-0 text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
                 <div className="flex items-center justify-center gap-1 text-xs font-mono text-muted-foreground">
                   <Clock className="h-2.5 w-2.5 opacity-70" />
                   <span>{t('label.up')}</span>
                 </div>
-                <div className="text-xs font-metric font-bold">{formatUptime(stats.uptime)}</div>
+                <div className="truncate text-xs font-metric font-bold">{formatUptime(stats.uptime)}</div>
               </div>
             </div>
 
