@@ -15,6 +15,7 @@ import {
   MemoryLineChart,
   DiskUsageLineChart,
   ConnectionsLineChart,
+  ProcessLineChart,
   NetworkTrafficAreaChart,
 } from '@/components/metric-charts';
 import {
@@ -37,7 +38,7 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
   const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState(1);
   const isMobile = useIsMobile();
-  const { recordPreserveTime, isLoggedIn } = useAppConfig();
+  const { recordPreserveTime } = useAppConfig();
 
   const timeRanges = useMemo(() => {
     const candidates = [
@@ -213,21 +214,31 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
           </CardContent>
         </Card>
 
-        {isLoggedIn && (
-          <Card className={chartCardClass}>
-            <CardHeader className="px-4 pt-3 pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                <Unplug className="h-4 w-4 text-chart-5" />
-                {t('chart.connections')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-3">
-              <ConnectionsLineChart chartData={chartData} mode="detail" isMobile={isMobile} containerClassName={chartContainerClass} />
-            </CardContent>
-          </Card>
-        )}
+        <Card className={chartCardClass}>
+          <CardHeader className="px-4 pt-3 pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+              <Unplug className="h-4 w-4 text-chart-5" />
+              {t('chart.connections')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-3">
+            <ConnectionsLineChart chartData={chartData} mode="detail" isMobile={isMobile} containerClassName={chartContainerClass} />
+          </CardContent>
+        </Card>
 
         <Card className={chartCardClass}>
+          <CardHeader className="px-4 pt-3 pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+              <Activity className="h-4 w-4 text-chart-9" />
+              {t('chart.process')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-3">
+            <ProcessLineChart chartData={chartData} mode="detail" isMobile={isMobile} containerClassName={chartContainerClass} />
+          </CardContent>
+        </Card>
+
+        <Card className={cn(chartCardClass, 'lg:col-span-2')}>
           <CardHeader className="px-4 pt-3 pb-2">
             <CardTitle className="flex items-center justify-between text-sm font-semibold">
               <div className="flex items-center gap-2">

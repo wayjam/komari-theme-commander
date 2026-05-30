@@ -131,88 +131,44 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
   const ramUsage = stats ? (stats.ram.used / stats.ram.total) * 100 : 0;
   const diskUsage = stats ? (stats.disk.used / stats.disk.total) * 100 : 0;
   const isFree = node.price === -1;
-  const expiryStatus = (isFree || !appConfig.isLoggedIn) ? null : getExpiryStatus(node.expired_at);
+  const expiryStatus = getExpiryStatus(node.expired_at);
   const hasTraffic = !!(node.traffic_limit && node.traffic_limit > 0 && node.traffic_limit_type && node.traffic_limit_type !== 'no_limit');
+  const tagList = parseTagList(node.tags);
+  const hasSystemTags = !!(node.group || node.hidden);
+  const shouldShowTagDivider = hasSystemTags && tagList.length > 0;
+  const hasTagStrip = hasSystemTags || tagList.length > 0 || !!node.region;
+  const priceLabel = isFree ? t('label.free') : node.price === 0 ? t('label.notSet') : `${node.currency}${node.price}`;
 
   return (
     <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl p-4 sm:p-5 commander-corners relative overflow-hidden">
       <div className="commander-scanner-effect" />
       <span className="corner-bottom" />
       <div className="flex flex-col gap-5">
-      {/* Metadata row — group / flags / region / expiry / uuid (status & name are in route header) */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs font-mono">
-        {node.group && (
-          <span className="text-xxs font-mono font-bold px-1.5 py-0.5 rounded bg-primary/15 text-primary shrink-0">[{node.group}]</span>
-        )}
-        {node.hidden && (
-          <span className="text-xxs font-mono font-bold px-1.5 py-0.5 rounded bg-warning/15 text-warning shrink-0">
-            {t('node.hidden')}
-          </span>
-        )}
-        {node.ipv6 && (
-          <span className="text-xxs font-mono font-bold px-1.5 py-0.5 rounded bg-chart-6/15 text-chart-6 shrink-0">
-            IPv6
-          </span>
-        )}
-        {node.region && (() => {
-          const regionText = extractRegionText(node.region);
-          const emoji = extractRegionEmoji(node.region);
-          // Region is already shown as a flag chip in the route header.
-          // Here we only render the textual part (or fall back to raw region
-          // when no emoji is present), keeping a flat mono label style
-          // consistent with the rest of the metadata row.
-          const display = regionText || (emoji ? '' : node.region);
-          if (!display) return null;
-          return (
-            <span className="text-muted-foreground">{display}</span>
-          );
-        })()}
-        {expiryStatus && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className={cn(
-                'cursor-default',
-                expiryStatus === 'expired' ? 'text-destructive' : expiryStatus === 'warning' ? 'text-warning' : 'text-muted-foreground',
-              )}>
-                {formatExpiry(node.expired_at)}
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="whitespace-pre-line text-xs">
-              {appConfig.isLoggedIn
-                ? t('label.expiryTooltipDetail', {
-                    date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
-                    cycle: node.billing_cycle ?? '-',
-                    renewal: node.auto_renewal ? t('label.yes') : t('label.no'),
-                    price: node.price === -1 ? t('label.free') : node.price === 0 ? t('label.notSet') : `${node.currency}${node.price}`,
-                  })
-                : t('label.expiryTooltip', {
-                    date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
-                  })
-              }
-            </TooltipContent>
-          </Tooltip>
-        )}
-        {appConfig.isLoggedIn && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="hidden sm:inline ml-auto text-xxs font-mono text-muted-foreground/40 cursor-default select-all">{node.uuid}</span>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs font-mono">UUID: {node.uuid}</TooltipContent>
-          </Tooltip>
-        )}
-      </div>
-
-      {/* Tags row */}
-      {(() => {
-        const tagList = parseTagList(node.tags);
-        return tagList.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-1.5">
-            {tagList.map((tag, i) => (
-              <TagPill key={i} label={tag.label} color={tag.color} size="sm" />
-            ))}
-          </div>
-        ) : null;
-      })()}
+      {hasTagStrip && (
+        <div className="flex flex-wrap items-center gap-1.5 text-xs font-mono">
+          {node.group && (
+            <span className="text-xxs font-mono font-bold px-1.5 py-0.5 rounded bg-primary/15 text-primary shrink-0">[{node.group}]</span>
+          )}
+          {node.hidden && (
+            <span className="text-xxs font-mono font-bold px-1.5 py-0.5 rounded bg-warning/15 text-warning shrink-0">
+              {t('node.hidden')}
+            </span>
+          )}
+          {shouldShowTagDivider && <span className="mx-1 h-3 w-px bg-border/40" aria-hidden />}
+          {tagList.map((tag, i) => (
+            <TagPill key={i} label={tag.label} color={tag.color} size="sm" />
+          ))}
+          {node.region && (() => {
+            const regionText = extractRegionText(node.region);
+            const emoji = extractRegionEmoji(node.region);
+            const display = regionText || (emoji ? '' : node.region);
+            if (!display) return null;
+            return (
+              <span className="text-muted-foreground">{display}</span>
+            );
+          })()}
+        </div>
+      )}
 
       {/* Public remark */}
       <RemarkNote text={node.public_remark} variant="public" />
@@ -401,46 +357,94 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
             </div>
           </div>
 
-          {/* Traffic limit bar — uses unified .hud-gauge */}
-          {hasTraffic && (() => {
-            const used = calcTrafficUsage(stats.network.totalUp, stats.network.totalDown, node.traffic_limit_type as TrafficLimitType);
-            const pct = (used / node.traffic_limit!) * 100;
-            const s = getUsageStatus(pct, { warning: 70, critical: 90 });
-            const clamped = Math.min(Math.max(pct, 0), 100);
-            return (
-              <div
-                className="hud-gauge p-3 rounded bg-muted/15 border border-border/20 flex flex-col gap-1.5"
-                data-channel="traffic"
-                data-status={s}
-              >
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
-                    {t('label.traffic')} <span className="text-muted-foreground/60 normal-case">({formatTrafficType(node.traffic_limit_type!)})</span>
-                  </span>
-                  <span className={cn(
-                    'text-xs font-metric font-bold tabular-nums leading-none',
-                    s === 'critical' ? 'text-destructive' : s === 'warning' ? 'text-warning' : '',
-                  )}>
-                    {formatBytes(used)}
-                    <span className="text-muted-foreground/60 mx-1">/</span>
-                    <span className="text-muted-foreground/80">{formatBytes(node.traffic_limit!)}</span>
-                  </span>
-                </div>
-                <div className="hud-gauge__track-wrap">
-                  <div className="hud-gauge__ticks" aria-hidden="true">
-                    <span style={{ left: '25%' }} />
-                    <span style={{ left: '50%' }} />
-                    <span style={{ left: '75%' }} />
-                  </div>
-                  <div className="hud-gauge__track">
-                    <div className="hud-gauge__fill" style={{ width: `${clamped}%` }}>
-                      <span className="hud-gauge__cursor" aria-hidden="true" />
+          {(expiryStatus || hasTraffic) && (
+            <div className={cn(
+              'grid grid-cols-1 gap-3 sm:gap-4',
+              expiryStatus && hasTraffic && 'lg:grid-cols-2',
+            )}>
+              {expiryStatus && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="p-3 rounded bg-muted/15 border border-border/20 flex flex-col gap-2 cursor-default min-h-[5.5rem]">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">{t('label.billing')}</span>
+                        {appConfig.isLoggedIn && (
+                          <span className="rounded bg-primary/10 px-2 py-1 text-xs font-metric font-bold tabular-nums leading-none text-primary ring-1 ring-primary/20">
+                            {priceLabel}
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-auto flex flex-wrap items-end justify-between gap-x-4 gap-y-1.5 border-t border-border/15 pt-2">
+                        <span className="text-xxs font-mono uppercase tracking-[0.16em] text-muted-foreground/50">
+                          {t('label.expires')}
+                        </span>
+                        <span className={cn(
+                          'text-sm font-metric font-bold tabular-nums leading-none',
+                          expiryStatus === 'expired' ? 'text-destructive' : expiryStatus === 'warning' ? 'text-warning' : 'text-foreground/85',
+                        )}>
+                          {formatExpiry(node.expired_at)}
+                        </span>
+                      </div>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="whitespace-pre-line text-xs">
+                    {appConfig.isLoggedIn
+                      ? t('label.expiryTooltipDetail', {
+                          date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
+                          cycle: node.billing_cycle ?? '-',
+                          renewal: node.auto_renewal ? t('label.yes') : t('label.no'),
+                          price: priceLabel,
+                        })
+                      : t('label.expiryTooltip', {
+                          date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
+                        })
+                    }
+                  </TooltipContent>
+                </Tooltip>
+              )}
+
+              {/* Traffic limit bar — uses unified .hud-gauge */}
+              {hasTraffic && (() => {
+                const used = calcTrafficUsage(stats.network.totalUp, stats.network.totalDown, node.traffic_limit_type as TrafficLimitType);
+                const pct = (used / node.traffic_limit!) * 100;
+                const s = getUsageStatus(pct, { warning: 70, critical: 90 });
+                const clamped = Math.min(Math.max(pct, 0), 100);
+                return (
+                  <div
+                    className="hud-gauge p-3 rounded bg-muted/15 border border-border/20 flex flex-col gap-1.5 min-h-[5.5rem]"
+                    data-channel="traffic"
+                    data-status={s}
+                  >
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
+                        {t('label.traffic')} <span className="text-muted-foreground/60 normal-case">({formatTrafficType(node.traffic_limit_type!)})</span>
+                      </span>
+                      <span className={cn(
+                        'text-xs font-metric font-bold tabular-nums leading-none',
+                        s === 'critical' ? 'text-destructive' : s === 'warning' ? 'text-warning' : '',
+                      )}>
+                        {formatBytes(used)}
+                        <span className="text-muted-foreground/60 mx-1">/</span>
+                        <span className="text-muted-foreground/80">{formatBytes(node.traffic_limit!)}</span>
+                      </span>
+                    </div>
+                    <div className="mt-auto hud-gauge__track-wrap">
+                      <div className="hud-gauge__ticks" aria-hidden="true">
+                        <span style={{ left: '25%' }} />
+                        <span style={{ left: '50%' }} />
+                        <span style={{ left: '75%' }} />
+                      </div>
+                      <div className="hud-gauge__track">
+                        <div className="hud-gauge__fill" style={{ width: `${clamped}%` }}>
+                          <span className="hud-gauge__cursor" aria-hidden="true" />
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            );
-          })()}
+                );
+              })()}
+            </div>
+          )}
         </div>
       ) : (
         <div className="flex items-center justify-center min-h-[4.5rem] text-muted-foreground text-xs leading-relaxed px-2 text-center">
@@ -457,6 +461,7 @@ function NodeDetailRoute() {
   const { uuid } = useParams<{ uuid: string }>();
   const navigate = useNavigate();
   const { nodes } = useNodesContext();
+  const appConfig = useAppConfig();
   const { maskName } = usePrivacyMode();
   const node = nodes.find(n => n.uuid === uuid);
   const [nodeName, setNodeName] = useState('');
@@ -475,6 +480,41 @@ function NodeDetailRoute() {
   const displayName = uuid ? maskName(uuid, nodeName) : nodeName;
   const isOnline = node?.status === 'online';
   const lastReport = node?.stats?.updated_at;
+  const nodeTitle = (
+    <h1 className="text-sm sm:text-base font-display font-bold truncate max-w-[60vw] sm:max-w-md">
+      {displayName || uuid}
+    </h1>
+  );
+  const renderIpChip = (
+    label: 'IPv4' | 'IPv6',
+    value: string | undefined,
+    className: string,
+  ) => {
+    const ip = value?.trim();
+    if (!ip) return null;
+
+    const chip = (
+      <span className={cn(
+        'text-xxs font-mono font-bold px-1.5 py-0.5 rounded cursor-default shrink-0',
+        className,
+      )}>
+        {label}
+      </span>
+    );
+
+    if (!appConfig.isLoggedIn) return chip;
+
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {chip}
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="max-w-xs text-xs font-mono select-all break-all">
+          {label}: {ip}
+        </TooltipContent>
+      </Tooltip>
+    );
+  };
 
   if (!uuid) return null;
 
@@ -505,9 +545,14 @@ function NodeDetailRoute() {
             />
           )}
           {node?.region && <RegionFlag region={node.region} size="lg" />}
-          <h1 className="text-sm sm:text-base font-display font-bold truncate max-w-[60vw] sm:max-w-md">
-            {displayName || uuid}
-          </h1>
+          {node && appConfig.isLoggedIn ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {nodeTitle}
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs font-mono select-all">UUID: {node.uuid}</TooltipContent>
+            </Tooltip>
+          ) : nodeTitle}
           {node && (
             isOnline && lastReport ? (
               <Tooltip>
@@ -529,6 +574,8 @@ function NodeDetailRoute() {
               </span>
             )
           )}
+          {renderIpChip('IPv4', node?.ipv4, 'bg-chart-7/15 text-chart-7 ring-1 ring-chart-7/25')}
+          {renderIpChip('IPv6', node?.ipv6, 'bg-chart-6/15 text-chart-6 ring-1 ring-chart-6/25')}
         </div>
       </div>
 

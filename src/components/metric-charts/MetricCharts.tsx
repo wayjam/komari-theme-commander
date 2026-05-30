@@ -306,6 +306,48 @@ export function ConnectionsLineChart({
   );
 }
 
+export function ProcessLineChart({
+  chartData,
+  mode,
+  isMobile = false,
+  containerClassName,
+  emptyContent,
+}: BaseProps) {
+  const { t } = useTranslation();
+  const { margin, xAxisProps, yPlainProps } = useMetricChartAxes(mode, chartData.length, isMobile);
+  const showLegend = mode === 'detail';
+  const cfg = { process: { label: t('chart.process'), color: chartColors[8] } };
+
+  if (!chartData.length) {
+    return <EmptyChart>{emptyContent ?? <span className="text-xs font-mono text-muted-foreground">{t('chart.noData')}</span>}</EmptyChart>;
+  }
+
+  return (
+    <ChartContainer config={cfg} className={containerClassName}>
+      <LineChart data={chartData} margin={margin}>
+        <CartesianGrid vertical={false} stroke={gridStrokeColor} strokeOpacity={0.3} />
+        <XAxis {...xAxisProps} />
+        <YAxis {...yPlainProps} />
+        <ChartTooltip
+          cursor={false}
+          formatter={(v: number | string) => (typeof v === 'number' ? Math.round(v).toString() : String(v))}
+          content={<ChartTooltipContent labelFormatter={labelFormatter} indicator="dot" />}
+        />
+        {showLegend && <ChartLegend content={<ChartLegendContent />} />}
+        <Line
+          dataKey="process"
+          name={t('chart.process')}
+          stroke={chartColors[8]}
+          dot={false}
+          isAnimationActive={false}
+          strokeWidth={2}
+          type="linear"
+        />
+      </LineChart>
+    </ChartContainer>
+  );
+}
+
 export function NetworkTrafficAreaChart({
   chartData,
   mode,

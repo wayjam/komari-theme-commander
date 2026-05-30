@@ -32,6 +32,7 @@ export interface LoadRecord {
   disk: number;
   disk_total: number;
   load: number;
+  process: number;
   connections: number;
   connections_udp: number;
   net_in: number;
@@ -68,6 +69,7 @@ export interface ChartDataPoint {
   swap: number;
   disk: number;
   load: number;
+  process: number;
   connections: number;
   connections_udp: number;
   network_in: number;
@@ -85,6 +87,7 @@ export function transformLoadRecords(records: LoadRecord[]): ChartDataPoint[] {
       swap: Math.min(Math.max(r.swap_total ? (r.swap / r.swap_total) * 100 : 0, 0), 100),
       disk: Math.min(Math.max(r.disk_total ? (r.disk / r.disk_total) * 100 : 0, 0), 100),
       load: r.load,
+      process: r.process || 0,
       connections: r.connections,
       connections_udp: r.connections_udp,
       network_in: r.net_in / 1024,

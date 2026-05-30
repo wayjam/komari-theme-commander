@@ -4,6 +4,7 @@ export {
   MemoryLineChart,
   DiskUsageLineChart,
   ConnectionsLineChart,
+  ProcessLineChart,
   NetworkTrafficAreaChart,
   PingLatencyLineChart,
   type MetricChartLayoutMode,
