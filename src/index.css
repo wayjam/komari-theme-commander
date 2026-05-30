@@ -1605,8 +1605,26 @@
      Sidebar node list — HUD enhancements
      ════════════════════════════════════════════════════════════ */
 
+  .sidebar-fleet-panel,
+  .effect-glow .sidebar-fleet-panel.border {
+    box-shadow: 0 10px 24px -20px color-mix(in oklch, var(--foreground) 18%, transparent);
+  }
+
+  [data-theme="deepspace"] .sidebar-fleet-panel,
+  [data-theme="deepspace"].effect-glow .sidebar-fleet-panel.border {
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklch, var(--primary) 8%, transparent),
+      0 16px 32px -28px oklch(0 0 0 / 78%);
+  }
+
   .sidebar-node-item {
     position: relative;
+    box-shadow: none;
+  }
+
+  .effect-glow .sidebar-node-item,
+  [data-theme="deepspace"].effect-glow .sidebar-node-item {
+    box-shadow: none;
   }
 
   .sidebar-node-scanline {
@@ -1622,22 +1640,22 @@
   }
 
   .sidebar-node-item:hover .sidebar-node-scanline {
-    opacity: 0.3;
+    opacity: 0;
   }
 
-  /* Selected row: scanline stays visible (no hover required) */
+  /* Ledger rows stay quiet; selected state is carried by row tint/ring. */
   .sidebar-node-scanline--selected {
-    opacity: 0.45;
+    opacity: 0;
   }
 
   [data-theme="deepspace"] .sidebar-node-item:hover .sidebar-node-scanline {
-    opacity: 0.5;
-    box-shadow: 0 0 4px var(--color-primary);
+    opacity: 0;
+    box-shadow: none;
   }
 
   [data-theme="deepspace"] .sidebar-node-scanline--selected {
-    opacity: 0.65;
-    box-shadow: 0 0 6px var(--color-primary);
+    opacity: 0.16;
+    box-shadow: none;
   }
 
   [data-theme="clean"] .sidebar-node-scanline {

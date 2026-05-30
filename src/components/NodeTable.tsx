@@ -95,8 +95,8 @@ const DesktopRow = memo(function DesktopRow({ row, isLast }: DesktopRowProps) {
   return (
     <tr
       className={cn(
-        'group transition-colors hover:bg-primary/10',
-        !isLast && 'border-b border-border/20',
+        'group transition-colors odd:bg-muted/[0.035] hover:bg-primary/8',
+        !isLast && 'border-b border-border/30',
         !isOnline && 'opacity-45',
         isCritical && 'bg-destructive/4',
       )}
@@ -155,8 +155,8 @@ const MobileRow = memo(function MobileRow({ node, isLast, onOpen, t }: MobileRow
   return (
     <div
       className={cn(
-        'px-3 py-3 space-y-2 transition-colors hover:bg-primary/10',
-        !isLast && 'border-b border-border/20',
+        'px-3 py-3 space-y-2 transition-colors odd:bg-muted/[0.035] hover:bg-primary/8',
+        !isLast && 'border-b border-border/30',
         !isOnline && 'opacity-45',
       )}
     >
@@ -312,18 +312,18 @@ export function NodeTable({ nodes }: NodeTableProps) {
                     {node.group}
                   </span>
                 )}
-                {tagList.slice(0, 4).map((tag, i) => (
+                {tagList.slice(0, 3).map((tag, i) => (
                   <TagPill key={i} label={tag.label} color={tag.color} size="xs" />
                 ))}
-                {tagList.length > 4 && (
+                {tagList.length > 3 && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="text-xxs font-mono text-muted-foreground/55 bg-muted/35 px-1.5 py-0.5 rounded-sm cursor-default shrink-0">
-                        +{tagList.length - 4}
+                        +{tagList.length - 3}
                       </span>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="text-xs font-mono">
-                      {tagList.slice(4).map(t => t.label).join(', ')}
+                      {tagList.slice(3).map(t => t.label).join(', ')}
                     </TooltipContent>
                   </Tooltip>
                 )}
@@ -337,7 +337,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
 
             {/* Row 3: system info · traffic · expiry — unified to /50, only urgent states pop */}
             {node.stats && (
-              <div className="flex items-center gap-2 text-xxs font-mono text-muted-foreground/50 truncate">
+              <div className="flex items-center gap-2 text-xxs font-mono text-muted-foreground/60 truncate">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="inline-flex items-center gap-1 truncate cursor-default">

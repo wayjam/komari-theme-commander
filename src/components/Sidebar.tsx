@@ -66,7 +66,7 @@ function NodeRowContentInner({
   const emoji = extractRegionEmoji(node.region);
 
   const tagList = parseTagList(node.tags);
-  const maxVisibleTags = 5;
+  const maxVisibleTags = 3;
   const visibleTags = tagList.slice(0, maxVisibleTags);
   const hiddenTagCount = tagList.length - visibleTags.length;
 
@@ -75,12 +75,9 @@ function NodeRowContentInner({
       onClick={() => onSelectNode(node.uuid)}
       className={cn(
         'relative w-full px-3 py-2.5 text-left transition-all duration-150 flex flex-col gap-1',
-        'hover:bg-primary/5 cursor-pointer sidebar-node-item',
-        'border-b border-border/20',
-        'border-l-[3px]',
-        isSelected
-          ? 'bg-gradient-to-r from-primary/15 via-primary/8 to-transparent border-l-primary'
-          : 'border-l-transparent'
+        'border-b border-border/28 bg-transparent cursor-pointer sidebar-node-item',
+        'hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary/30',
+        isSelected && 'bg-primary/8 ring-1 ring-inset ring-primary/20 border-border/35'
       )}
     >
       <div className="flex items-center gap-2">
@@ -110,7 +107,7 @@ function NodeRowContentInner({
           </span>
         )}
       </div>
-      {/* Tags row — show max 2 tags + overflow count */}
+      {/* Tags row — show max 3 tags + overflow count */}
       <div className="flex min-w-0 items-center gap-1.5 ml-3.5">
         {node.group && (
           <span className="text-xs font-mono text-primary/80 bg-primary/15 px-1.5 py-0.5 rounded-sm flex-shrink-0">
@@ -992,7 +989,7 @@ export function Sidebar({ nodes, loading, selectedNodeId, onSelectNode, onViewCh
       // mid-range laptops. 12px is visually indistinguishable here because
       // we already have bg-card/80 doing most of the contrast work.
       'flex flex-col h-full bg-card/80 backdrop-blur-md border border-border/50 rounded-lg overflow-hidden',
-      'shadow-lg commander-corners',
+      'sidebar-fleet-panel commander-corners',
       className
     )}>
       <span className="corner-bottom" />
