@@ -239,18 +239,18 @@ const NodeRow = memo(function NodeRow({ node, uptime, loading, onNavigate }: Nod
             )}
           />
           <RegionFlag region={node.region} size="sm" />
-          <span className="min-w-0 flex-1 text-sm font-display font-bold truncate group-hover:text-primary transition-colors">
+          <span className="node-name min-w-0 flex-1 text-sm truncate group-hover:text-primary transition-colors">
             {node.name}
           </span>
           {node.group && (
-            <span className="max-w-28 shrink-0 truncate text-[10px] font-mono text-primary/80 bg-primary/10 px-1 rounded">
+            <span className="max-w-28 shrink-0 truncate text-xxs font-mono text-primary/80 bg-primary/10 px-1 rounded">
               [{node.group}]
             </span>
           )}
 
           <span className="ml-auto flex shrink-0 items-center gap-2">
             {incidents > 0 && (
-              <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-metric font-bold text-destructive bg-destructive/10 border border-destructive/30 px-1.5 py-0.5 rounded">
+              <span className="hidden sm:inline-flex items-center gap-1 text-xxs font-metric font-bold text-destructive bg-destructive/10 border border-destructive/30 px-1.5 py-0.5 rounded">
                 <AlertTriangle className="h-3 w-3" />
                 {t('uptime.downSlots', { count: incidents })}
               </span>
@@ -615,7 +615,9 @@ export function UptimeView({ nodes }: UptimeViewProps) {
   return (
     <div className="space-y-4 sm:space-y-5 uptime-view">
       {/* ═══ Status strip — single source of truth for KPIs ═══ */}
-      <div className="uptime-status-strip relative rounded-lg border border-border/60 bg-card/70 backdrop-blur-xl overflow-hidden">
+      <div className="uptime-status-strip relative rounded-lg bg-card/70 backdrop-blur-xl overflow-hidden commander-corners">
+        <span className="corner-bottom" />
+        <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(var(--foreground) 1px, transparent 1px), linear-gradient(90deg, var(--foreground) 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
         {/* Loading progress sliver */}
         {loadProgress < 1 && baseSortedNodes.length > 0 && (
           <div
@@ -630,32 +632,36 @@ export function UptimeView({ nodes }: UptimeViewProps) {
           <div className="flex items-center gap-3 px-4 py-3 lg:py-4 lg:flex-[1.4]">
             <div
               className={cn(
-                'flex items-center justify-center w-9 h-9 rounded-md flex-shrink-0',
+                'relative flex h-7 w-7 flex-shrink-0 items-center justify-center border bg-background/45',
                 isLoading
-                  ? 'bg-muted/30 text-muted-foreground'
+                  ? 'border-muted-foreground/20 text-muted-foreground'
                   : sloMet
-                  ? 'bg-success/12 text-success uptime-accent-soft'
+                  ? 'border-success/25 text-success uptime-accent-soft'
                   : avgUptime === null
-                  ? 'bg-muted/30 text-muted-foreground'
-                  : 'bg-warning/12 text-warning',
+                  ? 'border-muted-foreground/20 text-muted-foreground'
+                  : 'border-warning/25 text-warning',
               )}
             >
+              <span className="absolute left-0 top-0 h-1 w-1 border-l border-t border-current opacity-70" aria-hidden />
+              <span className="absolute right-0 top-0 h-1 w-1 border-r border-t border-current opacity-70" aria-hidden />
+              <span className="absolute bottom-0 left-0 h-1 w-1 border-b border-l border-current opacity-70" aria-hidden />
+              <span className="absolute bottom-0 right-0 h-1 w-1 border-b border-r border-current opacity-70" aria-hidden />
               {isLoading ? (
                 <HudSpinner size="sm" />
               ) : sloMet ? (
-                <CheckCircle2 className="h-5 w-5" />
+                <CheckCircle2 className="h-4 w-4" />
               ) : avgUptime === null ? (
-                <Activity className="h-5 w-5" />
+                <Activity className="h-4 w-4" />
               ) : (
-                <AlertTriangle className="h-5 w-5" />
+                <AlertTriangle className="h-4 w-4" />
               )}
             </div>
             <div className="min-w-0">
               <div className="flex items-baseline gap-1.5">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                <span className="text-xxs font-mono uppercase tracking-wider text-muted-foreground">
                   {t('uptime.slo')}
                 </span>
-                <span className="text-[10px] font-metric text-muted-foreground tabular-nums">
+                <span className="text-xxs font-metric text-muted-foreground tabular-nums">
                   ≥ {SLO_THRESHOLD}%
                 </span>
               </div>
@@ -685,7 +691,7 @@ export function UptimeView({ nodes }: UptimeViewProps) {
           {/* Pillar 2 — avg uptime % */}
           <div className="flex items-center gap-3 px-4 py-3 lg:flex-1">
             <div className="flex flex-col">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+              <span className="text-xxs font-mono uppercase tracking-wider text-muted-foreground">
                 {t('label.avg')} · {range.label}
               </span>
               <span
@@ -707,18 +713,30 @@ export function UptimeView({ nodes }: UptimeViewProps) {
           </div>
 
           {/* Pillar 3 — fleet status counts */}
-          <div className="flex items-center gap-4 px-4 py-3 lg:flex-1">
-            <div className="flex flex-col">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+          <div className="flex items-center gap-6 px-4 py-3 lg:flex-1">
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xxs font-mono uppercase tracking-wider text-muted-foreground">
                 {t('label.nodes')}
               </span>
-              <span className="text-sm font-metric font-bold tabular-nums mt-0.5">
-                <span className="text-success uptime-accent-soft">{onlineCount}</span>
-                <span className="text-muted-foreground">/{totalCount}</span>
-              </span>
+              <div className="flex items-stretch border border-border/40 rounded-sm overflow-hidden font-mono text-xs tabular-nums bg-background/50 w-fit">
+                <div className="flex items-center gap-1.5 px-2 py-0.5 border-r border-border/40 bg-success/10">
+                  <span className="w-1 h-2.5 bg-success shrink-0" aria-hidden />
+                  <span className="text-foreground font-bold leading-none">{onlineCount}</span>
+                  <span className="text-muted-foreground/60 text-xxs uppercase hidden sm:inline">{t('status.on')}</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2 py-0.5 border-r border-border/40 bg-destructive/10">
+                  <span className="w-1 h-2.5 bg-destructive shrink-0" aria-hidden />
+                  <span className="text-foreground font-bold leading-none">{totalCount - onlineCount}</span>
+                  <span className="text-muted-foreground/60 text-xxs uppercase hidden sm:inline">{t('status.off')}</span>
+                </div>
+                <div className="flex items-center gap-1 px-2 py-0.5 bg-muted/20">
+                  <span className="text-muted-foreground/60 text-xxs uppercase mr-0.5">ALL</span>
+                  <span className="text-foreground/80 font-bold leading-none">{totalCount}</span>
+                </div>
+              </div>
             </div>
             <div className="flex flex-col">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+              <span className="text-xxs font-mono uppercase tracking-wider text-muted-foreground">
                 {t('uptime.incidents')}
               </span>
               <span
@@ -752,7 +770,7 @@ export function UptimeView({ nodes }: UptimeViewProps) {
                   key={r.label}
                   onClick={() => setRangeIdx(idx)}
                   className={cn(
-                    'min-h-9 px-2.5 py-1 text-[11px] font-mono transition-colors sm:min-h-7 sm:px-2',
+                    'min-h-9 px-2.5 py-1 text-xs font-mono transition-colors sm:min-h-7 sm:px-2',
                     rangeIdx === idx
                       ? 'bg-primary text-primary-foreground'
                       : 'hover:bg-muted/50 text-muted-foreground',

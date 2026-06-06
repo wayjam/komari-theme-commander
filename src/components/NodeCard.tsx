@@ -57,7 +57,7 @@ function HudGauge({
           {label}
         </span>
         <span className="flex items-baseline gap-1.5 leading-none">
-          <span className={cn('hud-gauge__value font-metric font-bold tabular-nums', textColor)}>
+          <span className={cn('hud-gauge__value text-xs font-metric font-bold tabular-nums', textColor)}>
             {value.toFixed(1)}
             <span className="hud-gauge__unit text-xxs font-metric text-muted-foreground/70 ml-0.5">
               {unit}
@@ -167,7 +167,7 @@ function MobileResourcePill({
           {label}
         </span>
         <span className="shrink-0 text-xs font-metric font-bold tabular-nums">
-          {value.toFixed(0)}<span className="text-[10px] opacity-60">%</span>
+          {value.toFixed(0)}<span className="text-xxs opacity-60">%</span>
         </span>
       </div>
       <div className="mt-1 h-1 overflow-hidden rounded-full bg-background/45">
@@ -331,7 +331,7 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
             <RegionFlag region={node.region} size="md" />
             <h3
               className={cn(
-                "min-w-0 flex-1 text-base font-display font-bold truncate cursor-pointer hover:text-primary transition-colors",
+                "node-name min-w-0 flex-1 text-base truncate cursor-pointer hover:text-primary transition-colors",
                 (cpuStatus === 'critical' || ramStatus === 'critical') && "text-destructive"
               )}
               onClick={() => navigate(`/node/${node.uuid}`)}
@@ -408,7 +408,7 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
           {(node.os || node.arch) && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex items-center gap-1.5 text-xs font-mono text-muted-foreground/60 truncate ml-0 sm:ml-4 cursor-default">
+                <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground/65 truncate ml-0 sm:ml-4 cursor-default">
                   <SystemIcon kind="os" value={node.os} className="h-3 w-3 shrink-0 opacity-70" />
                   <span className="truncate">
                     {node.os}{node.os && node.arch && ' · '}{node.virtualization && `${node.virtualization}/`}{node.arch}

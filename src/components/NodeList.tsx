@@ -51,7 +51,7 @@ function FilterDropdown({
         aria-haspopup="listbox"
         aria-label={`${label}: ${currentLabel}`}
         className={cn(
-          'flex items-center gap-1.5 h-9 sm:h-7 px-2.5 rounded text-xs font-mono transition-colors cursor-pointer shrink-0',
+          'flex items-center gap-1.5 h-9 sm:h-6 px-2.5 rounded text-xs font-mono transition-colors cursor-pointer shrink-0',
           'border border-border/40 hover:border-primary/40 hover:text-primary',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
           value !== 'all'
@@ -258,6 +258,7 @@ export function NodeList({ nodes = [], loading = false, onRefresh, defaultView =
     { value: 'online', label: t('status.online') },
     { value: 'offline', label: t('status.offline') },
   ], [t]);
+  const skeletonCardWidths = [58, 74, 66, 82, 62, 70];
 
   if (loading) {
     return (
@@ -285,7 +286,7 @@ export function NodeList({ nodes = [], loading = false, onRefresh, defaultView =
                 {/* Skeleton header */}
                 <div className="flex items-center gap-2.5 px-3 py-2 border-b border-border/30 bg-muted/10">
                   <div className="w-2 h-2 rounded-full bg-muted/40 motion-safe:animate-pulse" />
-                  <div className="h-3.5 rounded bg-muted/25 motion-safe:animate-pulse" style={{ width: `${50 + Math.random() * 30}%` }} />
+                  <div className="h-3.5 rounded bg-muted/25 motion-safe:animate-pulse" style={{ width: `${skeletonCardWidths[i % skeletonCardWidths.length]}%` }} />
                 </div>
                 {/* Skeleton content */}
                 <div className="px-3 py-3 space-y-2.5">
@@ -331,29 +332,61 @@ export function NodeList({ nodes = [], loading = false, onRefresh, defaultView =
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      {/* Terminal-style command bar */}
+      {/* Tactical HUD Fleet Header */}
       <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl overflow-visible commander-corners relative z-40">
         <span className="corner-bottom" />
-        {/* Top status line */}
-        <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/30 bg-muted/15 gap-2">
-          <div className="flex items-center gap-2 text-xs font-mono min-w-0 flex-wrap">
-            <span className="font-display font-bold text-xs tracking-wider shrink-0">{t('fleet.title')}</span>
-            <span className="text-muted-foreground/40 shrink-0" aria-hidden>·</span>
-            <span className="text-success font-metric">{onlineCount}</span>
-            <span className="text-muted-foreground/50">/</span>
-            <span className="text-destructive font-metric">{nodes.length - onlineCount}</span>
-            <span className="text-muted-foreground/40 shrink-0" aria-hidden>·</span>
-            <span className="text-muted-foreground truncate">
-              {sortedNodes.length === nodes.length
-                ? `${nodes.length} ${t('label.nodes')}`
-                : `${sortedNodes.length}/${nodes.length} ${t('filter.matched')}`}
-            </span>
+        
+        {/* Subtle background grid pattern wrapping everything inside */}
+        <div className="absolute inset-0 rounded-lg overflow-hidden pointer-events-none z-0">
+          <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(var(--foreground) 1px, transparent 1px), linear-gradient(90deg, var(--foreground) 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
+        </div>
+
+        {/* Top status panel */}
+        <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-muted/15 to-transparent gap-3 relative overflow-hidden">
+          <div className="flex items-center gap-2.5 min-w-0 relative z-10">
+            {/* Target Reticle Icon */}
+            <div className="hidden sm:flex h-6 w-6 items-center justify-center border border-primary/20 relative shrink-0 bg-background/45">
+               <div className="absolute top-0 left-0 w-1 h-1 border-t border-l border-primary/60" />
+               <div className="absolute top-0 right-0 w-1 h-1 border-t border-r border-primary/60" />
+               <div className="absolute bottom-0 left-0 w-1 h-1 border-b border-l border-primary/60" />
+               <div className="absolute bottom-0 right-0 w-1 h-1 border-b border-r border-primary/60" />
+               <div className="w-1 h-1 bg-primary/80 motion-safe:animate-pulse" style={{ animationDuration: '2s' }} />
+            </div>
+
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex items-baseline gap-2.5 shrink-0">
+                <h2 className="font-display font-bold text-sm tracking-widest uppercase text-foreground leading-none">{t('fleet.title')}</h2>
+              </div>
+              
+              {/* Stats Block — Flat, geometric industrial style */}
+              <div className="flex items-stretch border border-border/40 rounded-sm overflow-hidden font-mono text-xxs sm:text-xs tabular-nums bg-background/50 shrink-0">
+                <div className="flex items-center gap-1.5 px-2 py-0.5 border-r border-border/40 bg-success/10 group/on">
+                  <span className="w-1 h-2.5 bg-success shrink-0" aria-hidden />
+                  <span className="text-foreground font-bold leading-none">{onlineCount}</span>
+                  <span className="text-muted-foreground/60 text-xxs uppercase hidden sm:inline">{t('status.on')}</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2 py-0.5 border-r border-border/40 bg-destructive/10 group/off">
+                  <span className="w-1 h-2.5 bg-destructive shrink-0" aria-hidden />
+                  <span className="text-foreground font-bold leading-none">{nodes.length - onlineCount}</span>
+                  <span className="text-muted-foreground/60 text-xxs uppercase hidden sm:inline">{t('status.off')}</span>
+                </div>
+                <div className="flex items-center gap-1 px-2 py-0.5 bg-muted/20">
+                  <span className="text-muted-foreground/60 text-xxs uppercase mr-0.5">ALL</span>
+                  <span className="text-foreground/80 font-bold leading-none">
+                    {sortedNodes.length === nodes.length
+                      ? nodes.length
+                      : sortedNodes.length}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5 shrink-0">
+
+          <div className="flex items-center gap-2 shrink-0 relative z-10">
             {hasFilters && (
               <button
                 onClick={() => { setGroupFilter('all'); setTagFilter('all'); setStatusFilter('all'); setSearchQuery(''); }}
-                className="text-xs font-mono text-destructive hover:text-destructive/80 transition-colors h-9 sm:h-6 px-2 rounded hover:bg-destructive/10 cursor-pointer"
+                className="text-xs font-mono text-destructive hover:text-destructive/80 transition-colors h-6 px-2 rounded hover:bg-destructive/10 cursor-pointer border border-transparent hover:border-destructive/20 hidden sm:block"
               >
                 {t('action.clear')}
               </button>
@@ -362,24 +395,22 @@ export function NodeList({ nodes = [], loading = false, onRefresh, defaultView =
               <button
                 onClick={handleRefresh}
                 className={cn(
-                  'fleet-refresh-btn flex items-center gap-1.5 h-9 sm:h-6 px-2 rounded text-xs font-mono border transition-colors duration-200 cursor-pointer',
+                  'fleet-refresh-btn flex items-center justify-center gap-1.5 h-9 sm:h-6 px-3 rounded text-xxs font-mono border transition-colors duration-200 cursor-pointer overflow-hidden relative',
                   isRefreshing
                     ? 'border-primary/40 text-primary bg-primary/10'
-                    : 'border-border/30 text-muted-foreground/70 hover:border-primary/50 hover:text-primary hover:bg-primary/5'
+                    : 'border-border/40 text-foreground hover:border-primary/50 hover:text-primary hover:bg-primary/5 bg-background/50'
                 )}
                 title={t('action.refresh')}
               >
-                <RefreshCw className={cn('h-3 w-3 transition-transform', isRefreshing && 'motion-safe:animate-spin')} />
-                <span className="uppercase tracking-wider text-xxs font-bold hidden sm:inline">{t('action.refresh')}</span>
+                <RefreshCw className={cn('h-3 w-3 transition-transform shrink-0', isRefreshing && 'motion-safe:animate-spin')} />
+                <span className="uppercase tracking-widest font-bold hidden sm:inline">{t('action.refresh')}</span>
               </button>
             )}
           </div>
         </div>
 
-        {/* Filter row — search owns its own row on phones; dropdowns scroll
-            horizontally so adding extra group/tag chips never wraps the
-            command bar into 3+ tall rows. */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 px-3 py-2 sm:flex-wrap relative z-50">
+        {/* Filter row */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 px-3 py-1.5 sm:flex-wrap relative z-50 bg-background/20">
           {/* Search input */}
           <div className="relative w-full sm:flex-1 sm:min-w-[160px] sm:max-w-[280px]">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/50" />
@@ -388,7 +419,7 @@ export function NodeList({ nodes = [], loading = false, onRefresh, defaultView =
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder={t('placeholder.searchNodes')}
-              className="w-full h-8 sm:h-7 pl-7 pr-7 text-xs font-mono bg-muted/20 border border-border/30 rounded placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-colors"
+              className="w-full h-8 sm:h-6 pl-7 pr-7 text-xs font-mono bg-muted/20 border border-border/30 rounded placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-colors"
             />
             {searchQuery && (
               <button

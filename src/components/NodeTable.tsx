@@ -45,14 +45,14 @@ function UsageCell({ value, status, channel, sparkline, sub }: { value: number; 
     <div className="hud-gauge w-full min-w-22" data-channel={channel} data-status={status}>
       <div className="flex items-baseline justify-between gap-2 mb-1">
         <div className="flex items-baseline gap-1.5 min-w-0">
-          <span className={cn('hud-gauge__value font-metric font-bold tabular-nums', textColor)}>
+          <span className={cn('hud-gauge__value text-xs font-metric font-bold tabular-nums', textColor)}>
             {value.toFixed(1)}
             <span className="hud-gauge__unit text-xxs font-metric text-muted-foreground/70 ml-0.5">
               %
             </span>
           </span>
           {sub && (
-            <span className="text-[10px] font-mono text-muted-foreground/50 truncate">
+            <span className="text-xxs font-metric text-muted-foreground/55 truncate">
               {sub}
             </span>
           )}
@@ -99,17 +99,17 @@ function NetworkCell({ node, t }: { node: NodeWithStatus; t: (k: string, p?: Rec
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className="min-w-0 cursor-default space-y-1.5 text-xs font-metric tabular-nums">
+        <div className="min-w-0 cursor-default space-y-1.5 text-xs tabular-nums">
           <div className="grid min-w-0 grid-cols-2 gap-3 leading-none">
             <div className="flex min-w-0 items-center gap-1.5">
               <ArrowUp className="h-3 w-3 shrink-0 text-success/75" aria-hidden />
-              <span className="min-w-0 truncate font-bold text-foreground/90">
+              <span className="min-w-0 truncate font-metric font-semibold text-foreground/90">
                 {formatSpeed(stats.network.up)}
               </span>
             </div>
             <div className="flex min-w-0 items-center gap-1.5">
               <ArrowDown className="h-3 w-3 shrink-0 text-primary/75" aria-hidden />
-              <span className="min-w-0 truncate font-bold text-foreground/90">
+              <span className="min-w-0 truncate font-metric font-semibold text-foreground/90">
                 {formatSpeed(stats.network.down)}
               </span>
             </div>
@@ -118,10 +118,10 @@ function NetworkCell({ node, t }: { node: NodeWithStatus; t: (k: string, p?: Rec
           {hasTraffic ? (
             <div className="min-w-0 space-y-1 border-t border-border/20 pt-1.5">
               <div className="flex min-w-0 items-baseline justify-between gap-2 leading-none mb-1">
-                <span className="min-w-0 truncate font-mono text-xxs uppercase tracking-[0.1em] text-muted-foreground/55">
+                <span className="min-w-0 truncate font-mono text-xxs uppercase tracking-wider text-muted-foreground/55">
                   {t('label.traffic')} {formatTrafficType(node.traffic_limit_type!)}
                 </span>
-                <span className={cn('shrink-0 font-bold tabular-nums', quotaTone)}>
+                <span className={cn('shrink-0 font-metric font-semibold tabular-nums', quotaTone)}>
                   {trafficPct.toFixed(0)}%
                 </span>
               </div>
@@ -139,12 +139,12 @@ function NetworkCell({ node, t }: { node: NodeWithStatus; t: (k: string, p?: Rec
                   </div>
                 </div>
               </div>
-              <div className="min-w-0 truncate text-right text-xxs font-medium text-muted-foreground/60 mt-0.5">
+              <div className="min-w-0 truncate text-right text-xxs font-metric text-muted-foreground/60 mt-0.5">
                 {formatBytes(trafficUsed)} / {formatBytes(node.traffic_limit!)}
               </div>
             </div>
           ) : (
-            <div className="grid min-w-0 grid-cols-2 gap-3 border-t border-border/20 pt-1.5 text-xxs leading-none text-muted-foreground/65">
+            <div className="grid min-w-0 grid-cols-2 gap-3 border-t border-border/20 pt-1.5 text-xxs font-metric leading-none text-muted-foreground/65">
               <span className="min-w-0 truncate">
                 {t('label.total')} ↑ {formatBytes(stats.network.totalUp)}
               </span>
@@ -282,7 +282,7 @@ const MobileRow = memo(function MobileRow({ node, isLast, onOpen, t, isLoggedIn 
           <RegionFlag region={node.region} size="sm" />
           <button
             type="button"
-            className="min-w-0 flex-1 text-base font-display font-bold truncate cursor-pointer text-foreground hover:text-primary hover:underline underline-offset-4 decoration-primary/40 transition-colors text-left"
+            className="node-name min-w-0 flex-1 text-base truncate cursor-pointer text-foreground hover:text-primary hover:underline underline-offset-4 decoration-primary/40 transition-colors text-left"
             onClick={() => onOpen(node.uuid)}
           >{node.name}</button>
         </div>
@@ -430,6 +430,10 @@ export function NodeTable({ nodes }: NodeTableProps) {
         const node = row.original;
         const expiryStatus = getExpiryStatus(node.expired_at);
         const tagList = parseTagList(node.tags).sort((a, b) => (a.color ? 0 : 1) - (b.color ? 0 : 1));
+        const platformLine = [
+          node.os,
+          [node.virtualization, node.arch].filter(Boolean).join('/'),
+        ].filter(Boolean).join(' · ');
 
         return (
           <div className="min-w-0 space-y-1">
@@ -438,7 +442,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
               <RegionFlag region={node.region} size="sm" />
               <button
                 type="button"
-                className="text-base font-display font-bold truncate cursor-pointer text-foreground hover:text-primary hover:underline underline-offset-4 decoration-primary/40 transition-colors text-left"
+                className="node-name text-base truncate cursor-pointer text-foreground hover:text-primary hover:underline underline-offset-4 decoration-primary/40 transition-colors text-left"
                 onClick={() => openNode(node.uuid)}
               >
                 {node.name}
@@ -507,18 +511,18 @@ export function NodeTable({ nodes }: NodeTableProps) {
               </div>
             )}
 
-            {/* Row 3: system info. Traffic belongs to the Network column. */}
-            {node.stats && (
-              <div className="min-w-0 space-y-1 text-xxs font-mono text-muted-foreground/60">
+            {/* Row 3: platform identity. Resource totals live in metric columns. */}
+            {platformLine && (
+              <div className="min-w-0 space-y-1 text-xs text-muted-foreground/65">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="inline-flex max-w-full min-w-0 items-center gap-1 cursor-default">
                       <SystemIcon kind="os" value={node.os} className="h-2.5 w-2.5 shrink-0 opacity-70" />
-                      <span className="min-w-0 truncate">{node.os} · {node.cpu_cores}C · {formatBytes(node.stats.ram.total)}</span>
+                      <span className="min-w-0 truncate">{platformLine}</span>
                     </span>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="max-w-xs text-xs font-mono whitespace-pre-line">
-                    {[node.cpu_name && `CPU: ${node.cpu_name} (${node.cpu_cores}C)`, node.os && `OS: ${node.os}`, node.arch && `Arch: ${node.arch}`, node.virtualization && `Virt: ${node.virtualization}`, `RAM: ${formatBytes(node.stats.ram.total)}`].filter(Boolean).join('\n')}
+                    {[node.os && `OS: ${node.os}`, node.arch && `Arch: ${node.arch}`, node.virtualization && `Virt: ${node.virtualization}`, node.kernel_version && `Kernel: ${node.kernel_version}`].filter(Boolean).join('\n')}
                   </TooltipContent>
                 </Tooltip>
               </div>
@@ -657,7 +661,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
       <span className="corner-bottom" />
 
       {/* Console Header Decoration */}
-      <div className="console-header-decoration flex items-center justify-between px-3 py-1.5 border-b border-border/30 bg-muted/10 text-xxs font-mono text-muted-foreground/40 uppercase tracking-[0.2em] relative z-10">
+      <div className="console-header-decoration flex items-center justify-between px-3 py-1.5 border-b border-border/30 bg-muted/10 text-xxs font-mono text-muted-foreground/40 uppercase tracking-widest relative z-10">
         <div className="flex items-center gap-2">
           <div className="w-1.5 h-1.5 rounded-full bg-primary/30" />
           <span>{t('hud.tableMode')}</span>
@@ -681,7 +685,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
                   <th
                     key={header.id}
                     className={cn(
-                      'py-2.5 overflow-hidden text-xxs font-mono font-bold text-muted-foreground/55 uppercase tracking-[0.18em]',
+                      'py-2.5 overflow-hidden text-xxs font-mono font-bold text-muted-foreground/55 uppercase tracking-widest',
                       hIdx === 0 ? 'px-1 text-center' : 'px-3 text-left',
                       isGroupStart && 'pl-5 lg:pl-8', // Spacer gutter
                       header.column.getCanSort() && 'cursor-pointer select-none hover:text-primary transition-colors',

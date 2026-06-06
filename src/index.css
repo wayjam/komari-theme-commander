@@ -1,6 +1,5 @@
-/* Orbitron is loaded asynchronously via <link> in index.html to avoid
-   blocking the critical CSS path. Browsers fall back to system-ui until
-   it's ready, governed by `font-display: swap` in the @font-face. */
+/* Orbitron + IBM Plex Sans are loaded asynchronously via <link> in index.html.
+   Browsers fall back to system-ui until ready, governed by `font-display: swap`. */
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -53,9 +52,9 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --font-family-display: 'Orbitron', sans-serif;
-  /* UI body — system stack (keep Orbitron for .font-display only) */
-  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  /* UI body + identifiers — engineering feel without Orbitron's display width */
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
   /* Custom font sizes — base 16px */
   --text-xxs: 0.625rem;     /* 10px — decorative/auxiliary text only */
   --text-xxs--line-height: 0.875rem;
@@ -374,6 +373,15 @@
     font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum" 1, "lnum" 1;
+  }
+
+  /* Hostnames are identifiers: technical, compact, readable at dashboard density. */
+  .node-name {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    line-height: 1.15;
+    font-variant-ligatures: none;
   }
 }
 
@@ -1698,7 +1706,12 @@
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, var(--color-primary) / 0.08, transparent);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklch, var(--primary) 8%, transparent),
+      transparent
+    );
     transition: left 0.4s ease;
     pointer-events: none;
   }
@@ -1742,7 +1755,12 @@
     left: -50%;
     width: 50%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, var(--color-primary) / 0.15, transparent);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklch, var(--primary) 15%, transparent),
+      transparent
+    );
     animation: hud-skeleton-shimmer 2s ease-in-out infinite;
   }
 
@@ -1878,11 +1896,9 @@
   .hud-gauge[data-status="warning"]  { --gauge-color: var(--warning); }
   .hud-gauge[data-status="critical"] { --gauge-color: var(--destructive); }
 
-  /* Numeric readout — slight bump in size, weight does the emphasis */
+  /* Numeric readout — size comes from utilities; weight does the emphasis */
   .hud-gauge__value {
-    font-size: 13px;
     line-height: 1;
-    letter-spacing: -0.01em;
   }
 
   /* Ticks + track wrapper */

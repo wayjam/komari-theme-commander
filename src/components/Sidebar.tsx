@@ -90,9 +90,9 @@ function NodeRowContentInner({
         />
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2 min-w-0">
-            <span className="text-base font-display font-bold truncate shrink-0 max-w-[65%]">{node.name}</span>
+            <span className="node-name text-base truncate shrink-0 max-w-[65%]">{node.name}</span>
             {(node.os || node.arch) && (
-              <span className="inline-flex items-center gap-1 text-xs font-mono text-muted-foreground truncate min-w-0">
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground/80 truncate min-w-0">
                 <SystemIcon kind="os" value={node.os} className="h-3 w-3 shrink-0 opacity-80" />
                 <span className="truncate">
                   {[node.os?.split(/[\s/]/)[0], node.arch, node.virtualization].filter(Boolean).join(' · ')}
@@ -229,6 +229,8 @@ function NodeListView({
     const saved = localStorage.getItem('globeSortByActive');
     return saved === null ? true : saved === 'true';
   });
+  const skeletonNameWidths = [52, 68, 61, 75, 57, 70, 64, 58];
+  const skeletonMetaWidths = [18, 27, 22, 31, 20, 25, 29, 21];
   const setSortByActive = useCallback((val: boolean | ((prev: boolean) => boolean)) => {
     _setSortByActive(prev => {
       const next = typeof val === 'function' ? val(prev) : val;
@@ -352,15 +354,22 @@ function NodeListView({
   return (
     <div className="flex flex-col h-full relative">
       {/* Header */}
-      <div className="px-3 py-2 border-b border-border/50 relative overflow-hidden flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-display font-bold text-muted-foreground uppercase tracking-wider">
+      <div className="px-3 py-3 border-b border-border/40 bg-gradient-to-r from-muted/15 to-transparent relative overflow-hidden flex-shrink-0">
+        <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(var(--foreground) 1px, transparent 1px), linear-gradient(90deg, var(--foreground) 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
+        
+        <div className="flex items-center justify-between relative z-10">
+          <span className="text-sm font-display font-bold text-foreground uppercase tracking-widest leading-none">
             {t('fleet.status')}
           </span>
-          <div className="flex items-center gap-2 text-xs font-mono">
-            <span className="text-success"><span className="font-metric">{onlineCount}</span> {t('status.on')}</span>
-            <span className="text-muted-foreground/50">|</span>
-            <span className="text-destructive"><span className="font-metric">{nodes.length - onlineCount}</span> {t('status.off')}</span>
+          <div className="flex items-stretch border border-border/40 rounded-sm overflow-hidden font-mono text-xxs tabular-nums bg-background/50 shrink-0">
+            <div className="flex items-center gap-1 px-1.5 py-0.5 border-r border-border/40 bg-success/10">
+              <span className="w-1 h-2 bg-success shrink-0" aria-hidden />
+              <span className="text-foreground font-bold leading-none">{onlineCount}</span>
+            </div>
+            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-destructive/10">
+              <span className="w-1 h-2 bg-destructive shrink-0" aria-hidden />
+              <span className="text-foreground font-bold leading-none">{nodes.length - onlineCount}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -437,15 +446,15 @@ function NodeListView({
             {Array.from({ length: 8 }).map((_, i) => (
               <div
                 key={i}
-                className="px-3 py-2.5 border-b border-border/20 border-l-2 border-l-transparent flex flex-col gap-1"
+                className="px-3 py-2.5 border-b border-border/20 flex flex-col gap-1"
                 style={{ animationDelay: `${i * 80}ms` }}
               >
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-muted/30 motion-safe:animate-pulse" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-2">
-                      <div className="h-4 rounded bg-muted/25 motion-safe:animate-pulse" style={{ width: `${40 + Math.random() * 35}%` }} />
-                      <div className="h-3 rounded bg-muted/15 motion-safe:animate-pulse" style={{ width: `${15 + Math.random() * 20}%` }} />
+                      <div className="h-4 rounded bg-muted/25 motion-safe:animate-pulse" style={{ width: `${skeletonNameWidths[i % skeletonNameWidths.length]}%` }} />
+                      <div className="h-3 rounded bg-muted/15 motion-safe:animate-pulse" style={{ width: `${skeletonMetaWidths[i % skeletonMetaWidths.length]}%` }} />
                     </div>
                   </div>
                 </div>
@@ -589,7 +598,7 @@ function NodeDetailView({
           </TooltipContent>
         </Tooltip>
         <div className="flex-1 min-w-0 flex flex-col gap-1">
-          <div className="text-base font-display font-bold truncate">{node.name}</div>
+          <div className="node-name text-base truncate">{node.name}</div>
           <div className="flex items-center gap-1.5">
             <span className={cn(
               'w-1.5 h-1.5 rounded-full shrink-0',
