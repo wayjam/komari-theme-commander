@@ -18,6 +18,42 @@ import i18n from "../i18n"
 let registered = false
 let updateSW: ((reloadPage?: boolean) => Promise<void>) | null = null
 
+type NavigatorWithStandalone = Navigator & {
+  standalone?: boolean
+}
+
+function isInstalledPwaWindow(): boolean {
+  if (typeof window === "undefined") return false
+
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.matchMedia("(display-mode: window-controls-overlay)").matches ||
+    Boolean((navigator as NavigatorWithStandalone).standalone)
+  )
+}
+
+function isThemeServiceWorker(registration: ServiceWorkerRegistration): boolean {
+  const worker = registration.active ?? registration.waiting ?? registration.installing
+  if (!worker) return false
+
+  try {
+    return new URL(worker.scriptURL).pathname === "/sw.js"
+  } catch {
+    return false
+  }
+}
+
+async function unregisterBrowserTabServiceWorker(): Promise<void> {
+  try {
+    const registration = await navigator.serviceWorker.getRegistration("/")
+    if (!registration || !isThemeServiceWorker(registration)) return
+
+    await registration.unregister()
+  } catch (error) {
+    console.warn("[pwa] browser-tab sw cleanup failed", error)
+  }
+}
+
 function t(key: string, fallback: string, vars?: Record<string, string>): string {
   // i18n is bootstrapped synchronously in src/i18n.ts (top-level await), so
   // by the time main.tsx mounts the React tree the resources are already
@@ -32,6 +68,15 @@ export function registerPwa(): void {
   registered = true
   if (typeof window === "undefined") return
   if (!("serviceWorker" in navigator)) return
+
+  // Komari Theme Commander is served at "/", so its SW scope is also "/".
+  // Keep that behavior reserved for installed PWA windows; ordinary desktop
+  // browser tabs should behave like the live Komari web UI, without update
+  // prompts or a theme-level service worker controlling the site root.
+  if (!isInstalledPwaWindow()) {
+    void unregisterBrowserTabServiceWorker()
+    return
+  }
 
   // Lazy-load to keep the PWA runtime out of the critical entry chunk for
   // browsers that won't end up using it (older mobile / private browsing).
