@@ -100,7 +100,7 @@ export type UptimePrecision = 'year' | 'month' | 'day' | 'hour' | 'minute';
  * @param seconds - uptime in seconds
  * @param precision - smallest unit to display, default 'hour'
  */
-export function formatUptime(seconds: number, precision: UptimePrecision = 'hour'): string {
+export function formatUptime(seconds: number, precision: UptimePrecision = 'hour', maxUnits: number = 2): string {
   const d = dayjs.duration(seconds, 'seconds');
   const years = Math.floor(d.asYears());
   const months = Math.floor(d.asMonths()) % 12;
@@ -125,6 +125,8 @@ export function formatUptime(seconds: number, precision: UptimePrecision = 'hour
 
   return visibleUnits
     .slice(firstNonZero)
+    .filter(u => u.value > 0 || (u.key === visibleUnits[visibleUnits.length - 1].key && firstNonZero === visibleUnits.length - 1)) // keep zero only if it's the only unit
+    .slice(0, maxUnits)
     .map(u => `${u.value}${u.label}`)
     .join(' ');
 }

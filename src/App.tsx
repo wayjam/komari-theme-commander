@@ -344,7 +344,7 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
                 <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">{t('label.uptime')}</span>
               </div>
               <div className="flex flex-1 items-center text-lg font-metric font-bold tabular-nums leading-none">
-                {formatUptime(stats.uptime, 'minute')}
+                {formatUptime(stats.uptime, 'minute', 5)}
               </div>
             </div>
           </div>

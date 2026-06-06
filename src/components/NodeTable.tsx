@@ -11,13 +11,12 @@ import {
 } from '@tanstack/react-table';
 import { useNavigate } from 'react-router-dom';
 import { useAppConfig } from '@/hooks/useAppConfig';
-import { Progress } from './ui/progress';
 import { Sparkline } from './Sparkline';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { SystemIcon } from '@/lib/systemIcon';
 import type { NodeWithStatus } from '@/services/api';
 import { useRecentStats } from '@/hooks/useRecentStats';
-import { formatSpeed, formatSpeedParts, formatUptime, formatBytes, getUsageStatus, calcTrafficUsage, formatTrafficType, getExpiryStatus, formatExpiry, cn } from '@/lib/utils';
+import { formatSpeed, formatUptime, formatBytes, getUsageStatus, calcTrafficUsage, formatTrafficType, getExpiryStatus, formatExpiry, cn } from '@/lib/utils';
 import type { TrafficLimitType } from '@/lib/utils';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { RegionFlag } from './RegionFlag';
@@ -29,12 +28,8 @@ interface NodeTableProps {
   nodes: NodeWithStatus[];
 }
 
-// Status -> usage bar fill / overlay text color
-const fillByStatus: Record<string, string> = {
-  critical: 'bg-destructive/75',
-  warning: 'bg-warning/70',
-  normal: 'bg-primary/55',
-};
+type GaugeChannel = 'cpu' | 'ram' | 'disk' | 'traffic';
+type GaugeStatus = 'normal' | 'warning' | 'critical';
 
 const textByStatus: Record<string, string> = {
   critical: 'text-destructive',
@@ -42,23 +37,134 @@ const textByStatus: Record<string, string> = {
   normal: '',
 };
 
-function UsageCell({ value, status }: { value: number; status: string }) {
+function UsageCell({ value, status, channel, sparkline, sub }: { value: number; status: GaugeStatus; channel: GaugeChannel; sparkline?: number[] | null; sub?: React.ReactNode }) {
+  const pct = Math.min(Math.max(value, 0), 100);
+  const textColor = status === 'critical' ? 'text-destructive' : status === 'warning' ? 'text-warning' : '';
+  
   return (
-    <div className="relative w-full min-w-22">
-      <Progress
-        value={Math.min(value, 100)}
-        className="h-5 bg-muted/25 rounded"
-        indicatorClassName={cn('rounded transition-transform duration-500 ease-out', fillByStatus[status] || 'bg-primary/55')}
-      />
-      <span
-        className={cn(
-          'absolute inset-0 flex items-center justify-center text-xs font-metric font-bold',
-          status === 'normal' ? 'text-foreground' : textByStatus[status],
+    <div className="hud-gauge w-full min-w-22" data-channel={channel} data-status={status}>
+      <div className="flex items-baseline justify-between gap-2 mb-1">
+        <div className="flex items-baseline gap-1.5 min-w-0">
+          <span className={cn('hud-gauge__value font-metric font-bold tabular-nums', textColor)}>
+            {value.toFixed(1)}
+            <span className="hud-gauge__unit text-xxs font-metric text-muted-foreground/70 ml-0.5">
+              %
+            </span>
+          </span>
+          {sub && (
+            <span className="text-[10px] font-mono text-muted-foreground/50 truncate">
+              {sub}
+            </span>
+          )}
+        </div>
+        {sparkline && (
+          <div className="hidden h-3.5 items-center justify-end xl:flex opacity-80" aria-label="Trend">
+            <Sparkline data={sparkline} width={56} height={14} />
+          </div>
         )}
-      >
-        {value.toFixed(1)}%
-      </span>
+      </div>
+      <div className="hud-gauge__track-wrap">
+        <div className="hud-gauge__ticks" aria-hidden="true">
+          <span style={{ left: '25%' }} />
+          <span style={{ left: '50%' }} />
+          <span style={{ left: '75%' }} />
+        </div>
+        <div className="hud-gauge__track">
+          <div className="hud-gauge__fill" style={{ width: `${pct}%` }}>
+            <span className="hud-gauge__cursor" aria-hidden="true" />
+          </div>
+        </div>
+      </div>
     </div>
+  );
+}
+
+function NetworkCell({ node, t }: { node: NodeWithStatus; t: (k: string, p?: Record<string, unknown>) => string }) {
+  const stats = node.stats;
+  if (!stats) return <span className="text-sm font-metric text-muted-foreground/30">—</span>;
+
+  const hasTraffic = !!(node.traffic_limit && node.traffic_limit > 0 && node.traffic_limit_type && node.traffic_limit_type !== 'no_limit');
+  const trafficUsed = hasTraffic
+    ? calcTrafficUsage(stats.network.totalUp, stats.network.totalDown, node.traffic_limit_type as TrafficLimitType)
+    : 0;
+  const trafficPct = hasTraffic ? (trafficUsed / node.traffic_limit!) * 100 : 0;
+  const trafficStatus = getUsageStatus(trafficPct, { warning: 70, critical: 90 }) as GaugeStatus;
+  const trafficClamped = Math.min(Math.max(trafficPct, 0), 100);
+  const quotaTone = trafficStatus === 'critical'
+    ? 'text-destructive'
+    : trafficStatus === 'warning'
+      ? 'text-warning'
+      : 'text-muted-foreground/70';
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="min-w-0 cursor-default space-y-1.5 text-xs font-metric tabular-nums">
+          <div className="grid min-w-0 grid-cols-2 gap-3 leading-none">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <ArrowUp className="h-3 w-3 shrink-0 text-success/75" aria-hidden />
+              <span className="min-w-0 truncate font-bold text-foreground/90">
+                {formatSpeed(stats.network.up)}
+              </span>
+            </div>
+            <div className="flex min-w-0 items-center gap-1.5">
+              <ArrowDown className="h-3 w-3 shrink-0 text-primary/75" aria-hidden />
+              <span className="min-w-0 truncate font-bold text-foreground/90">
+                {formatSpeed(stats.network.down)}
+              </span>
+            </div>
+          </div>
+
+          {hasTraffic ? (
+            <div className="min-w-0 space-y-1 border-t border-border/20 pt-1.5">
+              <div className="flex min-w-0 items-baseline justify-between gap-2 leading-none mb-1">
+                <span className="min-w-0 truncate font-mono text-xxs uppercase tracking-[0.1em] text-muted-foreground/55">
+                  {t('label.traffic')} {formatTrafficType(node.traffic_limit_type!)}
+                </span>
+                <span className={cn('shrink-0 font-bold tabular-nums', quotaTone)}>
+                  {trafficPct.toFixed(0)}%
+                </span>
+              </div>
+              <div className="hud-gauge" data-channel="traffic" data-status={trafficStatus}>
+                <div className="hud-gauge__track-wrap">
+                  <div className="hud-gauge__ticks" aria-hidden="true">
+                    <span style={{ left: '25%' }} />
+                    <span style={{ left: '50%' }} />
+                    <span style={{ left: '75%' }} />
+                  </div>
+                  <div className="hud-gauge__track">
+                    <div className="hud-gauge__fill" style={{ width: `${trafficClamped}%` }}>
+                      <span className="hud-gauge__cursor" aria-hidden="true" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="min-w-0 truncate text-right text-xxs font-medium text-muted-foreground/60 mt-0.5">
+                {formatBytes(trafficUsed)} / {formatBytes(node.traffic_limit!)}
+              </div>
+            </div>
+          ) : (
+            <div className="grid min-w-0 grid-cols-2 gap-3 border-t border-border/20 pt-1.5 text-xxs leading-none text-muted-foreground/65">
+              <span className="min-w-0 truncate">
+                {t('label.total')} ↑ {formatBytes(stats.network.totalUp)}
+              </span>
+              <span className="min-w-0 truncate text-right">
+                {t('label.total')} ↓ {formatBytes(stats.network.totalDown)}
+              </span>
+            </div>
+          )}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="whitespace-pre-line text-xs font-mono">
+        {[
+          `${t('chart.realtime')}: ↑ ${formatSpeed(stats.network.up)} · ↓ ${formatSpeed(stats.network.down)}`,
+          `${t('label.total')}: ↑ ${formatBytes(stats.network.totalUp)} · ↓ ${formatBytes(stats.network.totalDown)}`,
+          hasTraffic
+            ? `${t('label.traffic')} ${formatTrafficType(node.traffic_limit_type!)}: ${formatBytes(trafficUsed)} / ${formatBytes(node.traffic_limit!)} (${trafficPct.toFixed(1)}%)`
+            : null,
+        ].filter(Boolean).join('\n')}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -70,14 +176,10 @@ function SortIcon({ sorted }: { sorted: false | 'asc' | 'desc' }) {
   return <ArrowDown className="h-3 w-3 text-primary" />;
 }
 
-/* ──────────────────────────────────────────────────────────────
-   Memoised row renderers
-   Each WS tick the parent receives a fresh `nodes` array, but the
-   *individual* node references stay stable when their stats didn't
-   change (see useNodes.ts). Wrapping rows in `memo` keyed on the
-   node reference lets unchanged rows skip render entirely — without
-   this, react-table walks every cell of every row on every tick.
-   ────────────────────────────────────────────────────────────── */
+function compactColumnClass(columnId: string) {
+  return columnId === 'load' ? 'hidden xl:table-cell' : '';
+}
+
 interface DesktopRowProps {
   row: Row<NodeWithStatus>;
   isLast: boolean;
@@ -95,19 +197,24 @@ const DesktopRow = memo(function DesktopRow({ row, isLast }: DesktopRowProps) {
   return (
     <tr
       className={cn(
-        'group transition-colors odd:bg-muted/[0.035] hover:bg-primary/8',
-        !isLast && 'border-b border-border/30',
+        'group transition-colors hover:bg-primary/8 relative',
+        !isLast && 'border-b border-border/15',
         !isOnline && 'opacity-45',
-        isCritical && 'bg-destructive/4',
+        isCritical && 'bg-destructive/10',
       )}
-      style={{ height: 64 }}
+      style={{ height: 60 }}
     >
-      {row.getVisibleCells().map((cell, cellIdx) => (
+      {row.getVisibleCells().map((cell, cellIdx) => {
+        const isGroupStart = ['cpu', 'network', 'uptime'].includes(cell.column.id);
+        
+        return (
         <td
           key={cell.id}
           className={cn(
-            'py-3 align-middle relative',
+            'py-3 align-middle relative overflow-hidden',
             cellIdx === 0 ? 'px-1 text-center' : 'px-3',
+            isGroupStart && 'pl-5 lg:pl-8', // Spacer gutter
+            compactColumnClass(cell.column.id),
           )}
         >
           {cellIdx === 0 && (
@@ -122,13 +229,10 @@ const DesktopRow = memo(function DesktopRow({ row, isLast }: DesktopRowProps) {
           )}
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
         </td>
-      ))}
+      )})}
     </tr>
   );
 }, (prev, next) =>
-  // Re-render only when the underlying node reference, position-in-list,
-  // or column model changes. `row` is a fresh object every tick, but
-  // `row.original` is stable when stats are equivalent.
   prev.row.original === next.row.original &&
   prev.isLast === next.isLast &&
   prev.row.getVisibleCells().length === next.row.getVisibleCells().length,
@@ -139,24 +243,31 @@ interface MobileRowProps {
   isLast: boolean;
   onOpen: (uuid: string) => void;
   t: (k: string, p?: Record<string, unknown>) => string;
+  isLoggedIn: boolean;
 }
 
-const MobileRow = memo(function MobileRow({ node, isLast, onOpen, t }: MobileRowProps) {
+const MobileRow = memo(function MobileRow({ node, isLast, onOpen, t, isLoggedIn }: MobileRowProps) {
   const isOnline = node.status === 'online';
   const stats = node.stats;
   const cpuUsage = stats?.cpu?.usage ?? 0;
   const ramUsage = stats ? (stats.ram.used / stats.ram.total) * 100 : 0;
   const diskUsage = stats ? (stats.disk.used / stats.disk.total) * 100 : 0;
+  
+  const cpuStatus = getUsageStatus(cpuUsage, { warning: 60, critical: 80 }) as GaugeStatus;
+  const ramStatus = getUsageStatus(ramUsage, { warning: 70, critical: 85 }) as GaugeStatus;
+  const diskStatus = getUsageStatus(diskUsage, { warning: 75, critical: 90 }) as GaugeStatus;
+
   const cores = node.cpu_cores || 1;
   const loadRatio = stats ? stats.load.load1 / cores : 0;
   const loadStatus = loadRatio >= 1.5 ? 'critical' : loadRatio >= 1 ? 'warning' : 'normal';
-  const tagList = parseTagList(node.tags);
+  const expiryStatus = getExpiryStatus(node.expired_at);
+  const tagList = parseTagList(node.tags).sort((a, b) => (a.color ? 0 : 1) - (b.color ? 0 : 1));
 
   return (
     <div
       className={cn(
-        'px-3 py-3 space-y-2 transition-colors odd:bg-muted/[0.035] hover:bg-primary/8',
-        !isLast && 'border-b border-border/30',
+        'px-3 py-3 space-y-3 transition-colors even:bg-muted/[0.02] hover:bg-primary/8 relative',
+        !isLast && 'border-b border-border/20',
         !isOnline && 'opacity-45',
       )}
     >
@@ -175,7 +286,7 @@ const MobileRow = memo(function MobileRow({ node, isLast, onOpen, t }: MobileRow
             onClick={() => onOpen(node.uuid)}
           >{node.name}</button>
         </div>
-        {(node.group || tagList.length > 0 || node.hidden) && (
+        {(node.group || tagList.length > 0 || node.hidden || expiryStatus) && (
           <div className="flex flex-wrap items-center gap-1 ml-0 sm:ml-4">
             {node.group && (
               <span className="text-xxs font-mono text-primary/85 bg-primary/15 px-1.5 py-0.5 rounded-sm">
@@ -202,18 +313,55 @@ const MobileRow = memo(function MobileRow({ node, isLast, onOpen, t }: MobileRow
                 {t('node.hidden')}
               </span>
             )}
+            {expiryStatus && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className={cn(
+                    'text-xxs font-mono px-1.5 py-0.5 rounded-sm cursor-default shrink-0',
+                    expiryStatus === 'expired'
+                      ? 'text-destructive/85 bg-destructive/15'
+                      : expiryStatus === 'warning'
+                        ? 'text-warning/85 bg-warning/15'
+                        : 'text-muted-foreground/55 bg-muted/35',
+                  )}>
+                    {formatExpiry(node.expired_at)}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="whitespace-pre-line text-xs font-mono">
+                  {isLoggedIn
+                    ? t('label.expiryTooltipDetail', {
+                        date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
+                        cycle: node.billing_cycle ?? '-',
+                        renewal: node.auto_renewal ? t('label.yes') : t('label.no'),
+                        price: node.price === -1 ? t('label.free') : node.price === 0 ? t('label.notSet') : `${node.currency}${node.price}`,
+                      })
+                    : t('label.expiryTooltip', {
+                        date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
+                      })
+                  }
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
         )}
       </div>
       {stats && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-metric text-muted-foreground ml-0 sm:ml-4 tabular-nums">
-          <span className={cn('whitespace-nowrap', textByStatus[getUsageStatus(cpuUsage, { warning: 60, critical: 80 })])}>{t('label.cpu')} {cpuUsage.toFixed(0).padStart(2, '0')}%</span>
-          <span className={cn('whitespace-nowrap', textByStatus[getUsageStatus(ramUsage, { warning: 70, critical: 85 })])}>{t('label.ram')} {ramUsage.toFixed(0).padStart(2, '0')}%</span>
-          <span className={cn('whitespace-nowrap', textByStatus[getUsageStatus(diskUsage, { warning: 75, critical: 90 })])}>{t('label.disk')} {diskUsage.toFixed(0).padStart(2, '0')}%</span>
-          <span className="whitespace-nowrap"><span className="text-success/70 mr-1">↑</span>{formatSpeed(stats.network.up)}</span>
-          <span className="whitespace-nowrap"><span className="text-primary/70 mr-1">↓</span>{formatSpeed(stats.network.down)}</span>
-          <span className={cn('whitespace-nowrap', textByStatus[loadStatus])}>{t('label.load')} {stats.load.load1.toFixed(2)}</span>
-          <span className="whitespace-nowrap">{formatUptime(stats.uptime)}</span>
+        <div className="ml-0 sm:ml-4 space-y-2.5">
+          <div className="grid grid-cols-3 gap-2">
+            <UsageCell value={cpuUsage} status={cpuStatus} channel="cpu" sub={`${cores}C`} />
+            <UsageCell value={ramUsage} status={ramStatus} channel="ram" sub={formatBytes(stats.ram.total)} />
+            <UsageCell value={diskUsage} status={diskStatus} channel="disk" sub={formatBytes(stats.disk.total)} />
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 text-xs font-metric text-muted-foreground tabular-nums bg-muted/10 p-2 rounded-sm border border-border/10 hud-data-cell">
+            <div className="flex items-center gap-4">
+              <span className="whitespace-nowrap flex items-center gap-1"><ArrowUp className="h-3 w-3 text-success/70" />{formatSpeed(stats.network.up)}</span>
+              <span className="whitespace-nowrap flex items-center gap-1"><ArrowDown className="h-3 w-3 text-primary/70" />{formatSpeed(stats.network.down)}</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className={cn('whitespace-nowrap', textByStatus[loadStatus])}>{t('label.load')} {stats.load.load1.toFixed(2)}</span>
+              <span className="whitespace-nowrap">{formatUptime(stats.uptime)}</span>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -222,7 +370,8 @@ const MobileRow = memo(function MobileRow({ node, isLast, onOpen, t }: MobileRow
   prev.node === next.node &&
   prev.isLast === next.isLast &&
   prev.onOpen === next.onOpen &&
-  prev.t === next.t,
+  prev.t === next.t &&
+  prev.isLoggedIn === next.isLoggedIn,
 );
 
 export function NodeTable({ nodes }: NodeTableProps) {
@@ -279,16 +428,8 @@ export function NodeTable({ nodes }: NodeTableProps) {
       enableSorting: true,
       cell: ({ row }) => {
         const node = row.original;
-        const isFree = node.price === -1;
-        const expiryStatus = (isFree || !isLoggedIn) ? null : getExpiryStatus(node.expired_at);
-        const hasTraffic = !!(node.traffic_limit && node.traffic_limit > 0 && node.traffic_limit_type && node.traffic_limit_type !== 'no_limit');
-        const trafficUsed = hasTraffic && node.stats
-          ? calcTrafficUsage(node.stats.network.totalUp, node.stats.network.totalDown, node.traffic_limit_type as TrafficLimitType)
-          : 0;
-        const trafficPct = hasTraffic ? (trafficUsed / node.traffic_limit!) * 100 : 0;
-        const trafficUrgent = trafficPct >= 70;
-        const expiryUrgent = expiryStatus === 'expired' || expiryStatus === 'warning';
-        const tagList = parseTagList(node.tags);
+        const expiryStatus = getExpiryStatus(node.expired_at);
+        const tagList = parseTagList(node.tags).sort((a, b) => (a.color ? 0 : 1) - (b.color ? 0 : 1));
 
         return (
           <div className="min-w-0 space-y-1">
@@ -304,8 +445,8 @@ export function NodeTable({ nodes }: NodeTableProps) {
               </button>
             </div>
 
-            {/* Row 2: group + tags + hidden */}
-            {(node.group || tagList.length > 0 || node.hidden) && (
+            {/* Row 2: group + tags + hidden + expiry */}
+            {(node.group || tagList.length > 0 || node.hidden || expiryStatus) && (
               <div className="flex flex-wrap items-center gap-1">
                 {node.group && (
                   <span className="text-xxs font-mono text-primary/85 bg-primary/15 px-1.5 py-0.5 rounded-sm shrink-0">
@@ -332,74 +473,54 @@ export function NodeTable({ nodes }: NodeTableProps) {
                     {t('node.hidden')}
                   </span>
                 )}
+                {expiryStatus && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span
+                        className={cn(
+                          'text-xxs font-mono px-1.5 py-0.5 rounded-sm cursor-default shrink-0',
+                          expiryStatus === 'expired'
+                            ? 'text-destructive/85 bg-destructive/15'
+                            : expiryStatus === 'warning'
+                              ? 'text-warning/85 bg-warning/15'
+                              : 'text-muted-foreground/55 bg-muted/35',
+                        )}
+                      >
+                        {formatExpiry(node.expired_at)}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="whitespace-pre-line text-xs font-mono">
+                      {isLoggedIn
+                        ? t('label.expiryTooltipDetail', {
+                            date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
+                            cycle: node.billing_cycle ?? '-',
+                            renewal: node.auto_renewal ? t('label.yes') : t('label.no'),
+                            price: node.price === -1 ? t('label.free') : node.price === 0 ? t('label.notSet') : `${node.currency}${node.price}`,
+                          })
+                        : t('label.expiryTooltip', {
+                            date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
+                          })
+                      }
+                    </TooltipContent>
+                  </Tooltip>
+                )}
               </div>
             )}
 
-            {/* Row 3: system info · traffic · expiry — unified to /50, only urgent states pop */}
+            {/* Row 3: system info. Traffic belongs to the Network column. */}
             {node.stats && (
-              <div className="flex items-center gap-2 text-xxs font-mono text-muted-foreground/60 truncate">
+              <div className="min-w-0 space-y-1 text-xxs font-mono text-muted-foreground/60">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="inline-flex items-center gap-1 truncate cursor-default">
+                    <span className="inline-flex max-w-full min-w-0 items-center gap-1 cursor-default">
                       <SystemIcon kind="os" value={node.os} className="h-2.5 w-2.5 shrink-0 opacity-70" />
-                      <span className="truncate">{node.os} · {node.cpu_cores}C · {formatBytes(node.stats.ram.total)}</span>
+                      <span className="min-w-0 truncate">{node.os} · {node.cpu_cores}C · {formatBytes(node.stats.ram.total)}</span>
                     </span>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="max-w-xs text-xs font-mono whitespace-pre-line">
                     {[node.cpu_name && `CPU: ${node.cpu_name} (${node.cpu_cores}C)`, node.os && `OS: ${node.os}`, node.arch && `Arch: ${node.arch}`, node.virtualization && `Virt: ${node.virtualization}`, `RAM: ${formatBytes(node.stats.ram.total)}`].filter(Boolean).join('\n')}
                   </TooltipContent>
                 </Tooltip>
-                {hasTraffic && (
-                  <>
-                    <span className="text-muted-foreground/25">·</span>
-                    <span
-                      className={cn(
-                        'font-metric shrink-0',
-                        trafficUrgent
-                          ? trafficPct >= 90
-                            ? 'text-destructive'
-                            : 'text-warning'
-                          : '',
-                      )}
-                    >
-                      {formatTrafficType(node.traffic_limit_type!)} {formatBytes(trafficUsed)}/{formatBytes(node.traffic_limit!)}
-                    </span>
-                  </>
-                )}
-                {expiryStatus && (
-                  <>
-                    <span className="text-muted-foreground/25">·</span>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span
-                          className={cn(
-                            'font-metric cursor-default shrink-0',
-                            expiryUrgent
-                              ? expiryStatus === 'expired'
-                                ? 'text-destructive'
-                                : 'text-warning'
-                              : '',
-                          )}
-                        >
-                          {formatExpiry(node.expired_at)}
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" className="whitespace-pre-line text-xs font-mono">
-                        {isLoggedIn
-                          ? t('label.expiryTooltipDetail', {
-                              date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
-                              cycle: node.billing_cycle ?? '-',
-                              renewal: node.auto_renewal ? t('label.yes') : t('label.no'),
-                              price: node.price === -1 ? t('label.free') : node.price === 0 ? t('label.notSet') : `${node.currency}${node.price}`,
-                            })
-                          : t('label.expiryTooltip', {
-                              date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
-                            })
-                        }
-                      </TooltipContent>
-                    </Tooltip>
-                  </>
-                )}
               </div>
             )}
           </div>
@@ -412,13 +533,21 @@ export function NodeTable({ nodes }: NodeTableProps) {
       {
         id: 'cpu',
         header: t('label.cpu'),
-        size: 120,
+        size: 150,
         enableSorting: true,
         cell: ({ row }) => {
           const stats = row.original.stats;
           if (!stats) return <span className="text-xs font-metric text-muted-foreground/30">—</span>;
           const val = stats.cpu.usage;
-          return <UsageCell value={val} status={getUsageStatus(val, { warning: 60, critical: 80 })} />;
+          return (
+            <UsageCell
+              value={val}
+              status={getUsageStatus(val, { warning: 60, critical: 80 }) as GaugeStatus}
+              channel="cpu"
+              sparkline={getCpuSparkline(row.original.uuid)}
+              sub={`${row.original.cpu_cores || 1}C`}
+            />
+          );
         },
       }
     ),
@@ -434,7 +563,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
           const stats = row.original.stats;
           if (!stats) return <span className="text-xs font-metric text-muted-foreground/30">—</span>;
           const val = (stats.ram.used / stats.ram.total) * 100;
-          return <UsageCell value={val} status={getUsageStatus(val, { warning: 70, critical: 85 })} />;
+          return <UsageCell value={val} status={getUsageStatus(val, { warning: 70, critical: 85 }) as GaugeStatus} channel="ram" sub={formatBytes(stats.ram.total)} />;
         },
       }
     ),
@@ -450,58 +579,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
           const stats = row.original.stats;
           if (!stats) return <span className="text-xs font-metric text-muted-foreground/30">—</span>;
           const val = (stats.disk.used / stats.disk.total) * 100;
-          return <UsageCell value={val} status={getUsageStatus(val, { warning: 75, critical: 90 })} />;
-        },
-      }
-    ),
-
-    columnHelper.accessor(
-      row => (row.stats?.network?.up ?? 0) + (row.stats?.network?.down ?? 0),
-      {
-        id: 'network',
-        header: t('label.network'),
-        size: 130,
-        enableSorting: true,
-        cell: ({ row }) => {
-          const stats = row.original.stats;
-          if (!stats) return <span className="text-sm font-metric text-muted-foreground/30">—</span>;
-          const up = formatSpeedParts(stats.network.up);
-          const down = formatSpeedParts(stats.network.down);
-          // Fixed-width numeric cell + fixed-width unit cell so row height/width
-          // stays stable regardless of the value's order of magnitude.
-          return (
-            <div className="text-xs font-metric leading-tight tabular-nums whitespace-nowrap">
-              <div className="flex items-center gap-1">
-                <span className="text-success/70 w-3 text-center shrink-0">↑</span>
-                <span className="w-10 text-right shrink-0">{up.value}</span>
-                <span className="w-9 text-left text-muted-foreground/70 shrink-0">{up.unit}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="text-primary/70 w-3 text-center shrink-0">↓</span>
-                <span className="w-10 text-right shrink-0">{down.value}</span>
-                <span className="w-9 text-left text-muted-foreground/70 shrink-0">{down.unit}</span>
-              </div>
-            </div>
-          );
-        },
-      }
-    ),
-
-    columnHelper.accessor(
-      row => row.stats?.uptime ?? 0,
-      {
-        id: 'uptime',
-        header: t('label.uptime'),
-        size: 90,
-        enableSorting: true,
-        cell: ({ row }) => {
-          const stats = row.original.stats;
-          if (!stats) return <span className="text-xs font-metric text-muted-foreground/30">—</span>;
-          return (
-            <span className="text-xs font-metric tabular-nums whitespace-nowrap">
-              {formatUptime(stats.uptime)}
-            </span>
-          );
+          return <UsageCell value={val} status={getUsageStatus(val, { warning: 75, critical: 90 }) as GaugeStatus} channel="disk" sub={formatBytes(stats.disk.total)} />;
         },
       }
     ),
@@ -528,24 +606,39 @@ export function NodeTable({ nodes }: NodeTableProps) {
       }
     ),
 
-    columnHelper.display({
-      id: 'sparkline',
-      header: 'TREND',
-      size: 80,
-      cell: ({ row }) => {
-        const node = row.original;
-        if (node.status !== 'online') {
-          return (
-            <div className="w-16 h-4.5 flex items-center" aria-hidden>
-              <div className="w-full border-t border-dashed border-muted-foreground/20" />
-            </div>
-          );
-        }
-        const data = getCpuSparkline(node.uuid);
-        if (!data) return <span className="text-xs font-metric text-muted-foreground/30">—</span>;
-        return <Sparkline data={data} width={64} height={18} />;
+    columnHelper.accessor(
+      row => {
+        const stats = row.stats;
+        if (!stats) return 0;
+        return stats.network.up + stats.network.down;
       },
-    }),
+      {
+        id: 'network',
+        header: t('label.network'),
+        size: 240,
+        enableSorting: true,
+        cell: ({ row }) => <NetworkCell node={row.original} t={t} />,
+      }
+    ),
+
+    columnHelper.accessor(
+      row => row.stats?.uptime ?? 0,
+      {
+        id: 'uptime',
+        header: t('label.uptime'),
+        size: 90,
+        enableSorting: true,
+        cell: ({ row }) => {
+          const stats = row.original.stats;
+          if (!stats) return <span className="text-xs font-metric text-muted-foreground/30">—</span>;
+          return (
+            <span className="text-xs font-metric tabular-nums whitespace-nowrap">
+              {formatUptime(stats.uptime)}
+            </span>
+          );
+        },
+      }
+    ),
 
   ], [getCpuSparkline, openNode, t, isLoggedIn]);
 
@@ -577,17 +670,22 @@ export function NodeTable({ nodes }: NodeTableProps) {
 
       {/* Desktop table */}
       <div className="hidden lg:block overflow-x-auto relative z-10">
-        <table className="w-full">
+        <table className="w-full table-fixed">
           <thead>
             {table.getHeaderGroups().map(headerGroup => (
               <tr key={headerGroup.id} className="border-b border-border/40 bg-muted/15 relative">
-                {headerGroup.headers.map((header, hIdx) => (
+                {headerGroup.headers.map((header, hIdx) => {
+                  const isGroupStart = ['cpu', 'network', 'uptime'].includes(header.column.id);
+                  
+                  return (
                   <th
                     key={header.id}
                     className={cn(
-                      'py-2.5 text-xxs font-mono font-bold text-muted-foreground/55 uppercase tracking-[0.18em]',
+                      'py-2.5 overflow-hidden text-xxs font-mono font-bold text-muted-foreground/55 uppercase tracking-[0.18em]',
                       hIdx === 0 ? 'px-1 text-center' : 'px-3 text-left',
-                      header.column.getCanSort() && 'cursor-pointer select-none hover:text-primary transition-colors'
+                      isGroupStart && 'pl-5 lg:pl-8', // Spacer gutter
+                      header.column.getCanSort() && 'cursor-pointer select-none hover:text-primary transition-colors',
+                      compactColumnClass(header.column.id),
                     )}
                     style={{ width: header.getSize() === 999 ? undefined : header.getSize() }}
                     onClick={header.column.getToggleSortingHandler()}
@@ -599,7 +697,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
                       )}
                     </div>
                   </th>
-                ))}
+                )})}
               </tr>
             ))}
           </thead>
@@ -624,6 +722,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
             isLast={idx === arr.length - 1}
             onOpen={openNode}
             t={t}
+            isLoggedIn={isLoggedIn}
           />
         ))}
       </div>

@@ -11,6 +11,7 @@
     "swap": "SWAP",
     "disk": "DISK",
     "network": "NETWORK",
+    "speed": "SPEED",
     "load": "LOAD",
     "uptime": "UPTIME",
     "traffic": "TRAFFIC",

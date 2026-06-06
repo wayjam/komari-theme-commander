@@ -282,7 +282,9 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
   const cpuSparkline = isOnline ? getCpuSparkline(node.uuid) : null;
   const navigate = useNavigate();
 
-  const tagList = useMemo(() => parseTagList(node.tags), [node.tags]);
+  const tagList = useMemo(() => {
+    return parseTagList(node.tags).sort((a, b) => (a.color ? 0 : 1) - (b.color ? 0 : 1));
+  }, [node.tags]);
 
   const cpuUsage = stats?.cpu?.usage ?? 0;
   const ramUsage = stats ? (stats.ram.used / stats.ram.total) * 100 : 0;
@@ -334,35 +336,6 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
               )}
               onClick={() => navigate(`/node/${node.uuid}`)}
             >{node.name}</h3>
-            
-            {isLoggedIn && node.price !== -1 && (() => {
-              const expiryStatus = getExpiryStatus(node.expired_at);
-              if (!expiryStatus) return null;
-              return (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className={cn(
-                      'text-xxs leading-none font-mono px-1.5 py-0.5 rounded-sm flex-shrink-0 border cursor-default',
-                      expiryStatus === 'expired'
-                        ? 'text-destructive bg-destructive/10 border-destructive/20'
-                        : expiryStatus === 'warning'
-                          ? 'text-warning bg-warning/10 border-warning/20'
-                          : 'text-muted-foreground/60 bg-muted/20 border-border/20',
-                    )}>
-                      {formatExpiry(node.expired_at)}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="whitespace-pre-line text-xs font-mono">
-                    {t('label.expiryTooltipDetail', {
-                      date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
-                      cycle: node.billing_cycle ?? '-',
-                      renewal: node.auto_renewal ? t('label.yes') : t('label.no'),
-                      price: node.price === -1 ? t('label.free') : node.price === 0 ? t('label.notSet') : `${node.currency}${node.price}`,
-                    })}
-                  </TooltipContent>
-                </Tooltip>
-              );
-            })()}
 
             {(cpuStatus === 'critical' || ramStatus === 'critical') && (
               <div className="flex items-center gap-1 text-xs font-mono text-destructive font-bold motion-safe:animate-pulse ml-auto">
@@ -397,6 +370,39 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
                 {t('node.hidden')}
               </span>
             )}
+            {(() => {
+              const expiryStatus = getExpiryStatus(node.expired_at);
+              if (!expiryStatus) return null;
+              return (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className={cn(
+                      'text-xxs font-mono px-1.5 py-0.5 rounded-sm cursor-default shrink-0',
+                      expiryStatus === 'expired'
+                        ? 'text-destructive/85 bg-destructive/15'
+                        : expiryStatus === 'warning'
+                          ? 'text-warning/85 bg-warning/15'
+                          : 'text-muted-foreground/55 bg-muted/35',
+                    )}>
+                      {formatExpiry(node.expired_at)}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="whitespace-pre-line text-xs font-mono">
+                    {isLoggedIn
+                      ? t('label.expiryTooltipDetail', {
+                          date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
+                          cycle: node.billing_cycle ?? '-',
+                          renewal: node.auto_renewal ? t('label.yes') : t('label.no'),
+                          price: node.price === -1 ? t('label.free') : node.price === 0 ? t('label.notSet') : `${node.currency}${node.price}`,
+                        })
+                      : t('label.expiryTooltip', {
+                          date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
+                        })
+                    }
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })()}
           </div>
           {/* System info row */}
           {(node.os || node.arch) && (

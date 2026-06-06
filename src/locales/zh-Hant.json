@@ -11,6 +11,7 @@
     "swap": "交換",
     "disk": "磁碟",
     "network": "網路",
+    "speed": "速度",
     "load": "負載",
     "uptime": "運行時間",
     "traffic": "流量",

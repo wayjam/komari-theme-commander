@@ -1995,7 +1995,7 @@
   /* Clean — strip all decorations: no inset, no cursor, no ticks, no gradient */
   [data-theme="clean"] .hud-gauge__track {
     box-shadow: none;
-    background: var(--muted);
+    background: color-mix(in oklch, var(--foreground) 8%, transparent);
     height: 4px;
   }
 
