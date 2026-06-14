@@ -23,10 +23,10 @@ const REFRESH_INTERVAL = 30_000; // 30 seconds
  * when the sorted contents actually change.
  */
 function useStableUuids(uuids: string[]): string[] {
-  const ref = useRef<string[]>([]);
   const sorted = useMemo(() => [...uuids].sort(), [uuids]);
   const key = sorted.join(',');
   const prevKey = useRef(key);
+  const ref = useRef<string[]>(sorted);
 
   if (prevKey.current !== key) {
     prevKey.current = key;
@@ -38,9 +38,11 @@ function useStableUuids(uuids: string[]): string[] {
 
 export function RecentStatsProvider({
   onlineUuids: rawOnlineUuids,
+  enabled = true,
   children,
 }: {
   onlineUuids: string[];
+  enabled?: boolean;
   children: ReactNode;
 }) {
   const onlineUuids = useStableUuids(rawOnlineUuids);
@@ -51,6 +53,8 @@ export function RecentStatsProvider({
   const fetchAll = useCallback(async (uuids: string[]) => {
     if (fetchingRef.current || uuids.length === 0) return;
     fetchingRef.current = true;
+
+    const allResults: { uuid: string; data: number[] }[] = [];
 
     try {
       for (let i = 0; i < uuids.length; i += BATCH_SIZE) {
@@ -70,16 +74,25 @@ export function RecentStatsProvider({
           })
         );
 
-        setSparklineMap(prev => {
-          const next = new Map(prev);
-          for (const { uuid, data } of results) {
-            if (data.length >= 2) {
-              next.set(uuid, data);
-            }
-          }
-          return next;
-        });
+        allResults.push(...results);
       }
+
+      setSparklineMap(prev => {
+        const next = new Map(prev);
+        const tracked = new Set(uuids);
+
+        for (const uuid of next.keys()) {
+          if (!tracked.has(uuid)) next.delete(uuid);
+        }
+
+        for (const { uuid, data } of allResults) {
+          if (data.length >= 2) {
+            next.set(uuid, data);
+          }
+        }
+
+        return next;
+      });
     } finally {
       fetchingRef.current = false;
     }
@@ -87,19 +100,22 @@ export function RecentStatsProvider({
 
   // Initial fetch + when online nodes change
   useEffect(() => {
+    if (!enabled) return;
     fetchAll(onlineUuids);
-  }, [onlineUuids, fetchAll]);
+  }, [enabled, onlineUuids, fetchAll]);
 
   // Periodic refresh
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
+    if (!enabled) return;
     timerRef.current = setInterval(() => {
+      if (document.hidden) return;
       fetchAll(onlineUuids);
     }, REFRESH_INTERVAL);
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [onlineUuids, fetchAll]);
+  }, [enabled, onlineUuids, fetchAll]);
 
   const getCpuSparkline = useCallback(
     (uuid: string) => sparklineMap.get(uuid) ?? null,

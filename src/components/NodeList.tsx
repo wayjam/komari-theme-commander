@@ -100,13 +100,14 @@ function FilterDropdown({
 function VirtualGrid({ nodes }: { nodes: NodeWithStatus[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [cols, setCols] = useState(3);
+  const [scrollMargin, setScrollMargin] = useState(0);
 
   const updateCols = useCallback(() => {
     if (!containerRef.current) return;
-    const w = containerRef.current.offsetWidth;
-    if (w >= 1024) setCols(3);
-    else if (w >= 640) setCols(2);
-    else setCols(1);
+    const { offsetWidth, offsetTop } = containerRef.current;
+    const nextCols = offsetWidth >= 1024 ? 3 : offsetWidth >= 640 ? 2 : 1;
+    setCols(prev => (prev === nextCols ? prev : nextCols));
+    setScrollMargin(prev => (prev === offsetTop ? prev : offsetTop));
   }, []);
 
   useEffect(() => {
@@ -123,14 +124,7 @@ function VirtualGrid({ nodes }: { nodes: NodeWithStatus[] }) {
     count: rowCount,
     estimateSize: () => estimatedRowHeight,
     overscan: 3,
-    scrollMargin: containerRef.current?.offsetTop ?? 0,
-  });
-
-  // Keep scrollMargin in sync when layout shifts
-  useEffect(() => {
-    if (containerRef.current) {
-      virtualizer.options.scrollMargin = containerRef.current.offsetTop;
-    }
+    scrollMargin,
   });
 
   return (
@@ -152,7 +146,7 @@ function VirtualGrid({ nodes }: { nodes: NodeWithStatus[] }) {
               ref={virtualizer.measureElement}
               data-index={virtualRow.index}
               className="absolute top-0 left-0 w-full"
-              style={{ transform: `translateY(${virtualRow.start - (virtualizer.options.scrollMargin ?? 0)}px)` }}
+              style={{ transform: `translateY(${virtualRow.start - scrollMargin}px)` }}
             >
               <div
                 className="grid gap-4 sm:gap-5 pb-4 sm:pb-5"

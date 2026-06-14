@@ -31,8 +31,8 @@ const statusColorMap: Record<'normal' | 'warning' | 'critical', string> = {
   critical: 'bg-destructive',
 };
 
-// ── Threshold: switch to virtualizer when node count exceeds this ──
-const VIRTUALIZE_THRESHOLD = 200;
+// ── Threshold: switch to virtualizer before large fleets become DOM-heavy ──
+const VIRTUALIZE_THRESHOLD = 80;
 
 // ── Extracted node row content (shared by both plain and virtualized modes) ──
 //

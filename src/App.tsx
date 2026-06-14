@@ -766,31 +766,34 @@ function App() {
   }, []);
 
 
-  const networkStats = useMemo(() => {
+  const fleetSummary = useMemo(() => {
     let totalUp = 0;
     let totalDown = 0;
+    const onlineUuids: string[] = [];
+    let hasCriticalNode = false;
+
     nodes.forEach(node => {
       if (node.status === 'online' && node.stats?.network) {
+        onlineUuids.push(node.uuid);
         totalUp += node.stats.network.up || 0;
         totalDown += node.stats.network.down || 0;
       }
+
+      if (!hasCriticalNode && node.status === 'online' && node.stats) {
+        hasCriticalNode = node.stats.cpu.usage > 90 || (node.stats.ram.used / node.stats.ram.total) > 0.95;
+      }
     });
-    return { totalUp, totalDown };
+
+    return {
+      networkStats: { totalUp, totalDown },
+      onlineUuids,
+      hasCriticalNode,
+    };
   }, [nodes]);
 
   const isDashboard = location.pathname === '/';
-
-  const onlineUuids = useMemo(
-    () => nodes.filter(n => n.status === 'online').map(n => n.uuid),
-    [nodes],
-  );
-
-  const hasCriticalNode = useMemo(() => {
-    return nodes.some(n => {
-      if (!n.stats || n.status !== 'online') return false;
-      return n.stats.cpu.usage > 90 || (n.stats.ram.used / n.stats.ram.total) > 0.95;
-    });
-  }, [nodes]);
+  const { networkStats, onlineUuids, hasCriticalNode } = fleetSummary;
+  const shouldFetchSparklines = isDashboard && (viewMode === 'grid' || viewMode === 'table');
 
   const viewButtons = useMemo<ViewTab<ViewMode>[]>(() => {
     const all: ViewTab<ViewMode>[] = [
@@ -823,7 +826,7 @@ function App() {
 
   return (
     <NodesContext.Provider value={{ nodes: maskedNodes, loading, refreshNodes, hubNodeUuid }}>
-      <RecentStatsProvider onlineUuids={onlineUuids}>
+      <RecentStatsProvider onlineUuids={onlineUuids} enabled={shouldFetchSparklines}>
       <ViewModeContext.Provider value={{ viewMode, setViewMode: handleSetViewMode }}>
         <div className="min-h-dvh flex flex-col bg-background text-foreground">
           {/* ═══ Header ═══ */}

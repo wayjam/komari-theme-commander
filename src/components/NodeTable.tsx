@@ -1,4 +1,4 @@
-import { useMemo, memo, useState, useCallback } from 'react';
+import { useMemo, memo, useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   useReactTable,
@@ -9,8 +9,10 @@ import {
   type SortingState,
   type Row,
 } from '@tanstack/react-table';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { useNavigate } from 'react-router-dom';
 import { useAppConfig } from '@/hooks/useAppConfig';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { Sparkline } from './Sparkline';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { SystemIcon } from '@/lib/systemIcon';
@@ -381,6 +383,8 @@ export function NodeTable({ nodes }: NodeTableProps) {
   const { isLoggedIn } = useAppConfig();
   const navigate = useNavigate();
   const openNode = useCallback((uuid: string) => navigate(`/node/${uuid}`), [navigate]);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const isCompactLayout = useIsMobile(1024);
 
   const columns = useMemo(() => [
     columnHelper.accessor('status', {
@@ -654,6 +658,26 @@ export function NodeTable({ nodes }: NodeTableProps) {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   });
+  const tableRows = table.getRowModel().rows;
+
+  const rowVirtualizer = useVirtualizer({
+    count: tableRows.length,
+    getScrollElement: () => bodyRef.current,
+    estimateSize: () => (isCompactLayout ? 150 : 60),
+    overscan: isCompactLayout ? 5 : 10,
+  });
+
+  useEffect(() => {
+    rowVirtualizer.measure();
+  }, [isCompactLayout, rowVirtualizer]);
+
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const firstVirtualRow = virtualRows[0];
+  const lastVirtualRow = virtualRows[virtualRows.length - 1];
+  const topPadding = firstVirtualRow ? Math.max(0, firstVirtualRow.start) : 0;
+  const bottomPadding = lastVirtualRow
+    ? Math.max(0, rowVirtualizer.getTotalSize() - lastVirtualRow.end)
+    : 0;
 
   return (
     <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl overflow-hidden commander-corners commander-corners-soft relative">
@@ -672,63 +696,90 @@ export function NodeTable({ nodes }: NodeTableProps) {
         </div>
       </div>
 
-      {/* Desktop table */}
-      <div className="hidden lg:block overflow-x-auto relative z-10">
-        <table className="w-full table-fixed">
-          <thead>
-            {table.getHeaderGroups().map(headerGroup => (
-              <tr key={headerGroup.id} className="border-b border-border/40 bg-muted/15 relative">
-                {headerGroup.headers.map((header, hIdx) => {
-                  const isGroupStart = ['cpu', 'network', 'uptime'].includes(header.column.id);
-                  
-                  return (
-                  <th
-                    key={header.id}
-                    className={cn(
-                      'py-2.5 overflow-hidden text-xxs font-mono font-bold text-muted-foreground/55 uppercase tracking-widest',
-                      hIdx === 0 ? 'px-1 text-center' : 'px-3 text-left',
-                      isGroupStart && 'pl-5 lg:pl-8', // Spacer gutter
-                      header.column.getCanSort() && 'cursor-pointer select-none hover:text-primary transition-colors',
-                      compactColumnClass(header.column.id),
-                    )}
-                    style={{ width: header.getSize() === 999 ? undefined : header.getSize() }}
-                    onClick={header.column.getToggleSortingHandler()}
-                  >
-                    <div className={cn('flex items-center gap-1', hIdx === 0 && 'justify-center')}>
-                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                      {header.column.getCanSort() && (
-                        <SortIcon sorted={header.column.getIsSorted()} />
-                      )}
-                    </div>
-                  </th>
-                )})}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {table.getRowModel().rows.map((row, idx, arr) => (
-              <DesktopRow
-                key={row.id}
-                row={row}
-                isLast={idx === arr.length - 1}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <div ref={bodyRef} className="relative z-10 max-h-[calc(100dvh-13rem)] overflow-y-auto">
+        {!isCompactLayout ? (
+          <div className="overflow-x-auto">
+            <table className="w-full table-fixed">
+              <thead>
+                {table.getHeaderGroups().map(headerGroup => (
+                  <tr key={headerGroup.id} className="sticky top-0 z-20 border-b border-border/40 bg-card/95 backdrop-blur-sm">
+                    {headerGroup.headers.map((header, hIdx) => {
+                      const isGroupStart = ['cpu', 'network', 'uptime'].includes(header.column.id);
 
-      {/* Mobile / Tablet layout */}
-      <div className="lg:hidden relative z-10">
-        {table.getRowModel().rows.map((row, idx, arr) => (
-          <MobileRow
-            key={row.id}
-            node={row.original}
-            isLast={idx === arr.length - 1}
-            onOpen={openNode}
-            t={t}
-            isLoggedIn={isLoggedIn}
-          />
-        ))}
+                      return (
+                      <th
+                        key={header.id}
+                        className={cn(
+                          'py-2.5 overflow-hidden text-xxs font-mono font-bold text-muted-foreground/55 uppercase tracking-widest',
+                          hIdx === 0 ? 'px-1 text-center' : 'px-3 text-left',
+                          isGroupStart && 'pl-5 lg:pl-8', // Spacer gutter
+                          header.column.getCanSort() && 'cursor-pointer select-none hover:text-primary transition-colors',
+                          compactColumnClass(header.column.id),
+                        )}
+                        style={{ width: header.getSize() === 999 ? undefined : header.getSize() }}
+                        onClick={header.column.getToggleSortingHandler()}
+                      >
+                        <div className={cn('flex items-center gap-1', hIdx === 0 && 'justify-center')}>
+                          {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                          {header.column.getCanSort() && (
+                            <SortIcon sorted={header.column.getIsSorted()} />
+                          )}
+                        </div>
+                      </th>
+                    )})}
+                  </tr>
+                ))}
+              </thead>
+              <tbody>
+                {topPadding > 0 && (
+                  <tr aria-hidden="true">
+                    <td colSpan={columns.length} style={{ height: topPadding, padding: 0 }} />
+                  </tr>
+                )}
+                {virtualRows.map((virtualRow) => {
+                  const row = tableRows[virtualRow.index];
+                  if (!row) return null;
+                  return (
+                    <DesktopRow
+                      key={row.id}
+                      row={row}
+                      isLast={virtualRow.index === tableRows.length - 1}
+                    />
+                  );
+                })}
+                {bottomPadding > 0 && (
+                  <tr aria-hidden="true">
+                    <td colSpan={columns.length} style={{ height: bottomPadding, padding: 0 }} />
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div>
+            {topPadding > 0 && <div aria-hidden="true" style={{ height: topPadding }} />}
+            {virtualRows.map((virtualRow) => {
+              const row = tableRows[virtualRow.index];
+              if (!row) return null;
+              return (
+                <div
+                  key={row.id}
+                  ref={rowVirtualizer.measureElement}
+                  data-index={virtualRow.index}
+                >
+                  <MobileRow
+                    node={row.original}
+                    isLast={virtualRow.index === tableRows.length - 1}
+                    onOpen={openNode}
+                    t={t}
+                    isLoggedIn={isLoggedIn}
+                  />
+                </div>
+              );
+            })}
+            {bottomPadding > 0 && <div aria-hidden="true" style={{ height: bottomPadding }} />}
+          </div>
+        )}
       </div>
     </div>
   );
