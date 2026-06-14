@@ -107,6 +107,12 @@
   --sidebar-accent-foreground: oklch(0.25 0.02 235);
   --sidebar-border: oklch(0.88 0.015 220 / 60%);
   --sidebar-ring: oklch(0.65 0.15 195);
+  --telemetry-surface: oklch(0.98 0.012 220 / 68%);
+  --telemetry-surface-strong: oklch(0.99 0.01 220 / 88%);
+  --telemetry-border: oklch(0.72 0.07 205 / 24%);
+  --telemetry-track: oklch(0.82 0.026 220 / 50%);
+  --telemetry-grid: oklch(0.6 0.08 205 / 11%);
+  --telemetry-shadow: oklch(0.44 0.08 205 / 10%);
   /* ── Tag pill palette ──
      Opt-in via `label<color>` suffix in the Komari `tags` field.
      Lumina = light bg, soft watercolor swatches — keep chroma mid (~0.05-0.12)
@@ -175,6 +181,12 @@
   --sidebar-accent-foreground: oklch(0.9 0.018 220);
   --sidebar-border: oklch(0.4 0.055 270 / 72%);
   --sidebar-ring: oklch(0.78 0.17 195);
+  --telemetry-surface: oklch(0.13 0.038 265 / 70%);
+  --telemetry-surface-strong: oklch(0.16 0.045 265 / 88%);
+  --telemetry-border: oklch(0.78 0.17 195 / 20%);
+  --telemetry-track: oklch(0.36 0.05 270 / 46%);
+  --telemetry-grid: oklch(0.78 0.17 195 / 10%);
+  --telemetry-shadow: oklch(0.78 0.17 195 / 13%);
   /* ── Tag pill palette ──
      DeepSpace = void bg; pills use translucent dark fill + neon fg so they
      read as backlit HUD chips, never paper labels. Alpha keeps the
@@ -240,6 +252,12 @@
   --sidebar-accent-foreground: oklch(0.2 0.02 250);
   --sidebar-border: oklch(0.9 0 0);
   --sidebar-ring: oklch(0.45 0.12 250);
+  --telemetry-surface: oklch(0.985 0.003 250);
+  --telemetry-surface-strong: oklch(1 0 0);
+  --telemetry-border: oklch(0.72 0.006 250 / 45%);
+  --telemetry-track: oklch(0.9 0.006 250);
+  --telemetry-grid: oklch(0.45 0.02 250 / 7%);
+  --telemetry-shadow: oklch(0.2 0.01 250 / 8%);
   /* ── Tag pill palette ──
      Clean = office-safe, near-white surfaces. Keep both bg & fg low
      chroma (~0.02-0.10) so pills read like ink stamps on paper, not
@@ -1192,7 +1210,9 @@
      ════════════════════════════════════════════════════════════ */
 
   .uptime-bar-online {
-    background-color: var(--success);
+    background:
+      linear-gradient(180deg, color-mix(in oklch, var(--foreground) 10%, transparent), transparent),
+      var(--success);
   }
 
   [data-theme="deepspace"] .uptime-view .uptime-bar-online {
@@ -1221,6 +1241,9 @@
   /* Per-row hover indicator — 1px primary edge on the left, no full side-stripe */
   .uptime-view .uptime-row {
     position: relative;
+    background:
+      linear-gradient(90deg, color-mix(in oklch, var(--telemetry-grid) 55%, transparent), transparent 46%),
+      transparent;
     transition: background-color 0.15s ease;
   }
   .uptime-view .uptime-row::before {
@@ -1557,6 +1580,115 @@
      Data Grid Cell — HUD accent
      ════════════════════════════════════════════════════════════ */
 
+  .node-card-commander {
+    background:
+      linear-gradient(135deg, color-mix(in oklch, var(--primary) 7%, transparent), transparent 34%),
+      linear-gradient(180deg, var(--telemetry-surface-strong), var(--card));
+    box-shadow:
+      0 10px 24px -18px var(--telemetry-shadow),
+      inset 0 1px 0 color-mix(in oklch, var(--foreground) 7%, transparent);
+  }
+
+  .node-card-commander:hover {
+    border-color: color-mix(in oklch, var(--primary) 38%, var(--border));
+    transform: translateY(-1px);
+  }
+
+  .node-card-commander.node-info-panel:hover {
+    transform: none;
+    border-color: var(--border);
+  }
+
+  [data-theme="deepspace"] .node-card-commander {
+    background:
+      linear-gradient(135deg, color-mix(in oklch, var(--primary) 12%, transparent), transparent 38%),
+      radial-gradient(circle at 85% 0%, color-mix(in oklch, var(--accent) 9%, transparent), transparent 34%),
+      linear-gradient(180deg, var(--telemetry-surface-strong), var(--card));
+    box-shadow:
+      0 16px 34px -24px var(--telemetry-shadow),
+      inset 0 0 0 1px color-mix(in oklch, var(--primary) 8%, transparent),
+      inset 0 1px 0 color-mix(in oklch, var(--foreground) 9%, transparent);
+  }
+
+  [data-theme="clean"] .node-card-commander {
+    background: var(--card);
+    box-shadow:
+      0 12px 22px -20px var(--telemetry-shadow),
+      inset 0 1px 0 color-mix(in oklch, var(--foreground) 4%, transparent);
+  }
+
+  .telemetry-stat {
+    position: relative;
+    min-width: 0;
+    border: 1px solid var(--telemetry-border);
+    border-radius: calc(var(--radius) - 4px);
+    background:
+      linear-gradient(180deg, color-mix(in oklch, var(--foreground) 3%, transparent), transparent),
+      var(--telemetry-surface);
+    padding: 0.45rem 0.5rem;
+    box-shadow: inset 0 1px 0 color-mix(in oklch, var(--foreground) 6%, transparent);
+  }
+
+  .telemetry-stat__label {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    color: color-mix(in oklch, var(--muted-foreground) 86%, transparent);
+    font-family: var(--font-sans);
+    font-size: var(--text-xxs);
+    font-weight: 700;
+    line-height: var(--text-xxs--line-height);
+    text-transform: uppercase;
+  }
+
+  .telemetry-stat__value {
+    margin-top: 0.05rem;
+    overflow: hidden;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-size: var(--text-xs);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums lining-nums;
+    line-height: 1rem;
+  }
+
+  .telemetry-stat__sub {
+    margin-top: 0.05rem;
+    overflow: hidden;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: color-mix(in oklch, var(--muted-foreground) 68%, transparent);
+    font-family: var(--font-sans);
+    font-size: var(--text-xxs);
+    font-variant-numeric: tabular-nums lining-nums;
+    line-height: var(--text-xxs--line-height);
+  }
+
+  .telemetry-panel {
+    border: 1px solid var(--telemetry-border);
+    border-radius: calc(var(--radius) - 2px);
+    background:
+      linear-gradient(180deg, color-mix(in oklch, var(--foreground) 3%, transparent), transparent),
+      var(--telemetry-surface);
+    box-shadow: inset 0 1px 0 color-mix(in oklch, var(--foreground) 6%, transparent);
+  }
+
+  [data-theme="clean"] .telemetry-panel {
+    background: var(--telemetry-surface-strong);
+    box-shadow: none;
+  }
+
+  [data-theme="clean"] .telemetry-stat {
+    background: var(--telemetry-surface);
+    box-shadow: none;
+  }
+
   .hud-data-cell {
     position: relative;
     overflow: hidden;
@@ -1880,11 +2012,11 @@
   .hud-gauge {
     --gauge-color: var(--primary);
     --gauge-color-soft: color-mix(in oklch, var(--gauge-color) 55%, transparent);
-    --gauge-track: color-mix(in oklch, var(--muted-foreground) 14%, transparent);
+    --gauge-track: var(--telemetry-track);
     --gauge-track-inset: color-mix(in oklch, var(--foreground) 6%, transparent);
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 5px;
   }
 
   /* Channel hues — only apply when status is normal; warning/critical override */
@@ -1929,9 +2061,17 @@
   /* Track — machined groove */
   .hud-gauge__track {
     position: relative;
-    height: 5px;
-    border-radius: 999px;
-    background: var(--gauge-track);
+    height: 6px;
+    border-radius: 3px;
+    background:
+      repeating-linear-gradient(
+        90deg,
+        transparent 0,
+        transparent calc(6.25% - 2px),
+        color-mix(in oklch, var(--background) 48%, transparent) calc(6.25% - 2px),
+        color-mix(in oklch, var(--background) 48%, transparent) 6.25%
+      ),
+      var(--gauge-track);
     box-shadow:
       inset 0 1px 0 0 var(--gauge-track-inset),
       inset 0 -1px 0 0 color-mix(in oklch, var(--background) 30%, transparent);
@@ -1942,7 +2082,7 @@
   .hud-gauge__fill {
     position: relative;
     height: 100%;
-    border-radius: 999px;
+    border-radius: 3px;
     background: linear-gradient(
       90deg,
       color-mix(in oklch, var(--gauge-color) 60%, transparent) 0%,
@@ -2011,7 +2151,15 @@
   /* Clean — strip all decorations: no inset, no cursor, no ticks, no gradient */
   [data-theme="clean"] .hud-gauge__track {
     box-shadow: none;
-    background: color-mix(in oklch, var(--foreground) 8%, transparent);
+    background:
+      repeating-linear-gradient(
+        90deg,
+        transparent 0,
+        transparent calc(12.5% - 1px),
+        color-mix(in oklch, var(--background) 70%, transparent) calc(12.5% - 1px),
+        color-mix(in oklch, var(--background) 70%, transparent) 12.5%
+      ),
+      color-mix(in oklch, var(--foreground) 8%, transparent);
     height: 4px;
   }
 
@@ -2046,11 +2194,9 @@
      ══════════════════════════════════════════════════════════════ */
   .globe-top-strip {
     border-bottom: 1px solid color-mix(in oklch, var(--primary) 18%, transparent);
-    background: linear-gradient(
-      to bottom,
-      color-mix(in oklch, var(--primary) 4%, transparent) 0%,
-      transparent 100%
-    );
+    background:
+      linear-gradient(to bottom, color-mix(in oklch, var(--primary) 5%, transparent) 0%, transparent 100%),
+      var(--telemetry-surface);
   }
   .globe-top-strip::before {
     content: '';
@@ -2081,11 +2227,9 @@
     opacity: 0.35;
   }
   [data-theme="deepspace"] .globe-top-strip {
-    background: linear-gradient(
-      to bottom,
-      color-mix(in oklch, var(--primary) 8%, transparent) 0%,
-      transparent 100%
-    );
+    background:
+      linear-gradient(to bottom, color-mix(in oklch, var(--primary) 10%, transparent) 0%, transparent 100%),
+      var(--telemetry-surface);
   }
 
   .globe-feed {

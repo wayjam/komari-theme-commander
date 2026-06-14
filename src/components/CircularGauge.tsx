@@ -69,7 +69,7 @@ export function CircularGauge({
 
   return (
     <div
-      className="flex flex-col items-center gap-1.5 p-2.5 rounded bg-muted/15 border border-border/20"
+      className="telemetry-panel flex flex-col items-center gap-1.5 p-3"
       data-channel={channel}
       data-status={status}
     >

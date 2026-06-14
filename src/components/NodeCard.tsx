@@ -22,6 +22,31 @@ interface NodeCardProps {
 type GaugeChannel = 'cpu' | 'ram' | 'disk' | 'traffic';
 type GaugeStatus = 'normal' | 'warning' | 'critical';
 
+function CompactMetric({
+  icon: Icon,
+  label,
+  value,
+  sub,
+  tone,
+}: {
+  icon: typeof Activity;
+  label: string;
+  value: string;
+  sub?: string;
+  tone?: string;
+}) {
+  return (
+    <div className="telemetry-stat hud-data-cell">
+      <div className="telemetry-stat__label">
+        <Icon className="h-3 w-3 shrink-0 opacity-75" aria-hidden />
+        <span className="truncate">{label}</span>
+      </div>
+      <div className={cn('telemetry-stat__value', tone)}>{value}</div>
+      {sub && <div className="telemetry-stat__sub">{sub}</div>}
+    </div>
+  );
+}
+
 /**
  * Polished resource gauge.
  * - Per-channel hue (cpu=chart-1, ram=chart-2, disk=chart-3) so eye can scan
@@ -293,10 +318,15 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
   const cpuStatus = getUsageStatus(cpuUsage, { warning: 60, critical: 80 });
   const ramStatus = getUsageStatus(ramUsage, { warning: 70, critical: 85 });
   const diskStatus = getUsageStatus(diskUsage, { warning: 75, critical: 90 });
+  const loadRatio = stats ? stats.load.load1 / (node.cpu_cores || 1) : 0;
+  const loadStatus = getUsageStatus(loadRatio * 100, { warning: 100, critical: 150 });
+  const expiryStatus = getExpiryStatus(node.expired_at);
+  const priceLabel =
+    node.price === -1 ? t('label.free') : node.price === 0 ? t('label.notSet') : `${node.currency}${node.price}`;
 
   return (
     <div className={cn(
-      'group relative overflow-hidden rounded-lg border bg-card/80 backdrop-blur-xl transition-all duration-300',
+      'node-card-commander group relative overflow-hidden rounded-lg border bg-card/80 backdrop-blur-xl transition-all duration-300',
       'hover:shadow-lg hover:shadow-primary/5 commander-corners',
       isOnline ? 'border-border/50' : 'border-border/30 opacity-70 offline-card'
     )}>
@@ -371,7 +401,6 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
               </span>
             )}
             {(() => {
-              const expiryStatus = getExpiryStatus(node.expired_at);
               if (!expiryStatus) return null;
               return (
                 <Tooltip>
@@ -393,7 +422,7 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
                           date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
                           cycle: node.billing_cycle ?? '-',
                           renewal: node.auto_renewal ? t('label.yes') : t('label.no'),
-                          price: node.price === -1 ? t('label.free') : node.price === 0 ? t('label.notSet') : `${node.currency}${node.price}`,
+                          price: priceLabel,
                         })
                       : t('label.expiryTooltip', {
                           date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
@@ -471,8 +500,7 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
                 icon={Activity}
                 label={`${t('label.load')} · ${t('label.load1m')}`}
                 value={stats.load.load1.toFixed(2)}
-                tone={stats.load.load1 / (node.cpu_cores || 1) >= 1.5 ? 'text-destructive' : stats.load.load1 / (node.cpu_cores || 1) >= 1 ? 'text-warning' : undefined}
-                sub={t('label.coreBaseline', { count: node.cpu_cores || 1 })}
+                tone={loadStatus === 'critical' ? 'text-destructive' : loadStatus === 'warning' ? 'text-warning' : undefined}
               />
               <MobileTelemetryTile
                 icon={Clock}
@@ -492,37 +520,32 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
             </div>
 
             {/* Desktop/tablet HUD metric strip */}
-            <div className="hidden sm:grid grid-cols-4 gap-1 pt-1">
-              <div className="min-w-0 text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
-                <div className="flex items-center justify-center gap-1 text-xs font-mono text-muted-foreground">
-                  <Activity className="h-2.5 w-2.5 opacity-70" />
-                  <span>{t('label.load')}</span>
-                </div>
-                <div className="text-xs font-metric font-bold">{stats.load.load1.toFixed(2)}</div>
-              </div>
-              <div className="min-w-0 text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
-                <div className="flex items-center justify-center gap-1 text-xs font-mono text-muted-foreground">
-                  <ArrowUp className="h-2.5 w-2.5 opacity-70" style={{ color: 'var(--chart-2)' }} />
-                  <span>{t('label.netUp')}</span>
-                </div>
-                <div className="truncate text-xs font-metric font-bold">{formatSpeed(stats.network.up).replace('/s','')}</div>
-                <div className="truncate text-xxs font-metric text-muted-foreground/60">{formatBytes(stats.network.totalUp)}</div>
-              </div>
-              <div className="min-w-0 text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
-                <div className="flex items-center justify-center gap-1 text-xs font-mono text-muted-foreground">
-                  <ArrowDown className="h-2.5 w-2.5 opacity-70" style={{ color: 'var(--chart-1)' }} />
-                  <span>{t('label.netDown')}</span>
-                </div>
-                <div className="truncate text-xs font-metric font-bold">{formatSpeed(stats.network.down).replace('/s','')}</div>
-                <div className="truncate text-xxs font-metric text-muted-foreground/60">{formatBytes(stats.network.totalDown)}</div>
-              </div>
-              <div className="min-w-0 text-center p-1.5 rounded bg-muted/20 border border-border/20 hud-data-cell">
-                <div className="flex items-center justify-center gap-1 text-xs font-mono text-muted-foreground">
-                  <Clock className="h-2.5 w-2.5 opacity-70" />
-                  <span>{t('label.up')}</span>
-                </div>
-                <div className="truncate text-xs font-metric font-bold">{formatUptime(stats.uptime)}</div>
-              </div>
+            <div className="hidden sm:grid grid-cols-4 gap-1.5 pt-1">
+              <CompactMetric
+                icon={Activity}
+                label={t('label.load')}
+                value={stats.load.load1.toFixed(2)}
+                tone={loadStatus === 'critical' ? 'text-destructive' : loadStatus === 'warning' ? 'text-warning' : undefined}
+              />
+              <CompactMetric
+                icon={ArrowUp}
+                label={t('label.netUp')}
+                value={formatSpeed(stats.network.up).replace('/s', '')}
+                sub={formatBytes(stats.network.totalUp)}
+                tone="text-success"
+              />
+              <CompactMetric
+                icon={ArrowDown}
+                label={t('label.netDown')}
+                value={formatSpeed(stats.network.down).replace('/s', '')}
+                sub={formatBytes(stats.network.totalDown)}
+                tone="text-primary"
+              />
+              <CompactMetric
+                icon={Clock}
+                label={t('label.up')}
+                value={formatUptime(stats.uptime)}
+              />
             </div>
 
 

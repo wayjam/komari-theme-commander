@@ -189,7 +189,7 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
         className={cn(
           // Mobile: full-screen sheet anchored to safe-area for clean look
           // on devices with notch / home indicator. Desktop: centred modal.
-          "relative w-full sm:w-[90vw] sm:max-w-3xl overflow-hidden border border-border/50 bg-card/95 shadow-2xl backdrop-blur-xl commander-corners flex flex-col",
+          "node-card-commander chart-card-commander relative w-full sm:w-[90vw] sm:max-w-3xl overflow-hidden border border-border/50 bg-card/95 shadow-2xl backdrop-blur-xl commander-corners flex flex-col",
           "h-svh sm:h-auto sm:rounded-lg",
           "pt-safe pb-safe",
         )}
@@ -204,7 +204,7 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
       >
         <span className="corner-bottom" />
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-border/50 px-4 py-3 gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-border/50 px-4 py-3 gap-2 telemetry-panel rounded-none border-x-0 border-t-0">
           <div className="flex items-center gap-2 min-w-0 w-full sm:w-auto">
             <span className="font-mono text-xs font-bold truncate">{nodeName}</span>
             <span className="hidden sm:inline text-xxs font-mono text-muted-foreground shrink-0">{t('chart.nodeMonitor')}</span>
@@ -239,7 +239,7 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
 
         {/* Chart tabs */}
         <div className="relative">
-          <div className="scrollbar-none flex items-center justify-between gap-0.5 overflow-x-auto border-b border-border/30 px-4 py-2">
+          <div className="scrollbar-none flex items-center justify-between gap-0.5 overflow-x-auto border-b border-border/30 px-4 py-2 bg-[color-mix(in_oklch,var(--telemetry-surface)_72%,transparent)]">
             <div className="flex items-center gap-0.5">
               {chartTabIds.map(id => (
                 <button

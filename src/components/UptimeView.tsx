@@ -615,7 +615,7 @@ export function UptimeView({ nodes }: UptimeViewProps) {
   return (
     <div className="space-y-4 sm:space-y-5 uptime-view">
       {/* ═══ Status strip — single source of truth for KPIs ═══ */}
-      <div className="uptime-status-strip relative rounded-lg bg-card/70 backdrop-blur-xl overflow-hidden commander-corners">
+      <div className="uptime-status-strip node-card-commander relative rounded-lg bg-card/70 backdrop-blur-xl overflow-hidden commander-corners">
         <span className="corner-bottom" />
         <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(var(--foreground) 1px, transparent 1px), linear-gradient(90deg, var(--foreground) 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
         {/* Loading progress sliver */}
@@ -825,7 +825,7 @@ export function UptimeView({ nodes }: UptimeViewProps) {
 
       {/* ═══ Node list — show ALL nodes by default ═══ */}
       {baseSortedNodes.length > 0 && (
-        <div className="rounded-lg border border-border/60 bg-card/60 backdrop-blur-xl overflow-hidden commander-corners relative">
+        <div className="node-card-commander rounded-lg border border-border/60 bg-card/60 backdrop-blur-xl overflow-hidden commander-corners relative">
           <span className="corner-bottom" />
           <div className="divide-y divide-border/40">
             {visibleList.map((n, i) => (

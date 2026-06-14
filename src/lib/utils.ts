@@ -205,3 +205,16 @@ export function formatExpiry(expiredAt: string): string {
   if (days <= 30) return `${days}d left`;
   return d.format('YYYY-MM-DD');
 }
+
+/** Format expiry as relative time only (never falls back to an absolute date). */
+export function formatExpiryRelative(expiredAt: string): string {
+  const d = dayjs(expiredAt);
+  if (!d.isValid() || d.year() <= 1) return '';
+  const now = dayjs();
+  if (d.isBefore(now)) {
+    const days = now.diff(d, 'day');
+    return days === 0 ? 'Expired today' : `Expired ${days}d ago`;
+  }
+  const days = d.diff(now, 'day');
+  return days === 0 ? 'Expires today' : `${days}d left`;
+}

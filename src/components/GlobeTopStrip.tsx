@@ -1,7 +1,8 @@
 import { memo, useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Radio, Clock, Cpu, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Radio, Clock, Cpu, AlertTriangle, ShieldCheck, ArrowDown, ArrowUp } from 'lucide-react';
 import type { NodeWithStatus } from '@/services/api';
+import { formatSpeed } from '@/lib/utils';
 
 interface GlobeTopStripProps {
   nodes: NodeWithStatus[];
@@ -68,18 +69,22 @@ export const GlobeTopStrip = memo(function GlobeTopStrip({ nodes }: GlobeTopStri
     let cpuSum = 0;
     let cpuCount = 0;
     let critical = 0;
+    let totalUp = 0;
+    let totalDown = 0;
 
     for (const n of nodes) {
       if (n.status === 'online' && n.stats) {
         cpuSum += n.stats.cpu.usage;
         cpuCount++;
+        totalUp += n.stats.network.up;
+        totalDown += n.stats.network.down;
         const ramPct = n.stats.ram.total > 0 ? (n.stats.ram.used / n.stats.ram.total) * 100 : 0;
         if (n.stats.cpu.usage > 90 || ramPct > 95) critical++;
       }
     }
 
     const avgCpu = cpuCount > 0 ? cpuSum / cpuCount : 0;
-    return { avgCpu, critical, sampled: cpuCount };
+    return { avgCpu, critical, sampled: cpuCount, totalUp, totalDown };
   }, [nodes]);
 
   const cpuTone =
@@ -117,6 +122,21 @@ export const GlobeTopStrip = memo(function GlobeTopStrip({ nodes }: GlobeTopStri
           <span className="text-muted-foreground/60">{t('hud.avgCpu')}</span>
           <span className={`font-metric tracking-normal ${cpuTone}`}>
             {stats.avgCpu.toFixed(0)}%
+          </span>
+        </div>
+      )}
+
+      {stats.sampled > 0 && (
+        <div className="hidden md:flex items-center gap-2 shrink-0">
+          <ArrowUp className="h-3 w-3 text-success/80" />
+          <span className="text-muted-foreground/60">{t('label.netUp')}</span>
+          <span className="font-metric text-success tracking-normal normal-case">
+            {formatSpeed(stats.totalUp)}
+          </span>
+          <ArrowDown className="ml-1 h-3 w-3 text-primary/80" />
+          <span className="text-muted-foreground/60">{t('label.netDown')}</span>
+          <span className="font-metric text-primary tracking-normal normal-case">
+            {formatSpeed(stats.totalDown)}
           </span>
         </div>
       )}
