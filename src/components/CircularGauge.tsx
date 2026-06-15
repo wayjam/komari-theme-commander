@@ -69,13 +69,13 @@ export function CircularGauge({
 
   return (
     <div
-      className="telemetry-panel flex flex-col items-center gap-1.5 p-3"
+      className="flex flex-col items-center gap-1.5 p-3 sm:p-4"
       data-channel={channel}
       data-status={status}
     >
       <div className="flex items-center gap-1.5 self-start">
-        {icon}
-        <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
+        <span className="stat-chip">{icon}</span>
+        <span className="type-hud-label">
           {label}
         </span>
       </div>
@@ -92,7 +92,7 @@ export function CircularGauge({
             cy={size / 2}
             r={radius}
             fill="none"
-            className="stroke-muted/30"
+            className="stroke-muted/50"
             strokeWidth={strokeWidth}
           />
           {/* Value arc */}
@@ -102,7 +102,7 @@ export function CircularGauge({
             r={radius}
             fill="none"
             stroke={colorVar}
-            className="transition-[stroke-dashoffset] duration-700 ease-out"
+            className="transition-[stroke-dashoffset] duration-700 ease-out motion-safe:transition-[stroke-dashoffset]"
             strokeWidth={strokeWidth}
             strokeLinecap="round"
             strokeDasharray={circumference}
@@ -114,7 +114,7 @@ export function CircularGauge({
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span
             className={cn(
-              'text-lg font-metric font-bold leading-none tabular-nums',
+              'type-metric-hero tabular-nums',
               textColorClass || 'text-foreground',
             )}
           >

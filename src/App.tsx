@@ -17,7 +17,7 @@ import { useEffects } from './hooks/useEffects'
 import { useAppConfig } from './hooks/useAppConfig'
 import { useTheme } from './hooks/useTheme'
 import { RecentStatsProvider } from './hooks/useRecentStats'
-import { ArrowLeft, Settings, Globe, LayoutGrid, List, Shield, Cpu, MemoryStick, HardDrive, Activity, Network, Clock, User, AlertTriangle, ExternalLink, Fingerprint, Calendar, Gauge } from 'lucide-react'
+import { ArrowLeft, ArrowUp, ArrowDown, Settings, Globe, LayoutGrid, List, Shield, Cpu, MemoryStick, HardDrive, Activity, Network, Clock, User, AlertTriangle, ExternalLink, Fingerprint, Calendar, Gauge, RefreshCw } from 'lucide-react'
 import { SystemIcon } from '@/lib/systemIcon'
 import { useState, useEffect, useCallback, useMemo, createContext, useContext, lazy, Suspense } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
@@ -144,7 +144,7 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
     <div className="node-card-commander node-info-panel rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl p-4 sm:p-5 commander-corners relative overflow-hidden">
       <div className="commander-scanner-effect" />
       <span className="corner-bottom" />
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-3">
       {hasTagStrip && (
         <div className="flex flex-wrap items-center gap-1.5 text-xs font-mono">
           {node.group && (
@@ -168,302 +168,343 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
       {/* Private remark (admin only) */}
       {appConfig.isLoggedIn && <RemarkNote text={node.remark} variant="private" />}
 
-      {/* Row 2: System specs — CPU+GPU first row, System+Arch second row */}
-      <div className="grid grid-cols-2 gap-3 pb-4 border-b border-border/30">
-        {node.cpu_name && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="telemetry-panel flex flex-col gap-1.5 p-3 cursor-default">
-                <div className="flex items-center gap-1.5">
-                  <SystemIcon kind="cpu" value={node.cpu_name} className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                  <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">{t('label.cpu')}</span>
-                </div>
-                <div className="text-xs font-mono text-foreground/80 truncate">{node.cpu_name} ({node.cpu_cores}C)</div>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="max-w-xs text-xs font-mono">
-              {node.cpu_name} ({node.cpu_cores}C)
-            </TooltipContent>
-          </Tooltip>
-        )}
-        {node.gpu_name && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="telemetry-panel flex flex-col gap-1.5 p-3 cursor-default">
-                <div className="flex items-center gap-1.5">
-                  <SystemIcon kind="gpu" value={node.gpu_name} className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                  <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">{t('label.gpu')}</span>
-                </div>
-                <div className="text-xs font-mono text-foreground/80 truncate">{node.gpu_name}</div>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="max-w-xs text-xs font-mono">
-              {node.gpu_name}
-            </TooltipContent>
-          </Tooltip>
-        )}
-        {node.os && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="telemetry-panel flex flex-col gap-1.5 p-3 cursor-default">
-                <div className="flex items-center gap-1.5">
-                  <SystemIcon kind="os" value={node.os} className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                  <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">{t('label.system')}</span>
-                </div>
-                <div className="text-xs font-mono text-foreground/80 truncate">
-                  {node.os}{node.kernel_version ? ` · ${node.kernel_version}` : ''}
-                </div>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="max-w-xs text-xs font-mono whitespace-pre-line">
-              {node.os}{node.kernel_version ? `\n${t('label.kernel')}: ${node.kernel_version}` : ''}
-            </TooltipContent>
-          </Tooltip>
-        )}
-        {node.arch && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="telemetry-panel flex flex-col gap-1.5 p-3 cursor-default">
-                <div className="flex items-center gap-1.5">
-                  <SystemIcon kind="arch" value={node.arch} className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                  <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">{t('label.arch')}</span>
-                </div>
-                <div className="text-xs font-mono text-foreground/80 truncate">
-                  {node.arch}{node.virtualization ? ` · ${node.virtualization}` : ''}
-                </div>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="max-w-xs text-xs font-mono">
-              {node.arch}{node.virtualization ? ` · ${node.virtualization}` : ''}
-            </TooltipContent>
-          </Tooltip>
-        )}
-      </div>
-
-      {/* Row 3: Live stats — circular gauges + info cards */}
-      {stats ? (
-        <div className="flex flex-col gap-3">
-          {/* Circular gauges row */}
-          <div className="grid grid-cols-3 gap-3">
-            <CircularGauge
-              channel="cpu"
-              label={t('label.cpu')}
-              value={cpuUsage}
-              icon={<Cpu className="h-3 w-3 text-muted-foreground" />}
-              status={getUsageStatus(cpuUsage, { warning: 60, critical: 80 })}
-            />
-            <CircularGauge
-              channel="ram"
-              label={t('label.ram')}
-              value={ramUsage}
-              icon={<MemoryStick className="h-3 w-3 text-muted-foreground" />}
-              status={getUsageStatus(ramUsage, { warning: 70, critical: 85 })}
-              detail={`${formatBytes(stats.ram.used)} / ${formatBytes(stats.ram.total)}`}
-              subDetail={stats.swap.total > 0 ? `${t('label.swap')}: ${formatBytes(stats.swap.used)} / ${formatBytes(stats.swap.total)}` : undefined}
-            />
-            <CircularGauge
-              channel="disk"
-              label={t('label.disk')}
-              value={diskUsage}
-              icon={<HardDrive className="h-3 w-3 text-muted-foreground" />}
-              status={getUsageStatus(diskUsage, { warning: 75, critical: 90 })}
-              detail={`${formatBytes(stats.disk.used)} / ${formatBytes(stats.disk.total)}`}
-            />
-          </div>
-
-          {/* Info cards row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="telemetry-panel p-3 flex flex-col gap-1.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Network className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">{t('label.network')}</span>
-                </div>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Link
-                      to={`/node/${node.uuid}/network`}
-                      aria-label={t('label.networkDetailHint')}
-                      className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-xxs font-mono font-bold uppercase tracking-wider text-primary ring-1 ring-primary/25 transition-colors hover:bg-primary/18 hover:ring-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-                    >
-                      {t('label.networkDetail')}
-                      <ExternalLink className="h-2.5 w-2.5" aria-hidden />
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="max-w-xs text-xs">
-                    {t('label.networkDetailHint')}
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <div className="flex items-baseline gap-1.5 text-sm font-metric font-bold tabular-nums">
-                  <span className="text-chart-7">↑</span>
-                  <span>{formatSpeed(stats.network.up)}</span>
-                </div>
-                <div className="flex items-baseline gap-1.5 text-sm font-metric font-bold tabular-nums">
-                  <span className="text-chart-8">↓</span>
-                  <span>{formatSpeed(stats.network.down)}</span>
-                </div>
-              </div>
-              {appConfig.isLoggedIn && (
-                <div className="flex items-center gap-2 mt-auto pt-1.5 border-t border-border/15">
-                  <span className="text-xxs font-mono text-muted-foreground/60">{t('label.tcp')}</span>
-                  <span className="text-xxs font-metric font-bold tabular-nums">{stats.connections.tcp}</span>
-                  <span className="text-xxs text-muted-foreground/20">|</span>
-                  <span className="text-xxs font-mono text-muted-foreground/60">{t('label.udp')}</span>
-                  <span className="text-xxs font-metric font-bold tabular-nums">{stats.connections.udp}</span>
-                </div>
-              )}
-            </div>
-            <div className="telemetry-panel p-3 flex flex-col gap-1.5">
-              <div className="flex items-center gap-1.5">
-                <Activity className="h-3 w-3 text-muted-foreground" />
-                <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">{t('label.load')}</span>
-              </div>
-              <div className="text-lg font-metric font-bold tabular-nums leading-none">
-                {stats.load.load1.toFixed(2)}
-              </div>
-              <div className="grid grid-cols-3 gap-1 mt-auto pt-1.5 border-t border-border/15">
-                <div>
-                  <div className="text-xxs font-mono text-muted-foreground/60">{t('label.load1m')}</div>
-                  <div className="text-sm font-metric font-bold tabular-nums">{stats.load.load1.toFixed(2)}</div>
-                </div>
-                <div>
-                  <div className="text-xxs font-mono text-muted-foreground/60">{t('label.load5m')}</div>
-                  <div className="text-sm font-metric font-semibold tabular-nums text-foreground/85">{stats.load.load5.toFixed(2)}</div>
-                </div>
-                <div>
-                  <div className="text-xxs font-mono text-muted-foreground/60">{t('label.load15m')}</div>
-                  <div className="text-sm font-metric font-medium tabular-nums text-foreground/65">{stats.load.load15.toFixed(2)}</div>
-                </div>
-              </div>
-            </div>
-            <div className="telemetry-panel p-3 flex flex-col gap-1.5">
-              <div className="flex items-center gap-1.5">
-                <Clock className="h-3 w-3 text-muted-foreground" />
-                <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">{t('label.uptime')}</span>
-              </div>
-              <div className="text-lg font-metric font-bold tabular-nums leading-none">
-                {formatUptime(stats.uptime, 'minute', 5)}
-              </div>
-              {stats.process > 0 && (
-                <div className="flex items-center gap-2 mt-auto pt-1.5 border-t border-border/15">
-                  <span className="text-xxs font-mono text-muted-foreground/60">{t('label.proc')}</span>
-                  <span className="text-xxs font-metric font-bold tabular-nums">{stats.process}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {(expiryStatus || hasTraffic) && (
-            <div className={cn(
-              'grid grid-cols-1 gap-3',
-              expiryStatus && hasTraffic && 'lg:grid-cols-2',
-            )}>
-              {expiryStatus && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="telemetry-panel px-3 py-2.5 flex flex-col gap-1 cursor-default">
-                      {/* Header: label + price badge */}
-                      <div className="flex items-center justify-between gap-2">
+      {/* System specs — unified divided panel (CPU / GPU / System / Arch).
+          Values wrap (break-words) instead of truncating so long CPU/System
+          names read in full; old telemetry-panel border treatment. */}
+      {(node.cpu_name || node.gpu_name || node.os || node.arch) && (
+        <div className="network-stats-panel telemetry-panel overflow-hidden">
+          <div className="flex flex-col divide-y divide-border/20">
+            {/* Row 1: CPU / GPU */}
+            {(node.cpu_name || node.gpu_name) && (
+              <div className="flex flex-col divide-y divide-border/20 sm:flex-row sm:divide-x sm:divide-y-0">
+                {node.cpu_name && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="stat-section flex min-w-0 flex-1 flex-col gap-1.5 p-3 sm:p-4 cursor-default">
                         <div className="flex items-center gap-1.5">
-                          <Calendar className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">{t('label.billing')}</span>
+                          <span className="stat-chip"><SystemIcon kind="cpu" value={node.cpu_name} className="h-3 w-3" /></span>
+                          <span className="type-hud-label">{t('label.cpu')}</span>
                         </div>
-                        {appConfig.isLoggedIn && (
-                          <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-metric font-bold tabular-nums leading-none text-primary ring-1 ring-primary/20">
-                            {priceLabel}
-                          </span>
-                        )}
+                        <div className="type-spec-value">{node.cpu_name} ({node.cpu_cores}C)</div>
                       </div>
-                      {/* Primary: expiry status as prominent value */}
-                      <div className={cn(
-                        'text-base font-metric font-bold tabular-nums leading-none',
-                        expiryStatus === 'expired' ? 'text-destructive' : expiryStatus === 'warning' ? 'text-warning' : 'text-foreground/85',
-                      )}>
-                        {formatExpiryRelative(node.expired_at)}
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs text-xs font-mono">
+                      {node.cpu_name} ({node.cpu_cores}C)
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+                {node.gpu_name && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="stat-section flex min-w-0 flex-1 flex-col gap-1.5 p-3 sm:p-4 cursor-default">
+                        <div className="flex items-center gap-1.5">
+                          <span className="stat-chip"><SystemIcon kind="gpu" value={node.gpu_name} className="h-3 w-3" /></span>
+                          <span className="type-hud-label">{t('label.gpu')}</span>
+                        </div>
+                        <div className="type-spec-value">{node.gpu_name}</div>
                       </div>
-                      {/* Footer: full date + cycle/renewal (admin) */}
-                      <div className="flex items-center justify-between gap-3 mt-auto pt-1 border-t border-border/15">
-                        <span className="text-xxs font-mono text-muted-foreground/60">
-                          {dayjs(node.expired_at).format('YYYY-MM-DD')}
-                        </span>
-                        {appConfig.isLoggedIn && node.billing_cycle > 0 && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-xxs font-mono text-muted-foreground/70">{node.billing_cycle}d</span>
-                            <span className={cn(
-                              'text-xxs font-mono',
-                              node.auto_renewal ? 'text-success/80' : 'text-muted-foreground/50',
-                            )}>
-                              {node.auto_renewal ? '↺ Auto' : 'Manual'}
-                            </span>
-                          </div>
-                        )}
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs text-xs font-mono">
+                      {node.gpu_name}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+            )}
+            {/* Row 2: System / Arch */}
+            {(node.os || node.arch) && (
+              <div className="flex flex-col divide-y divide-border/20 sm:flex-row sm:divide-x sm:divide-y-0">
+                {node.os && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="stat-section flex min-w-0 flex-1 flex-col gap-1.5 p-3 sm:p-4 cursor-default">
+                        <div className="flex items-center gap-1.5">
+                          <span className="stat-chip"><SystemIcon kind="os" value={node.os} className="h-3 w-3" /></span>
+                          <span className="type-hud-label">{t('label.system')}</span>
+                        </div>
+                        <div className="type-spec-value">
+                          {node.os}{node.kernel_version ? ` · ${node.kernel_version}` : ''}
+                        </div>
                       </div>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="whitespace-pre-line text-xs">
-                    {appConfig.isLoggedIn
-                      ? t('label.expiryTooltipDetail', {
-                          date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
-                          cycle: node.billing_cycle ?? '-',
-                          renewal: node.auto_renewal ? t('label.yes') : t('label.no'),
-                          price: priceLabel,
-                        })
-                      : t('label.expiryTooltip', {
-                          date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
-                        })
-                    }
-                  </TooltipContent>
-                </Tooltip>
-              )}
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs text-xs font-mono whitespace-pre-line">
+                      {node.os}{node.kernel_version ? `\n${t('label.kernel')}: ${node.kernel_version}` : ''}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+                {node.arch && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="stat-section flex min-w-0 flex-1 flex-col gap-1.5 p-3 sm:p-4 cursor-default">
+                        <div className="flex items-center gap-1.5">
+                          <span className="stat-chip"><SystemIcon kind="arch" value={node.arch} className="h-3 w-3" /></span>
+                          <span className="type-hud-label">{t('label.arch')}</span>
+                        </div>
+                        <div className="type-spec-value">
+                          {node.arch}{node.virtualization ? ` · ${node.virtualization}` : ''}
+                        </div>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs text-xs font-mono">
+                      {node.arch}{node.virtualization ? ` · ${node.virtualization}` : ''}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
-              {/* Traffic limit bar — uses unified .hud-gauge */}
-              {hasTraffic && (() => {
-                const used = calcTrafficUsage(stats.network.totalUp, stats.network.totalDown, node.traffic_limit_type as TrafficLimitType);
-                const pct = (used / node.traffic_limit!) * 100;
-                const s = getUsageStatus(pct, { warning: 70, critical: 90 });
-                const clamped = Math.min(Math.max(pct, 0), 100);
-                return (
-                  <div
-                    className="hud-gauge telemetry-panel px-3 py-2.5 flex flex-col gap-2"
-                    data-channel="traffic"
-                    data-status={s}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <Gauge className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                        <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider truncate">
-                          {t('label.traffic')} <span className="text-muted-foreground/60 normal-case">({formatTrafficType(node.traffic_limit_type!)})</span>
-                        </span>
-                      </div>
-                      <span className={cn(
-                        'text-xs font-metric font-bold tabular-nums leading-none flex-shrink-0',
-                        s === 'critical' ? 'text-destructive' : s === 'warning' ? 'text-warning' : '',
-                      )}>
-                        {formatBytes(used)}
-                        <span className="text-muted-foreground/60 mx-1">/</span>
-                        <span className="text-muted-foreground/80">{formatBytes(node.traffic_limit!)}</span>
+      {/* Live telemetry — gauges + realtime stats in one unified divided panel */}
+      {stats ? (
+        <>
+          <div className="network-stats-panel telemetry-panel overflow-hidden">
+            {/* Resource gauges: CPU / RAM / Disk */}
+            <div className="grid grid-cols-3 divide-x divide-border/20">
+              <CircularGauge
+                channel="cpu"
+                label={t('label.cpu')}
+                value={cpuUsage}
+                icon={<Cpu className="h-3 w-3" />}
+                status={getUsageStatus(cpuUsage, { warning: 60, critical: 80 })}
+                detail={node.cpu_cores ? `${node.cpu_cores} ${t('label.cores')}` : undefined}
+              />
+              <CircularGauge
+                channel="ram"
+                label={t('label.ram')}
+                value={ramUsage}
+                icon={<MemoryStick className="h-3 w-3" />}
+                status={getUsageStatus(ramUsage, { warning: 70, critical: 85 })}
+                detail={`${formatBytes(stats.ram.used)} / ${formatBytes(stats.ram.total)}`}
+                subDetail={stats.swap.total > 0 ? `${t('label.swap')}: ${formatBytes(stats.swap.used)} / ${formatBytes(stats.swap.total)}` : undefined}
+              />
+              <CircularGauge
+                channel="disk"
+                label={t('label.disk')}
+                value={diskUsage}
+                icon={<HardDrive className="h-3 w-3" />}
+                status={getUsageStatus(diskUsage, { warning: 75, critical: 90 })}
+                detail={`${formatBytes(stats.disk.used)} / ${formatBytes(stats.disk.total)}`}
+              />
+            </div>
+
+            {/* Realtime: Network / Load / Uptime */}
+            <div className="grid grid-cols-1 divide-y divide-border/20 border-t border-border/20 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+              {/* Network */}
+              <div className="stat-section flex flex-col gap-1.5 p-3 sm:p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="stat-chip"><Network className="h-3 w-3" /></span>
+                    <span className="type-hud-label">{t('label.network')}</span>
+                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Link
+                        to={`/node/${node.uuid}/network`}
+                        aria-label={t('label.networkDetailHint')}
+                        className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-xxs font-mono font-bold uppercase tracking-wider text-primary ring-1 ring-primary/25 transition-colors hover:bg-primary/18 hover:ring-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                      >
+                        {t('label.networkDetail')}
+                        <ExternalLink className="h-2.5 w-2.5" aria-hidden />
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs text-xs">
+                      {t('label.networkDetailHint')}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1.5 type-metric-md tabular-nums">
+                    <ArrowUp className="h-3 w-3 shrink-0 text-chart-7" aria-hidden />
+                    <span>{formatSpeed(stats.network.up)}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 type-metric-md tabular-nums">
+                    <ArrowDown className="h-3 w-3 shrink-0 text-chart-8" aria-hidden />
+                    <span>{formatSpeed(stats.network.down)}</span>
+                  </div>
+                </div>
+                {appConfig.isLoggedIn && (
+                  <div className="flex items-center gap-2 mt-auto pt-1.5 border-t border-border/15">
+                    <span className="type-hud-label-sm">{t('label.tcp')}</span>
+                    <span className="text-xxs font-metric font-bold tabular-nums">{stats.connections.tcp}</span>
+                    <span className="text-xxs text-muted-foreground/20">|</span>
+                    <span className="type-hud-label-sm">{t('label.udp')}</span>
+                    <span className="text-xxs font-metric font-bold tabular-nums">{stats.connections.udp}</span>
+                  </div>
+                )}
+              </div>
+              {/* Load */}
+              <div className="stat-section flex flex-col gap-1.5 p-3 sm:p-4">
+                <div className="flex items-center gap-1.5">
+                  <span className="stat-chip"><Activity className="h-3 w-3" /></span>
+                  <span className="type-hud-label">{t('label.load')}</span>
+                </div>
+                <div className="type-metric-hero tabular-nums text-foreground">
+                  {stats.load.load1.toFixed(2)}
+                </div>
+                <div className="grid grid-cols-3 gap-1 mt-auto pt-1.5 border-t border-border/15">
+                  <div>
+                    <div className="type-hud-label-sm">{t('label.load1m')}</div>
+                    <div className="type-metric-md tabular-nums">{stats.load.load1.toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <div className="type-hud-label-sm">{t('label.load5m')}</div>
+                    <div className="type-metric-md font-semibold tabular-nums text-foreground/85">{stats.load.load5.toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <div className="type-hud-label-sm">{t('label.load15m')}</div>
+                    <div className="type-metric-md font-medium tabular-nums text-foreground/65">{stats.load.load15.toFixed(2)}</div>
+                  </div>
+                </div>
+              </div>
+              {/* Uptime */}
+              <div className="stat-section flex flex-col gap-1.5 p-3 sm:p-4">
+                <div className="flex items-center gap-1.5">
+                  <span className="stat-chip"><Clock className="h-3 w-3" /></span>
+                  <span className="type-hud-label">{t('label.uptime')}</span>
+                </div>
+                <div className="type-metric-hero tabular-nums text-foreground">
+                  {formatUptime(stats.uptime, 'minute', 5)}
+                </div>
+                {stats.process > 0 && (
+                  <div className="flex items-center gap-2 mt-auto pt-1.5 border-t border-border/15">
+                    <span className="type-hud-label-sm">{t('label.proc')}</span>
+                    <span className="text-xxs font-metric font-bold tabular-nums">{stats.process}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Traffic limit bar — full-width row tied to the network panel above */}
+            {hasTraffic && (() => {
+              const used = calcTrafficUsage(stats.network.totalUp, stats.network.totalDown, node.traffic_limit_type as TrafficLimitType);
+              const pct = (used / node.traffic_limit!) * 100;
+              const s = getUsageStatus(pct, { warning: 70, critical: 90 });
+              const clamped = Math.min(Math.max(pct, 0), 100);
+              return (
+                <div
+                  className="hud-gauge stat-section flex flex-col gap-2 border-t border-border/20 p-3 sm:p-4"
+                  data-channel="traffic"
+                  data-status={s}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="stat-chip"><Gauge className="h-3 w-3" /></span>
+                      <span className="type-hud-label truncate">
+                        {t('label.traffic')} <span className="text-muted-foreground/60 normal-case">({formatTrafficType(node.traffic_limit_type!)})</span>
                       </span>
                     </div>
-                    <div className="mt-auto hud-gauge__track-wrap">
-                      <div className="hud-gauge__ticks" aria-hidden="true">
-                        <span style={{ left: '25%' }} />
-                        <span style={{ left: '50%' }} />
-                        <span style={{ left: '75%' }} />
-                      </div>
-                      <div className="hud-gauge__track">
-                        <div className="hud-gauge__fill" style={{ width: `${clamped}%` }}>
-                          <span className="hud-gauge__cursor" aria-hidden="true" />
-                        </div>
+                    <span className={cn(
+                      'text-xs font-metric font-bold tabular-nums leading-none flex-shrink-0',
+                      s === 'critical' ? 'text-destructive' : s === 'warning' ? 'text-warning' : '',
+                    )}>
+                      {formatBytes(used)}
+                      <span className="text-muted-foreground/60 mx-1">/</span>
+                      <span className="text-muted-foreground/80">{formatBytes(node.traffic_limit!)}</span>
+                    </span>
+                  </div>
+                  <div className="mt-auto hud-gauge__track-wrap">
+                    <div className="hud-gauge__ticks" aria-hidden="true">
+                      <span style={{ left: '25%' }} />
+                      <span style={{ left: '50%' }} />
+                      <span style={{ left: '75%' }} />
+                    </div>
+                    <div className="hud-gauge__track">
+                      <div className="hud-gauge__fill" style={{ width: `${clamped}%` }}>
+                        <span className="hud-gauge__cursor" aria-hidden="true" />
                       </div>
                     </div>
                   </div>
-                );
-              })()}
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Billing — its own standalone box */}
+          {expiryStatus && (
+            <div className="network-stats-panel telemetry-panel overflow-hidden">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  {appConfig.isLoggedIn ? (
+                  <div className="stat-section flex min-w-0 flex-col gap-1 p-3 sm:p-4 cursor-default">
+                    {/* Header: label + price badge */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="stat-chip"><Calendar className="h-3 w-3" /></span>
+                        <span className="type-hud-label">{t('label.billing')}</span>
+                      </div>
+                      <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-metric font-bold tabular-nums leading-none text-primary ring-1 ring-primary/20">
+                        {priceLabel}
+                      </span>
+                    </div>
+                    {/* Primary: expiry status as prominent value */}
+                    <div className={cn(
+                      'type-metric-lg tabular-nums leading-none',
+                      expiryStatus === 'expired' ? 'text-destructive' : expiryStatus === 'warning' ? 'text-warning' : 'text-foreground/85',
+                    )}>
+                      {formatExpiryRelative(node.expired_at)}
+                    </div>
+                    {/* Footer: full date + cycle/renewal (admin) */}
+                    <div className="flex items-center justify-between gap-3 mt-auto pt-1 border-t border-border/15">
+                      <span className="type-hud-label-sm tabular-nums">
+                        {dayjs(node.expired_at).format('YYYY-MM-DD')}
+                      </span>
+                      {node.billing_cycle > 0 && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xxs font-mono text-muted-foreground/70">{node.billing_cycle}d</span>
+                          <span className={cn(
+                            'inline-flex items-center gap-1 text-xxs font-mono',
+                            node.auto_renewal ? 'text-success/80' : 'text-muted-foreground/50',
+                          )}>
+                            {node.auto_renewal ? (
+                              <><RefreshCw className="h-2.5 w-2.5" aria-hidden />{t('label.autoRenewal')}</>
+                            ) : t('label.manualRenewal')}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  /* Public (logged-out) state: no price / cycle / renewal data, so
+                     lay label and expiry side-by-side to fill the width instead of
+                     leaving the right side of header + footer empty. */
+                  <div className="stat-section flex min-w-0 items-center justify-between gap-3 p-3 sm:p-4 cursor-default">
+                    <div className="flex items-center gap-1.5">
+                      <span className="stat-chip"><Calendar className="h-3 w-3" /></span>
+                      <span className="type-hud-label">{t('label.billing')}</span>
+                    </div>
+                    <div className="flex min-w-0 flex-col items-end gap-0.5 text-right">
+                      <span className={cn(
+                        'type-metric-lg tabular-nums leading-none',
+                        expiryStatus === 'expired' ? 'text-destructive' : expiryStatus === 'warning' ? 'text-warning' : 'text-foreground/85',
+                      )}>
+                        {formatExpiryRelative(node.expired_at)}
+                      </span>
+                      <span className="type-hud-label-sm tabular-nums">
+                        {dayjs(node.expired_at).format('YYYY-MM-DD')}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="whitespace-pre-line text-xs">
+                  {appConfig.isLoggedIn
+                    ? t('label.expiryTooltipDetail', {
+                        date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
+                        cycle: node.billing_cycle ?? '-',
+                        renewal: node.auto_renewal ? t('label.yes') : t('label.no'),
+                        price: priceLabel,
+                      })
+                    : t('label.expiryTooltip', {
+                        date: dayjs(node.expired_at).format('YYYY-MM-DD HH:mm'),
+                      })
+                  }
+                </TooltipContent>
+              </Tooltip>
             </div>
           )}
-        </div>
+        </>
       ) : (
         <div className="flex items-center justify-center min-h-[4.5rem] text-muted-foreground text-xs leading-relaxed px-2 text-center">
           {isOnline ? t('telemetry.waiting') : t('telemetry.nodeOffline')}
@@ -819,7 +860,7 @@ function App() {
 
   const isDashboard = location.pathname === '/';
   const { networkStats, onlineUuids, hasCriticalNode } = fleetSummary;
-  const shouldFetchSparklines = isDashboard && (viewMode === 'grid' || viewMode === 'table');
+  const shouldFetchSparklines = isDashboard && (viewMode === 'grid' || viewMode === 'table') && appConfig.isLoggedIn;
 
   const viewButtons = useMemo<ViewTab<ViewMode>[]>(() => {
     const all: ViewTab<ViewMode>[] = [

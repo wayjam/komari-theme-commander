@@ -9,7 +9,7 @@ import {
   type SortingState,
   type Row,
 } from '@tanstack/react-table';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import { useNavigate } from 'react-router-dom';
 import { useAppConfig } from '@/hooks/useAppConfig';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -104,13 +104,13 @@ function NetworkCell({ node, t }: { node: NodeWithStatus; t: (k: string, p?: Rec
         <div className="min-w-0 cursor-default space-y-1.5 text-xs tabular-nums">
           <div className="grid min-w-0 grid-cols-2 gap-3 leading-none">
             <div className="flex min-w-0 items-center gap-1.5">
-              <ArrowUp className="h-3 w-3 shrink-0 text-success/75" aria-hidden />
+              <ArrowUp className="h-3 w-3 shrink-0 text-chart-7" aria-hidden />
               <span className="min-w-0 truncate font-metric font-semibold text-foreground/90">
                 {formatSpeed(stats.network.up)}
               </span>
             </div>
             <div className="flex min-w-0 items-center gap-1.5">
-              <ArrowDown className="h-3 w-3 shrink-0 text-primary/75" aria-hidden />
+              <ArrowDown className="h-3 w-3 shrink-0 text-chart-8" aria-hidden />
               <span className="min-w-0 truncate font-metric font-semibold text-foreground/90">
                 {formatSpeed(stats.network.down)}
               </span>
@@ -121,7 +121,7 @@ function NetworkCell({ node, t }: { node: NodeWithStatus; t: (k: string, p?: Rec
             <div className="min-w-0 space-y-1 border-t border-border/20 pt-1.5">
               <div className="flex min-w-0 items-baseline justify-between gap-2 leading-none mb-1">
                 <span className="min-w-0 truncate font-mono text-xxs uppercase tracking-wider text-muted-foreground/55">
-                  {t('label.traffic')} {formatTrafficType(node.traffic_limit_type!)}
+                  {t('label.traffic')} ({formatTrafficType(node.traffic_limit_type!)})
                 </span>
                 <span className={cn('shrink-0 font-metric font-semibold tabular-nums', quotaTone)}>
                   {trafficPct.toFixed(0)}%
@@ -146,12 +146,16 @@ function NetworkCell({ node, t }: { node: NodeWithStatus; t: (k: string, p?: Rec
               </div>
             </div>
           ) : (
-            <div className="grid min-w-0 grid-cols-2 gap-3 border-t border-border/20 pt-1.5 text-xxs font-metric leading-none text-muted-foreground/65">
-              <span className="min-w-0 truncate">
-                {t('label.total')} ↑ {formatBytes(stats.network.totalUp)}
+            <div className="grid min-w-0 grid-cols-2 gap-3 border-t border-border/20 pt-1.5 text-xxs font-metric leading-none">
+              <span className="flex min-w-0 items-center gap-1 truncate">
+                <ArrowUp className="h-2.5 w-2.5 shrink-0 text-chart-7" aria-hidden />
+                <span className="text-muted-foreground/55">{t('label.totalUp')}</span>
+                <span className="font-semibold text-foreground/85 tabular-nums">{formatBytes(stats.network.totalUp)}</span>
               </span>
-              <span className="min-w-0 truncate text-right">
-                {t('label.total')} ↓ {formatBytes(stats.network.totalDown)}
+              <span className="flex min-w-0 items-center justify-end gap-1 truncate">
+                <ArrowDown className="h-2.5 w-2.5 shrink-0 text-chart-8" aria-hidden />
+                <span className="text-muted-foreground/55">{t('label.totalDown')}</span>
+                <span className="font-semibold text-foreground/85 tabular-nums">{formatBytes(stats.network.totalDown)}</span>
               </span>
             </div>
           )}
@@ -159,8 +163,8 @@ function NetworkCell({ node, t }: { node: NodeWithStatus; t: (k: string, p?: Rec
       </TooltipTrigger>
       <TooltipContent side="bottom" className="whitespace-pre-line text-xs font-mono">
         {[
-          `${t('chart.realtime')}: ↑ ${formatSpeed(stats.network.up)} · ↓ ${formatSpeed(stats.network.down)}`,
-          `${t('label.total')}: ↑ ${formatBytes(stats.network.totalUp)} · ↓ ${formatBytes(stats.network.totalDown)}`,
+          `${t('chart.realtime')}: ${t('label.uploadShort')} ${formatSpeed(stats.network.up)} · ${t('label.downloadShort')} ${formatSpeed(stats.network.down)}`,
+          `${t('label.totalUp')} ${formatBytes(stats.network.totalUp)} · ${t('label.totalDown')} ${formatBytes(stats.network.totalDown)}`,
           hasTraffic
             ? `${t('label.traffic')} ${formatTrafficType(node.traffic_limit_type!)}: ${formatBytes(trafficUsed)} / ${formatBytes(node.traffic_limit!)} (${trafficPct.toFixed(1)}%)`
             : null,
@@ -356,8 +360,8 @@ const MobileRow = memo(function MobileRow({ node, isLast, onOpen, t, isLoggedIn 
           </div>
           <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 text-xs font-metric text-muted-foreground tabular-nums bg-muted/10 p-2 rounded-sm border border-border/10 hud-data-cell">
             <div className="flex items-center gap-4">
-              <span className="whitespace-nowrap flex items-center gap-1"><ArrowUp className="h-3 w-3 text-success/70" />{formatSpeed(stats.network.up)}</span>
-              <span className="whitespace-nowrap flex items-center gap-1"><ArrowDown className="h-3 w-3 text-primary/70" />{formatSpeed(stats.network.down)}</span>
+              <span className="whitespace-nowrap flex items-center gap-1"><ArrowUp className="h-3 w-3 text-chart-7" aria-hidden />{formatSpeed(stats.network.up)}</span>
+              <span className="whitespace-nowrap flex items-center gap-1"><ArrowDown className="h-3 w-3 text-chart-8" aria-hidden />{formatSpeed(stats.network.down)}</span>
             </div>
             <div className="flex items-center gap-4">
               <span className={cn('whitespace-nowrap', textByStatus[loadStatus])}>{t('label.load')} {stats.load.load1.toFixed(2)}</span>
@@ -384,7 +388,25 @@ export function NodeTable({ nodes }: NodeTableProps) {
   const navigate = useNavigate();
   const openNode = useCallback((uuid: string) => navigate(`/node/${uuid}`), [navigate]);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const [scrollMargin, setScrollMargin] = useState(0);
   const isCompactLayout = useIsMobile(1024);
+
+  const updateScrollMargin = useCallback(() => {
+    if (!bodyRef.current) return;
+    const nextScrollMargin = bodyRef.current.getBoundingClientRect().top + window.scrollY;
+    setScrollMargin(prev => (prev === nextScrollMargin ? prev : nextScrollMargin));
+  }, []);
+
+  useEffect(() => {
+    updateScrollMargin();
+    const observer = new ResizeObserver(updateScrollMargin);
+    if (bodyRef.current) observer.observe(bodyRef.current);
+    window.addEventListener('resize', updateScrollMargin);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateScrollMargin);
+    };
+  }, [updateScrollMargin]);
 
   const columns = useMemo(() => [
     columnHelper.accessor('status', {
@@ -552,7 +574,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
               value={val}
               status={getUsageStatus(val, { warning: 60, critical: 80 }) as GaugeStatus}
               channel="cpu"
-              sparkline={getCpuSparkline(row.original.uuid)}
+              sparkline={isLoggedIn ? getCpuSparkline(row.original.uuid) : null}
               sub={`${row.original.cpu_cores || 1}C`}
             />
           );
@@ -660,11 +682,11 @@ export function NodeTable({ nodes }: NodeTableProps) {
   });
   const tableRows = table.getRowModel().rows;
 
-  const rowVirtualizer = useVirtualizer({
+  const rowVirtualizer = useWindowVirtualizer({
     count: tableRows.length,
-    getScrollElement: () => bodyRef.current,
     estimateSize: () => (isCompactLayout ? 150 : 60),
     overscan: isCompactLayout ? 5 : 10,
+    scrollMargin,
   });
 
   useEffect(() => {
@@ -674,9 +696,9 @@ export function NodeTable({ nodes }: NodeTableProps) {
   const virtualRows = rowVirtualizer.getVirtualItems();
   const firstVirtualRow = virtualRows[0];
   const lastVirtualRow = virtualRows[virtualRows.length - 1];
-  const topPadding = firstVirtualRow ? Math.max(0, firstVirtualRow.start) : 0;
+  const topPadding = firstVirtualRow ? Math.max(0, firstVirtualRow.start - scrollMargin) : 0;
   const bottomPadding = lastVirtualRow
-    ? Math.max(0, rowVirtualizer.getTotalSize() - lastVirtualRow.end)
+    ? Math.max(0, rowVirtualizer.getTotalSize() - (lastVirtualRow.end - scrollMargin))
     : 0;
 
   return (
@@ -685,7 +707,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
       <span className="corner-bottom" />
 
       {/* Console Header Decoration */}
-      <div className="console-header-decoration flex items-center justify-between px-3 py-1.5 border-b border-border/30 bg-muted/10 text-xxs font-mono text-muted-foreground/40 uppercase tracking-widest relative z-10">
+      <div className="console-header-decoration flex items-center justify-between px-3 py-1.5 border-b border-border/30 bg-muted/10 type-hud-label-sm tracking-widest text-muted-foreground/40 relative z-10">
         <div className="flex items-center gap-2">
           <div className="w-1.5 h-1.5 rounded-full bg-primary/30" />
           <span>{t('hud.tableMode')}</span>
@@ -696,7 +718,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
         </div>
       </div>
 
-      <div ref={bodyRef} className="relative z-10 max-h-[calc(100dvh-13rem)] overflow-y-auto">
+      <div ref={bodyRef} className="relative z-10">
         {!isCompactLayout ? (
           <div className="overflow-x-auto">
             <table className="w-full table-fixed">
@@ -710,7 +732,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
                       <th
                         key={header.id}
                         className={cn(
-                          'py-2.5 overflow-hidden text-xxs font-mono font-bold text-muted-foreground/55 uppercase tracking-widest',
+                          'type-hud-column py-2.5 overflow-hidden',
                           hIdx === 0 ? 'px-1 text-center' : 'px-3 text-left',
                           isGroupStart && 'pl-5 lg:pl-8', // Spacer gutter
                           header.column.getCanSort() && 'cursor-pointer select-none hover:text-primary transition-colors',

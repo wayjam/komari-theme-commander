@@ -114,7 +114,7 @@ export function NodeCharts({ nodeUuid }: NodeChartsProps) {
         <span className="corner-bottom" />
         <div className="flex items-center gap-2">
           <Clock className="h-3.5 w-3.5 text-primary" aria-hidden />
-          <span className="font-display text-xxs font-bold tracking-[0.2em] text-muted-foreground uppercase">
+          <span className="type-console-title">
             {t('chart.timeRange')}
           </span>
         </div>

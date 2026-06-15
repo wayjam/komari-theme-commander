@@ -60,6 +60,9 @@
   --text-xxs--line-height: 0.875rem;
   --text-xs: 0.75rem;       /* 12px, Tailwind default */
   --text-xs--line-height: 1rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg--line-height: 1.25rem;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -391,6 +394,110 @@
     font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum" 1, "lnum" 1;
+  }
+
+  /*
+   * Semantic type roles — see tmp/design.md §2.
+   * Prefer these over ad-hoc font-* + tracking-* combinations.
+   */
+
+  /* HUD stat labels (CPU, NETWORK, UPLOAD …) — mono, never Orbitron */
+  .type-hud-label {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+
+  .type-hud-label-sm {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: var(--text-xxs);
+    line-height: var(--text-xxs--line-height);
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: color-mix(in oklch, var(--muted-foreground) 72%, transparent);
+  }
+
+  /* Table / grid column headers */
+  .type-hud-column {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: var(--text-xxs);
+    line-height: var(--text-xxs--line-height);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: color-mix(in oklch, var(--muted-foreground) 58%, transparent);
+  }
+
+  /* Orbitron — console chrome & panel titles only */
+  .type-console-title {
+    font-family: var(--font-family-display);
+    font-size: var(--text-xxs);
+    line-height: var(--text-xxs--line-height);
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+
+  .type-panel-title {
+    font-family: var(--font-family-display);
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+
+  /* Live metric readouts */
+  .type-metric-hero {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 1.125rem;
+    line-height: 1;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+  }
+
+  .type-metric-md {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.875rem;
+    line-height: 1;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+  }
+
+  .type-metric-lg {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 1rem;
+    line-height: 1;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+  }
+
+  .type-metric-xl {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.025em;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+  }
+
+  /* Long hardware / OS strings — sans for readability */
+  .type-spec-value {
+    font-family: var(--font-sans);
+    font-size: var(--text-xs);
+    line-height: 1.375;
+    color: color-mix(in oklch, var(--foreground) 80%, transparent);
+    overflow-wrap: break-word;
   }
 
   /* Hostnames are identifiers: technical, compact, readable at dashboard density. */
@@ -1153,13 +1260,17 @@
   }
 
   .network-stat-glow {
-    background: radial-gradient(ellipse at center, var(--primary) 0%, transparent 70%);
+    /* closest-side keeps the fade tied to the nearest edge on each axis, so the
+       glow dissolves uniformly at all four edges regardless of the cell's
+       (wide-but-short) aspect ratio — otherwise overflow-hidden clips the
+       top/bottom as a hard line while left/right fade out softly. */
+    background: radial-gradient(ellipse closest-side at center, var(--primary) 0%, transparent 100%);
     opacity: 0;
     transition: opacity 0.3s;
   }
 
   :root .network-stat-glow {
-    background: radial-gradient(ellipse at center, oklch(0.65 0.15 195 / 6%) 0%, transparent 70%);
+    background: radial-gradient(ellipse closest-side at center, oklch(0.65 0.15 195 / 6%) 0%, transparent 100%);
   }
 
   /* DeepSpace: holographic panel with cyan edge glow */
@@ -1169,7 +1280,7 @@
   }
 
   [data-theme="deepspace"] .network-stat-glow {
-    background: radial-gradient(ellipse at center, oklch(0.75 0.18 195 / 8%) 0%, transparent 70%);
+    background: radial-gradient(ellipse closest-side at center, oklch(0.75 0.18 195 / 8%) 0%, transparent 100%);
   }
 
   [data-theme="deepspace"] .network-stats-panel .divide-border\/20 > * {
@@ -1203,6 +1314,55 @@
   }
   [data-theme="clean"] .network-stats-panel {
     --network-down-color: var(--accent-foreground);
+  }
+
+  /* ════════════════════════════════════════════════════════════
+     Shared stat chip + stat section — unifies the node info panel
+     and the network stats panel so both read as one instrument.
+     ════════════════════════════════════════════════════════════ */
+
+  /* A single stat cell inside the divided panel: hosts the hover glow
+     and lets the chip pick up the section accent on hover. */
+  .stat-section {
+    position: relative;
+  }
+
+  /* Small icon chip used in every section header. No hover treatment —
+     the chip is a static label affordance, not interactive. */
+  .stat-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 1.25rem;
+    width: 1.25rem;
+    flex-shrink: 0;
+    border-radius: calc(var(--radius) - 6px);
+    background: color-mix(in oklch, var(--foreground) 6%, transparent);
+    border: 1px solid color-mix(in oklch, var(--foreground) 7%, transparent);
+    color: var(--muted-foreground);
+  }
+
+  [data-theme="deepspace"] .stat-chip {
+    background: oklch(0.75 0.18 195 / 8%);
+    border-color: oklch(0.75 0.18 195 / 18%);
+  }
+
+  [data-theme="clean"] .stat-chip {
+    background: color-mix(in oklch, var(--foreground) 4%, transparent);
+    border-color: color-mix(in oklch, var(--border) 55%, transparent);
+  }
+
+  /* Directional accents — upload (chart-7) vs download (chart-8). */
+  .stat-chip--up {
+    color: var(--chart-7);
+    background: color-mix(in oklch, var(--chart-7) 12%, transparent);
+    border-color: color-mix(in oklch, var(--chart-7) 22%, transparent);
+  }
+
+  .stat-chip--down {
+    color: var(--chart-8);
+    background: color-mix(in oklch, var(--chart-8) 12%, transparent);
+    border-color: color-mix(in oklch, var(--chart-8) 22%, transparent);
   }
 
   /* ════════════════════════════════════════════════════════════
@@ -1591,7 +1751,6 @@
 
   .node-card-commander:hover {
     border-color: color-mix(in oklch, var(--primary) 38%, var(--border));
-    transform: translateY(-1px);
   }
 
   .node-card-commander.node-info-panel:hover {
@@ -1687,6 +1846,10 @@
   [data-theme="clean"] .telemetry-stat {
     background: var(--telemetry-surface);
     box-shadow: none;
+    /* Tie nested cells to the same neutral border as their parent card,
+       kept a touch lighter so the container always reads heavier than its
+       children (the default --telemetry-border is darker than --border here). */
+    border-color: color-mix(in oklch, var(--border) 45%, transparent);
   }
 
   .hud-data-cell {

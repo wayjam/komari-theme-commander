@@ -702,7 +702,7 @@ function NodeDetailView({
             <div className="flex flex-col gap-2 p-2.5 rounded-md bg-muted/20 border border-border/30">
               <div className="flex items-center gap-1.5">
                 <Server className="h-3 w-3 text-primary" />
-                <span className="text-xs font-display font-bold text-muted-foreground uppercase">{t('info.system')}</span>
+                <span className="type-hud-label">{t('info.system')}</span>
               </div>
               <div className="grid grid-cols-[12px_auto_1fr] gap-x-2 gap-y-1.5 text-xs font-mono items-center">
                 <SystemIcon kind="cpu" value={node.cpu_name} className="h-3 w-3 text-muted-foreground/70" />
@@ -828,7 +828,7 @@ function NodeDetailView({
             <div className="p-2.5 rounded-md bg-muted/20 border border-border/30 space-y-2">
               <div className="flex items-center gap-1.5">
                 <Activity className="h-3.5 w-3.5 text-primary" />
-                <span className="text-xs font-display font-bold text-muted-foreground uppercase">{t('label.load')}</span>
+                <span className="type-hud-label">{t('label.load')}</span>
               </div>
               <div className="grid grid-cols-3 gap-1.5">
                 <div className="text-center">
@@ -850,7 +850,7 @@ function NodeDetailView({
             <div className="relative p-2.5 rounded-md bg-muted/25 border border-border/40 border-t-primary/40 space-y-2 sidebar-network-card">
               <div className="flex items-center gap-1.5">
                 <Network className="h-3.5 w-3.5 text-primary" />
-                <span className="text-xs font-display font-bold text-foreground/85 uppercase tracking-wider">{t('label.network')}</span>
+                <span className="type-hud-label text-foreground/85">{t('label.network')}</span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>

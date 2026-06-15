@@ -6,7 +6,7 @@ import { Button } from './ui/button';
 import { Progress } from './ui/progress';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Sparkline } from './Sparkline';
-import { ArrowLeft, Network, Signal, ArrowUpDown, Unplug, ChevronDown, ChevronRight, Info, Clock, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Network, Signal, ArrowUp, ArrowDown, ArrowUpDown, Gauge, Unplug, ChevronDown, ChevronRight, Info, Clock, AlertTriangle, RotateCw } from 'lucide-react';
 import { HudSpinner } from './HudSpinner';
 import { apiService } from '../services/api';
 import { useAppConfig } from '@/hooks/useAppConfig';
@@ -318,36 +318,40 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
       </div>
 
       {/* 与 NodeCharts 同一时间范围条样式与位置（在实时面板与图表区之前） */}
-      <div className="overflow-hidden rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl">
-        <div className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            <Clock className="h-3.5 w-3.5 text-primary" />
-            <span className="font-display text-xs font-bold tracking-wider text-muted-foreground uppercase">{t('chart.timeRange')}</span>
-          </div>
-          <div className="scrollbar-none flex max-w-full items-center gap-1 overflow-x-auto">
-            {timeRanges.map(tr => (
-              <button
-                key={tr.value}
-                type="button"
-                onClick={() => setTimeRange(tr.value)}
-                className={`cursor-pointer rounded h-9 sm:h-7 min-w-9 sm:min-w-0 px-2.5 font-mono text-xs transition-all duration-200 shrink-0 ${
-                  timeRange === tr.value
-                    ? 'border border-primary/30 bg-primary/15 text-primary'
-                    : 'text-muted-foreground hover:bg-muted/30 hover:text-foreground'
-                }`}
-              >
-                {tr.label}
-              </button>
-            ))}
-            <div className="mx-1 h-5 w-px bg-border/30" />
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/40 bg-card/60 backdrop-blur-xl px-3 py-2 commander-corners commander-corners-soft relative overflow-hidden">
+        <span className="corner-bottom" />
+        <div className="flex items-center gap-2">
+          <Clock className="h-3.5 w-3.5 text-primary" aria-hidden />
+          <span className="type-console-title">
+            {t('chart.timeRange')}
+          </span>
+        </div>
+        <div className="flex items-center gap-0.5 rounded-md border border-border/40 bg-background/40 p-0.5 overflow-x-auto scrollbar-none max-w-full">
+          {timeRanges.map(tr => (
             <button
+              key={tr.value}
               type="button"
-              onClick={fetchData}
-              className="cursor-pointer rounded h-9 w-9 sm:h-7 sm:w-7 inline-flex shrink-0 items-center justify-center font-mono text-xs text-muted-foreground transition-colors hover:bg-primary/15 hover:text-primary"
+              onClick={() => setTimeRange(tr.value)}
+              aria-pressed={timeRange === tr.value}
+              className={cn(
+                'cursor-pointer rounded h-9 sm:h-6 min-w-9 sm:min-w-0 px-2.5 font-mono text-xs tabular-nums transition-all duration-150 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
+                timeRange === tr.value
+                  ? 'bg-primary/15 text-primary shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_30%,transparent)]'
+                  : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground',
+              )}
             >
-              ↻
+              {tr.label}
             </button>
-          </div>
+          ))}
+          <div className="mx-0.5 h-4 w-px bg-border/40 shrink-0" />
+          <button
+            type="button"
+            onClick={fetchData}
+            aria-label={t('action.retry')}
+            className="cursor-pointer rounded h-9 w-9 sm:h-6 sm:w-6 inline-flex items-center justify-center text-muted-foreground transition-colors hover:bg-primary/15 hover:text-primary shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+          >
+            <RotateCw className="h-3 w-3" aria-hidden />
+          </button>
         </div>
       </div>
 
@@ -360,7 +364,10 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
               <div className="network-stat-glow pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
               <div className="relative flex min-h-[5.25rem] flex-col justify-center gap-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-display font-bold uppercase tracking-wider text-muted-foreground/70">{t('label.upload')}</span>
+                  <span className="stat-chip stat-chip--up">
+                    <ArrowUp className="h-3 w-3" />
+                  </span>
+                  <span className="type-hud-label text-muted-foreground/70">{t('label.upload')}</span>
                   <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-px text-xxs font-mono font-bold uppercase tracking-wider text-primary">
                     <span className="relative flex h-1.5 w-1.5">
                       <span className="absolute inset-0 rounded-full bg-primary/60 motion-safe:animate-ping" aria-hidden />
@@ -370,7 +377,7 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
                   </span>
                 </div>
                 <div className="flex items-end gap-3">
-                  <div className="text-xl font-metric font-bold leading-none tracking-tight text-foreground tabular-nums sm:text-2xl">
+                  <div className="type-metric-xl text-xl sm:text-2xl text-foreground tabular-nums">
                     {formatSpeed(stats.network.up)}
                   </div>
                   {upHistory.length >= 2 && (
@@ -379,7 +386,7 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
                     </div>
                   )}
                 </div>
-                <div className="text-xxs font-mono uppercase tracking-wider text-muted-foreground/50">
+                <div className="type-hud-label-sm text-muted-foreground/50">
                   {t('chart.recentWindow')}
                 </div>
               </div>
@@ -388,7 +395,10 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
               <div className="network-stat-glow pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
               <div className="relative flex min-h-[5.25rem] flex-col justify-center gap-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-display font-bold uppercase tracking-wider text-muted-foreground/70">{t('label.download')}</span>
+                  <span className="stat-chip stat-chip--down">
+                    <ArrowDown className="h-3 w-3" />
+                  </span>
+                  <span className="type-hud-label text-muted-foreground/70">{t('label.download')}</span>
                   <span className="network-dir-live network-dir-live--down ml-auto inline-flex items-center gap-1 rounded-full bg-accent/10 px-1.5 py-px text-xxs font-mono font-bold uppercase tracking-wider text-accent">
                     <span className="relative flex h-1.5 w-1.5">
                       <span className="absolute inset-0 rounded-full bg-accent/60 motion-safe:animate-ping" aria-hidden />
@@ -398,7 +408,7 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
                   </span>
                 </div>
                 <div className="flex items-end gap-3">
-                  <div className="text-xl font-metric font-bold leading-none tracking-tight text-foreground tabular-nums sm:text-2xl">
+                  <div className="type-metric-xl text-xl sm:text-2xl text-foreground tabular-nums">
                     {formatSpeed(stats.network.down)}
                   </div>
                   {downHistory.length >= 2 && (
@@ -407,7 +417,7 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
                     </div>
                   )}
                 </div>
-                <div className="text-xxs font-mono uppercase tracking-wider text-muted-foreground/50">
+                <div className="type-hud-label-sm text-muted-foreground/50">
                   {t('chart.recentWindow')}
                 </div>
               </div>
@@ -416,30 +426,30 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
 
           {/* 累计上下行：次级信息，统一字阶与对齐 */}
           <div className="grid grid-cols-2 divide-x divide-border/20 border-t border-border/20">
-            <div className="relative p-4 sm:p-4 group">
+            <div className="stat-section group relative p-4 sm:p-4">
               <div className="network-stat-glow pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
               <div className="relative flex min-h-[3.75rem] flex-col justify-center gap-1.5">
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded bg-muted/35">
-                    <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                  <span className="stat-chip stat-chip--up">
+                    <ArrowUp className="h-3 w-3" />
                   </span>
-                  <span className="text-xxs font-display font-bold uppercase tracking-wider text-muted-foreground/60 sm:text-xs">{t('label.totalUp')}</span>
+                  <span className="type-hud-label-sm sm:text-xs sm:leading-4">{t('label.totalUp')}</span>
                 </div>
-                <div className="text-sm font-metric font-bold tabular-nums text-foreground sm:text-base">
+                <div className="type-metric-md sm:text-base text-foreground tabular-nums">
                   {stats.network.totalUp ? formatBytes(stats.network.totalUp) : t('label.na')}
                 </div>
               </div>
             </div>
-            <div className="relative p-4 sm:p-4 group">
+            <div className="stat-section group relative p-4 sm:p-4">
               <div className="network-stat-glow pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
               <div className="relative flex min-h-[3.75rem] flex-col justify-center gap-1.5">
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded bg-muted/35">
-                    <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                  <span className="stat-chip stat-chip--down">
+                    <ArrowDown className="h-3 w-3" />
                   </span>
-                  <span className="text-xxs font-display font-bold uppercase tracking-wider text-muted-foreground/60 sm:text-xs">{t('label.totalDown')}</span>
+                  <span className="type-hud-label-sm sm:text-xs sm:leading-4">{t('label.totalDown')}</span>
                 </div>
-                <div className="text-sm font-metric font-bold tabular-nums text-foreground sm:text-base">
+                <div className="type-metric-md sm:text-base text-foreground tabular-nums">
                   {stats.network.totalDown ? formatBytes(stats.network.totalDown) : t('label.na')}
                 </div>
               </div>
@@ -456,9 +466,10 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
             const pct = Math.min((used / propNode.traffic_limit) * 100, 100);
             const tone = pct >= 90 ? 'destructive' : pct >= 70 ? 'warning' : 'primary';
             return (
-              <div className="relative border-t border-border/20 px-4 py-3 sm:px-5 flex flex-col gap-1.5">
+              <div className="stat-section relative border-t border-border/20 px-4 py-3 sm:px-5 flex flex-col gap-1.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-xxs font-display font-bold uppercase tracking-wider text-muted-foreground/70 sm:text-xs">
+                  <span className="flex items-center gap-2 type-hud-label-sm sm:text-xs sm:leading-4">
+                    <span className="stat-chip"><Gauge className="h-3 w-3" /></span>
                     {t('label.traffic')}
                   </span>
                   <span
@@ -490,14 +501,12 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
           })() : null}
 
           {isLoggedIn && (
-            <div className="relative border-t border-border/20 p-4 sm:px-5 sm:py-4 group">
+            <div className="stat-section relative border-t border-border/20 p-4 sm:px-5 sm:py-4 group">
               <div className="network-stat-glow pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
               <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded bg-muted/35">
-                    <Unplug className="h-3 w-3 text-muted-foreground" />
-                  </span>
-                  <span className="text-xs font-display font-bold uppercase tracking-wider text-muted-foreground/70">{t('label.tcpUdp')}</span>
+                  <span className="stat-chip"><Unplug className="h-3 w-3" /></span>
+                  <span className="type-hud-label text-muted-foreground/70">{t('label.tcpUdp')}</span>
                 </div>
                 <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 sm:justify-end">
                   <div className="flex items-baseline gap-2">
@@ -520,12 +529,14 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
       {latencySummary.length > 0 && (
         <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl overflow-hidden">
           <button
+            type="button"
             onClick={() => setLatencyCollapsed(c => !c)}
-            className="w-full flex items-center justify-between gap-3 px-4 py-3 border-b border-border/30 hover:bg-muted/10 transition-colors cursor-pointer"
+            aria-expanded={!latencyCollapsed}
+            className="w-full flex items-center justify-between gap-3 px-4 py-3 border-b border-border/30 hover:bg-muted/10 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-inset"
           >
             <div className="flex items-center gap-2 min-w-0">
               <Signal className="h-3.5 w-3.5 text-primary shrink-0" />
-              <span className="text-xs font-display font-bold text-muted-foreground uppercase tracking-wider">{t('chart.latencyOverview')}</span>
+              <span className="type-panel-title">{t('chart.latencyOverview')}</span>
               <span className="text-xxs font-metric tabular-nums text-muted-foreground/60">({latencySummary.length})</span>
               {/* Collapsed-state summary badges — remain informative when the section is closed */}
               {latencyCollapsed && healthOverview.avgCurrent !== null && (
@@ -544,7 +555,7 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
                           : 'bg-success/10 text-success',
                     )}
                   >
-                    {healthOverview.maxLoss.toFixed(1)}% loss
+                    {t('chart.lossPct', { pct: healthOverview.maxLoss.toFixed(1) })}
                   </span>
                 </span>
               )}
@@ -572,11 +583,11 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
                   <thead className="sticky top-0 bg-card/95 backdrop-blur-sm z-10">
                     <tr className="border-b border-border/20">
                       <th className="w-8 px-2 py-2.5"></th>
-                      <th className="px-4 py-2.5 text-left text-xxs font-display font-bold uppercase tracking-widest text-muted-foreground/70">{t('chart.taskName')}</th>
-                      <th className="px-4 py-2.5 text-right text-xxs font-display font-bold uppercase tracking-widest text-muted-foreground/70">{t('chart.current')}</th>
-                      <th className="px-4 py-2.5 text-right text-xxs font-display font-bold uppercase tracking-widest text-muted-foreground/70">{t('chart.average')}</th>
-                      <th className="px-4 py-2.5 text-right text-xxs font-display font-bold uppercase tracking-widest text-muted-foreground/70">{t('chart.loss')}</th>
-                      <th className="px-4 py-2.5 text-right text-xxs font-display font-bold uppercase tracking-widest text-muted-foreground/70">{t('chart.jitter')}</th>
+                      <th className="type-hud-column px-4 py-2.5 text-left">{t('chart.taskName')}</th>
+                      <th className="type-hud-column px-4 py-2.5 text-right">{t('chart.current')}</th>
+                      <th className="type-hud-column px-4 py-2.5 text-right">{t('chart.average')}</th>
+                      <th className="type-hud-column px-4 py-2.5 text-right">{t('chart.loss')}</th>
+                      <th className="type-hud-column px-4 py-2.5 text-right">{t('chart.jitter')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -733,7 +744,7 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
         <Card className={chartCardClass}>
           <CardHeader className="px-4 pt-3 pb-2">
             <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <Unplug className="h-4 w-4 text-primary" />
+              <Unplug className="h-4 w-4 text-chart-5" />
               {t('chart.connections')}
             </CardTitle>
           </CardHeader>
@@ -750,7 +761,7 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
         <Card className={chartCardClass}>
           <CardHeader className="px-4 pt-3 pb-2">
             <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <ArrowUpDown className="h-4 w-4 text-primary" />
+              <ArrowUpDown className="h-4 w-4 text-chart-7" />
               {t('chart.networkTraffic')}
             </CardTitle>
           </CardHeader>
@@ -769,14 +780,15 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
             <CardHeader className="px-4 pt-3 pb-2">
               <CardTitle className="flex items-center justify-between text-sm font-semibold">
                 <span className="flex items-center gap-2">
-                  <Signal className="h-4 w-4 text-primary" />
+                  <Signal className="h-4 w-4 text-chart-2" />
                   {t('chart.pingLatency')}
                 </span>
                 <button
                   type="button"
                   onClick={() => setSmooth(s => !s)}
-                  title={t('chart.ewmaTooltip')}
-                  className={`flex h-9 sm:h-7 cursor-pointer items-center gap-1 rounded px-3 sm:px-1.5 font-mono text-xs tracking-widest transition-all duration-200 ${
+                  aria-label={t('chart.ewmaTooltip')}
+                  aria-pressed={smooth}
+                  className={`flex h-9 sm:h-7 cursor-pointer items-center gap-1 rounded px-3 sm:px-1.5 font-mono text-xs tracking-widest transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
                     smooth
                       ? 'bg-primary/10 text-primary/80'
                       : 'text-muted-foreground/40 hover:text-muted-foreground/60'
