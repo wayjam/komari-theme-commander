@@ -469,7 +469,7 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
               <div className="stat-section relative border-t border-border/20 px-4 py-3 sm:px-5 flex flex-col gap-1.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="flex items-center gap-2 type-hud-label-sm sm:text-xs sm:leading-4">
-                    <span className="stat-chip"><Gauge className="h-3 w-3" /></span>
+                    <span className="stat-chip stat-chip--traffic"><Gauge className="h-3 w-3" /></span>
                     {t('label.traffic')}
                   </span>
                   <span
@@ -501,22 +501,22 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
           })() : null}
 
           {isLoggedIn && (
-            <div className="stat-section relative border-t border-border/20 p-4 sm:px-5 sm:py-4 group">
+            <div className="stat-section relative border-t border-border/20 p-4 sm:px-5 sm:py-4 group" data-accent="network">
               <div className="network-stat-glow pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
               <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="stat-chip"><Unplug className="h-3 w-3" /></span>
+                  <span className="stat-chip stat-chip--network"><Unplug className="h-3 w-3" /></span>
                   <span className="type-hud-label text-muted-foreground/70">{t('label.tcpUdp')}</span>
                 </div>
                 <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 sm:justify-end">
                   <div className="flex items-baseline gap-2">
                     <span className="text-xs font-mono text-muted-foreground/70">TCP</span>
-                    <span className="text-base font-metric font-bold tabular-nums">{stats.connections.tcp}</span>
+                    <span className="text-base font-metric font-bold tabular-nums text-chart-5">{stats.connections.tcp}</span>
                   </div>
                   <div className="hidden h-4 w-px bg-border/35 sm:block" aria-hidden />
                   <div className="flex items-baseline gap-2">
                     <span className="text-xs font-mono text-muted-foreground/70">UDP</span>
-                    <span className="text-base font-metric font-bold tabular-nums">{stats.connections.udp}</span>
+                    <span className="text-base font-metric font-bold tabular-nums text-chart-6">{stats.connections.udp}</span>
                   </div>
                 </div>
               </div>

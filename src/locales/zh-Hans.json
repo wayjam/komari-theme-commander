@@ -23,7 +23,6 @@
     "cpu1m": "CPU 1分钟",
     "netUp": "网络",
     "netDown": "网络",
-    "up": "运行",
     "tcp": "TCP",
     "udp": "UDP",
     "proc": "进程",

@@ -139,6 +139,10 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
   const shouldShowTagDivider = hasSystemTags && tagList.length > 0;
   const hasTagStrip = hasSystemTags || tagList.length > 0 || !!node.region;
   const priceLabel = isFree ? t('label.free') : node.price === 0 ? t('label.notSet') : `${node.currency}${node.price}`;
+  const cores = node.cpu_cores || 1;
+  const loadRatio = stats ? stats.load.load1 / cores : 0;
+  const loadStatusTone =
+    loadRatio >= 1.5 ? 'text-destructive' : loadRatio >= 1 ? 'text-warning' : 'text-foreground';
 
   return (
     <div className="node-card-commander node-info-panel rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl p-4 sm:p-5 commander-corners relative overflow-hidden">
@@ -182,7 +186,7 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
                     <TooltipTrigger asChild>
                       <div className="stat-section flex min-w-0 flex-1 flex-col gap-1.5 p-3 sm:p-4 cursor-default">
                         <div className="flex items-center gap-1.5">
-                          <span className="stat-chip"><SystemIcon kind="cpu" value={node.cpu_name} className="h-3 w-3" /></span>
+                          <span className="stat-chip stat-chip--cpu"><SystemIcon kind="cpu" value={node.cpu_name} className="h-3 w-3" /></span>
                           <span className="type-hud-label">{t('label.cpu')}</span>
                         </div>
                         <div className="type-spec-value">{node.cpu_name} ({node.cpu_cores}C)</div>
@@ -198,7 +202,7 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
                     <TooltipTrigger asChild>
                       <div className="stat-section flex min-w-0 flex-1 flex-col gap-1.5 p-3 sm:p-4 cursor-default">
                         <div className="flex items-center gap-1.5">
-                          <span className="stat-chip"><SystemIcon kind="gpu" value={node.gpu_name} className="h-3 w-3" /></span>
+                          <span className="stat-chip stat-chip--gpu"><SystemIcon kind="gpu" value={node.gpu_name} className="h-3 w-3" /></span>
                           <span className="type-hud-label">{t('label.gpu')}</span>
                         </div>
                         <div className="type-spec-value">{node.gpu_name}</div>
@@ -219,7 +223,7 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
                     <TooltipTrigger asChild>
                       <div className="stat-section flex min-w-0 flex-1 flex-col gap-1.5 p-3 sm:p-4 cursor-default">
                         <div className="flex items-center gap-1.5">
-                          <span className="stat-chip"><SystemIcon kind="os" value={node.os} className="h-3 w-3" /></span>
+                          <span className="stat-chip stat-chip--system"><SystemIcon kind="os" value={node.os} className="h-3 w-3" /></span>
                           <span className="type-hud-label">{t('label.system')}</span>
                         </div>
                         <div className="type-spec-value">
@@ -237,7 +241,7 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
                     <TooltipTrigger asChild>
                       <div className="stat-section flex min-w-0 flex-1 flex-col gap-1.5 p-3 sm:p-4 cursor-default">
                         <div className="flex items-center gap-1.5">
-                          <span className="stat-chip"><SystemIcon kind="arch" value={node.arch} className="h-3 w-3" /></span>
+                          <span className="stat-chip stat-chip--system"><SystemIcon kind="arch" value={node.arch} className="h-3 w-3" /></span>
                           <span className="type-hud-label">{t('label.arch')}</span>
                         </div>
                         <div className="type-spec-value">
@@ -292,10 +296,10 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
             {/* Realtime: Network / Load / Uptime */}
             <div className="grid grid-cols-1 divide-y divide-border/20 border-t border-border/20 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
               {/* Network */}
-              <div className="stat-section flex flex-col gap-1.5 p-3 sm:p-4">
+              <div className="stat-section flex flex-col gap-1.5 p-3 sm:p-4" data-accent="network">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5">
-                    <span className="stat-chip"><Network className="h-3 w-3" /></span>
+                    <span className="stat-chip stat-chip--network"><Network className="h-3 w-3" /></span>
                     <span className="type-hud-label">{t('label.network')}</span>
                   </div>
                   <Tooltip>
@@ -327,20 +331,20 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
                 {appConfig.isLoggedIn && (
                   <div className="flex items-center gap-2 mt-auto pt-1.5 border-t border-border/15">
                     <span className="type-hud-label-sm">{t('label.tcp')}</span>
-                    <span className="text-xxs font-metric font-bold tabular-nums">{stats.connections.tcp}</span>
+                    <span className="text-xxs font-metric font-bold tabular-nums text-chart-5">{stats.connections.tcp}</span>
                     <span className="text-xxs text-muted-foreground/20">|</span>
                     <span className="type-hud-label-sm">{t('label.udp')}</span>
-                    <span className="text-xxs font-metric font-bold tabular-nums">{stats.connections.udp}</span>
+                    <span className="text-xxs font-metric font-bold tabular-nums text-chart-6">{stats.connections.udp}</span>
                   </div>
                 )}
               </div>
               {/* Load */}
-              <div className="stat-section flex flex-col gap-1.5 p-3 sm:p-4">
+              <div className="stat-section flex flex-col gap-1.5 p-3 sm:p-4" data-accent="load">
                 <div className="flex items-center gap-1.5">
-                  <span className="stat-chip"><Activity className="h-3 w-3" /></span>
+                  <span className="stat-chip stat-chip--load"><Activity className="h-3 w-3" /></span>
                   <span className="type-hud-label">{t('label.load')}</span>
                 </div>
-                <div className="type-metric-hero tabular-nums text-foreground">
+                <div className={cn('type-metric-hero tabular-nums', loadStatusTone)}>
                   {stats.load.load1.toFixed(2)}
                 </div>
                 <div className="grid grid-cols-3 gap-1 mt-auto pt-1.5 border-t border-border/15">
@@ -359,9 +363,9 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
                 </div>
               </div>
               {/* Uptime */}
-              <div className="stat-section flex flex-col gap-1.5 p-3 sm:p-4">
+              <div className="stat-section flex flex-col gap-1.5 p-3 sm:p-4" data-accent="uptime">
                 <div className="flex items-center gap-1.5">
-                  <span className="stat-chip"><Clock className="h-3 w-3" /></span>
+                  <span className="stat-chip stat-chip--uptime"><Clock className="h-3 w-3" /></span>
                   <span className="type-hud-label">{t('label.uptime')}</span>
                 </div>
                 <div className="type-metric-hero tabular-nums text-foreground">
@@ -385,12 +389,13 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
               return (
                 <div
                   className="hud-gauge stat-section flex flex-col gap-2 border-t border-border/20 p-3 sm:p-4"
+                  data-accent="traffic"
                   data-channel="traffic"
                   data-status={s}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="stat-chip"><Gauge className="h-3 w-3" /></span>
+                      <span className="stat-chip stat-chip--traffic"><Gauge className="h-3 w-3" /></span>
                       <span className="type-hud-label truncate">
                         {t('label.traffic')} <span className="text-muted-foreground/60 normal-case">({formatTrafficType(node.traffic_limit_type!)})</span>
                       </span>
@@ -427,11 +432,11 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
               <Tooltip>
                 <TooltipTrigger asChild>
                   {appConfig.isLoggedIn ? (
-                  <div className="stat-section flex min-w-0 flex-col gap-1 p-3 sm:p-4 cursor-default">
+                  <div className="stat-section flex min-w-0 flex-col gap-1 p-3 sm:p-4 cursor-default" data-accent="billing">
                     {/* Header: label + price badge */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5">
-                        <span className="stat-chip"><Calendar className="h-3 w-3" /></span>
+                        <span className="stat-chip stat-chip--billing"><Calendar className="h-3 w-3" /></span>
                         <span className="type-hud-label">{t('label.billing')}</span>
                       </div>
                       <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-metric font-bold tabular-nums leading-none text-primary ring-1 ring-primary/20">
@@ -469,9 +474,9 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
                   /* Public (logged-out) state: no price / cycle / renewal data, so
                      lay label and expiry side-by-side to fill the width instead of
                      leaving the right side of header + footer empty. */
-                  <div className="stat-section flex min-w-0 items-center justify-between gap-3 p-3 sm:p-4 cursor-default">
+                  <div className="stat-section flex min-w-0 items-center justify-between gap-3 p-3 sm:p-4 cursor-default" data-accent="billing">
                     <div className="flex items-center gap-1.5">
-                      <span className="stat-chip"><Calendar className="h-3 w-3" /></span>
+                      <span className="stat-chip stat-chip--billing"><Calendar className="h-3 w-3" /></span>
                       <span className="type-hud-label">{t('label.billing')}</span>
                     </div>
                     <div className="flex min-w-0 flex-col items-end gap-0.5 text-right">

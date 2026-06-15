@@ -2,7 +2,7 @@ import { Sparkline } from './Sparkline';
 import { useMemo, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, ArrowUp, ArrowDown, Activity, Clock } from 'lucide-react';
+import { AlertTriangle, ArrowUp, ArrowDown, Activity, Clock, Network } from 'lucide-react';
 import { SystemIcon } from '@/lib/systemIcon';
 import type { NodeWithStatus } from '@/services/api';
 import { useRecentStats } from '@/hooks/useRecentStats';
@@ -231,8 +231,8 @@ function MobileTelemetryTile({
 }) {
   return (
     <div className="min-w-0 rounded-md border border-border/20 bg-background/35 px-2.5 py-1.5 shadow-[inset_0_1px_0_color-mix(in_oklch,var(--foreground)_5%,transparent)] hud-data-cell">
-      <div className="mb-1 flex items-center gap-1.5 text-xxs font-mono uppercase tracking-wider text-muted-foreground/70">
-        <Icon className="h-3 w-3 shrink-0 opacity-75" aria-hidden />
+      <div className="mb-1 flex items-center gap-1.5 type-hud-label-sm">
+        <Icon className={cn('h-3 w-3 shrink-0', tone ? `${tone} opacity-90` : 'opacity-75')} aria-hidden />
         <span className="truncate">{label}</span>
       </div>
       <div className={cn('truncate text-sm font-metric font-bold leading-none tabular-nums', tone)}>
@@ -264,13 +264,13 @@ function MobileNetworkTile({
 }) {
   return (
     <div className="col-span-2 min-w-0 rounded-md border border-border/20 bg-background/35 px-2.5 py-1.5 shadow-[inset_0_1px_0_color-mix(in_oklch,var(--foreground)_5%,transparent)] hud-data-cell">
-      <div className="mb-1.5 flex items-center gap-1.5 text-xxs font-mono uppercase tracking-wider text-muted-foreground/70">
-        <Activity className="h-3 w-3 shrink-0 opacity-75" aria-hidden />
+      <div className="mb-1.5 flex items-center gap-1.5 type-hud-label-sm">
+        <span className="stat-chip stat-chip--network"><Network className="h-3 w-3" /></span>
         <span>{label}</span>
       </div>
       <div className="grid min-w-0 grid-cols-2 gap-2">
         <div className="min-w-0">
-          <div className="flex items-center gap-1 text-xxs font-mono text-success/80">
+          <div className="flex items-center gap-1 type-hud-label-sm text-chart-7">
             <ArrowUp className="h-3 w-3 shrink-0" aria-hidden />
             <span>{upLabel}</span>
           </div>
@@ -282,7 +282,7 @@ function MobileNetworkTile({
           </div>
         </div>
         <div className="min-w-0 border-l border-border/20 pl-2">
-          <div className="flex items-center gap-1 text-xxs font-mono text-primary/80">
+          <div className="flex items-center gap-1 type-hud-label-sm text-chart-8">
             <ArrowDown className="h-3 w-3 shrink-0" aria-hidden />
             <span>{downLabel}</span>
           </div>
@@ -529,21 +529,21 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
               />
               <CompactMetric
                 icon={ArrowUp}
-                label={t('label.netUp')}
+                label={t('label.uploadShort')}
                 value={formatSpeed(stats.network.up).replace('/s', '')}
                 sub={formatBytes(stats.network.totalUp)}
-                tone="text-success"
+                tone="text-chart-7"
               />
               <CompactMetric
                 icon={ArrowDown}
-                label={t('label.netDown')}
+                label={t('label.downloadShort')}
                 value={formatSpeed(stats.network.down).replace('/s', '')}
                 sub={formatBytes(stats.network.totalDown)}
-                tone="text-primary"
+                tone="text-chart-8"
               />
               <CompactMetric
                 icon={Clock}
-                label={t('label.up')}
+                label={t('label.uptime')}
                 value={formatUptime(stats.uptime)}
               />
             </div>

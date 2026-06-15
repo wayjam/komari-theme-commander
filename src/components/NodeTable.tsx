@@ -149,12 +149,12 @@ function NetworkCell({ node, t }: { node: NodeWithStatus; t: (k: string, p?: Rec
             <div className="grid min-w-0 grid-cols-2 gap-3 border-t border-border/20 pt-1.5 text-xxs font-metric leading-none">
               <span className="flex min-w-0 items-center gap-1 truncate">
                 <ArrowUp className="h-2.5 w-2.5 shrink-0 text-chart-7" aria-hidden />
-                <span className="text-muted-foreground/55">{t('label.totalUp')}</span>
+                <span className="text-muted-foreground/55">{t('label.total')}</span>
                 <span className="font-semibold text-foreground/85 tabular-nums">{formatBytes(stats.network.totalUp)}</span>
               </span>
               <span className="flex min-w-0 items-center justify-end gap-1 truncate">
                 <ArrowDown className="h-2.5 w-2.5 shrink-0 text-chart-8" aria-hidden />
-                <span className="text-muted-foreground/55">{t('label.totalDown')}</span>
+                <span className="text-muted-foreground/55">{t('label.total')}</span>
                 <span className="font-semibold text-foreground/85 tabular-nums">{formatBytes(stats.network.totalDown)}</span>
               </span>
             </div>
@@ -164,7 +164,7 @@ function NetworkCell({ node, t }: { node: NodeWithStatus; t: (k: string, p?: Rec
       <TooltipContent side="bottom" className="whitespace-pre-line text-xs font-mono">
         {[
           `${t('chart.realtime')}: ${t('label.uploadShort')} ${formatSpeed(stats.network.up)} · ${t('label.downloadShort')} ${formatSpeed(stats.network.down)}`,
-          `${t('label.totalUp')} ${formatBytes(stats.network.totalUp)} · ${t('label.totalDown')} ${formatBytes(stats.network.totalDown)}`,
+          `${t('label.total')} ↑ ${formatBytes(stats.network.totalUp)} · ${t('label.total')} ↓ ${formatBytes(stats.network.totalDown)}`,
           hasTraffic
             ? `${t('label.traffic')} ${formatTrafficType(node.traffic_limit_type!)}: ${formatBytes(trafficUsed)} / ${formatBytes(node.traffic_limit!)} (${trafficPct.toFixed(1)}%)`
             : null,

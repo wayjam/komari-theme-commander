@@ -1365,6 +1365,129 @@
     border-color: color-mix(in oklch, var(--chart-8) 22%, transparent);
   }
 
+  /* Resource & panel channels — mirrors hud-gauge / CircularGauge chart map */
+  .stat-chip--cpu {
+    color: var(--chart-1);
+    background: color-mix(in oklch, var(--chart-1) 12%, transparent);
+    border-color: color-mix(in oklch, var(--chart-1) 22%, transparent);
+  }
+
+  .stat-chip--ram {
+    color: var(--chart-2);
+    background: color-mix(in oklch, var(--chart-2) 12%, transparent);
+    border-color: color-mix(in oklch, var(--chart-2) 22%, transparent);
+  }
+
+  .stat-chip--disk {
+    color: var(--chart-3);
+    background: color-mix(in oklch, var(--chart-3) 12%, transparent);
+    border-color: color-mix(in oklch, var(--chart-3) 22%, transparent);
+  }
+
+  .stat-chip--traffic {
+    color: var(--chart-4);
+    background: color-mix(in oklch, var(--chart-4) 12%, transparent);
+    border-color: color-mix(in oklch, var(--chart-4) 22%, transparent);
+  }
+
+  .stat-chip--load {
+    color: var(--chart-5);
+    background: color-mix(in oklch, var(--chart-5) 12%, transparent);
+    border-color: color-mix(in oklch, var(--chart-5) 22%, transparent);
+  }
+
+  .stat-chip--tcp {
+    color: var(--chart-5);
+    background: color-mix(in oklch, var(--chart-5) 12%, transparent);
+    border-color: color-mix(in oklch, var(--chart-5) 22%, transparent);
+  }
+
+  .stat-chip--udp {
+    color: var(--chart-6);
+    background: color-mix(in oklch, var(--chart-6) 12%, transparent);
+    border-color: color-mix(in oklch, var(--chart-6) 22%, transparent);
+  }
+
+  .stat-chip--network {
+    color: var(--primary);
+    background: color-mix(in oklch, var(--primary) 12%, transparent);
+    border-color: color-mix(in oklch, var(--primary) 22%, transparent);
+  }
+
+  .stat-chip--uptime {
+    color: var(--success);
+    background: color-mix(in oklch, var(--success) 12%, transparent);
+    border-color: color-mix(in oklch, var(--success) 22%, transparent);
+  }
+
+  .stat-chip--billing {
+    color: var(--chart-4);
+    background: color-mix(in oklch, var(--chart-4) 12%, transparent);
+    border-color: color-mix(in oklch, var(--chart-4) 22%, transparent);
+  }
+
+  .stat-chip--system {
+    color: var(--chart-6);
+    background: color-mix(in oklch, var(--chart-6) 12%, transparent);
+    border-color: color-mix(in oklch, var(--chart-6) 22%, transparent);
+  }
+
+  .stat-chip--gpu {
+    color: var(--chart-9);
+    background: color-mix(in oklch, var(--chart-9) 12%, transparent);
+    border-color: color-mix(in oklch, var(--chart-9) 22%, transparent);
+  }
+
+  /* Hover wash — ties stat cells to their channel hue (Lumina / DeepSpace) */
+  .stat-section[data-accent]::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.25s ease-out;
+  }
+
+  .stat-section[data-accent]:hover::after {
+    opacity: 1;
+  }
+
+  .stat-section[data-accent='cpu']::after {
+    background: radial-gradient(ellipse closest-side at 20% 50%, color-mix(in oklch, var(--chart-1) 9%, transparent), transparent 72%);
+  }
+
+  .stat-section[data-accent='ram']::after {
+    background: radial-gradient(ellipse closest-side at 20% 50%, color-mix(in oklch, var(--chart-2) 9%, transparent), transparent 72%);
+  }
+
+  .stat-section[data-accent='disk']::after {
+    background: radial-gradient(ellipse closest-side at 20% 50%, color-mix(in oklch, var(--chart-3) 9%, transparent), transparent 72%);
+  }
+
+  .stat-section[data-accent='network']::after {
+    background: radial-gradient(ellipse closest-side at 20% 50%, color-mix(in oklch, var(--primary) 8%, transparent), transparent 72%);
+  }
+
+  .stat-section[data-accent='load']::after {
+    background: radial-gradient(ellipse closest-side at 20% 50%, color-mix(in oklch, var(--chart-5) 9%, transparent), transparent 72%);
+  }
+
+  .stat-section[data-accent='uptime']::after {
+    background: radial-gradient(ellipse closest-side at 20% 50%, color-mix(in oklch, var(--success) 8%, transparent), transparent 72%);
+  }
+
+  .stat-section[data-accent='traffic']::after {
+    background: radial-gradient(ellipse closest-side at 20% 50%, color-mix(in oklch, var(--chart-4) 9%, transparent), transparent 72%);
+  }
+
+  .stat-section[data-accent='billing']::after {
+    background: radial-gradient(ellipse closest-side at 20% 50%, color-mix(in oklch, var(--chart-4) 8%, transparent), transparent 72%);
+  }
+
+  [data-theme='clean'] .stat-section[data-accent]::after {
+    display: none;
+  }
+
   /* ════════════════════════════════════════════════════════════
      Uptime monitor — DeepSpace: all-online = solid success; soften for eye comfort
      ════════════════════════════════════════════════════════════ */
@@ -1519,6 +1642,31 @@
 
   :root .circular-gauge-glow-critical {
     filter: drop-shadow(0 0 3px oklch(0.6 0.2 25 / 20%));
+  }
+
+  /* Channel-tinted ring glow when status is normal */
+  :root [data-channel='cpu'][data-status='normal'] .circular-gauge-glow-normal {
+    filter: drop-shadow(0 0 4px color-mix(in oklch, var(--chart-1) 28%, transparent));
+  }
+
+  :root [data-channel='ram'][data-status='normal'] .circular-gauge-glow-normal {
+    filter: drop-shadow(0 0 4px color-mix(in oklch, var(--chart-2) 28%, transparent));
+  }
+
+  :root [data-channel='disk'][data-status='normal'] .circular-gauge-glow-normal {
+    filter: drop-shadow(0 0 4px color-mix(in oklch, var(--chart-3) 28%, transparent));
+  }
+
+  [data-theme='deepspace'] [data-channel='cpu'][data-status='normal'] .circular-gauge-glow-normal {
+    filter: drop-shadow(0 0 7px color-mix(in oklch, var(--chart-1) 42%, transparent));
+  }
+
+  [data-theme='deepspace'] [data-channel='ram'][data-status='normal'] .circular-gauge-glow-normal {
+    filter: drop-shadow(0 0 7px color-mix(in oklch, var(--chart-2) 42%, transparent));
+  }
+
+  [data-theme='deepspace'] [data-channel='disk'][data-status='normal'] .circular-gauge-glow-normal {
+    filter: drop-shadow(0 0 7px color-mix(in oklch, var(--chart-3) 42%, transparent));
   }
 
   /* Clean: no glow */

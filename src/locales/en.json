@@ -23,7 +23,6 @@
     "cpu1m": "CPU 1m",
     "netUp": "NET",
     "netDown": "NET",
-    "up": "UP",
     "tcp": "TCP",
     "udp": "UDP",
     "proc": "PROC",

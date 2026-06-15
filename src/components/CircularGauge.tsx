@@ -74,7 +74,7 @@ export function CircularGauge({
       data-status={status}
     >
       <div className="flex items-center gap-1.5 self-start">
-        <span className="stat-chip">{icon}</span>
+        <span className={cn('stat-chip', channel && `stat-chip--${channel}`)}>{icon}</span>
         <span className="type-hud-label">
           {label}
         </span>
