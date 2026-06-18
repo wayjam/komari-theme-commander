@@ -19,7 +19,7 @@ import { useTheme } from './hooks/useTheme'
 import { RecentStatsProvider } from './hooks/useRecentStats'
 import { ArrowLeft, ArrowUp, ArrowDown, Settings, Globe, LayoutGrid, List, Shield, Cpu, MemoryStick, HardDrive, Activity, Network, Clock, User, AlertTriangle, ExternalLink, Fingerprint, Calendar, Gauge, RefreshCw } from 'lucide-react'
 import { SystemIcon } from '@/lib/systemIcon'
-import { useState, useEffect, useCallback, useMemo, createContext, useContext, lazy, Suspense } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, createContext, useContext, lazy, Suspense } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 import { Routes, Route, useNavigate, useParams, useLocation, Link } from 'react-router-dom'
@@ -51,6 +51,58 @@ function ChartsRouteFallback() {
   return (
     <div className="flex h-64 w-full items-center justify-center rounded-lg border border-border/50 bg-card/50">
       <HudSpinner size="lg" />
+    </div>
+  );
+}
+
+function FooterUtcClock() {
+  const { t } = useTranslation();
+  const fullRef = useRef<HTMLSpanElement>(null);
+  const compactRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const tick = () => {
+      const d = new Date();
+      const date = `${String(d.getUTCFullYear())}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+      const time = `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}:${String(d.getUTCSeconds()).padStart(2, '0')}Z`;
+      if (fullRef.current) fullRef.current.textContent = `${date} ${time}`;
+      if (compactRef.current) compactRef.current.textContent = time;
+    };
+    tick();
+
+    let id: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (id != null) return;
+      id = setInterval(tick, 1000);
+    };
+    const stop = () => {
+      if (id == null) return;
+      clearInterval(id);
+      id = null;
+    };
+    const onVisibility = () => {
+      if (document.hidden) {
+        stop();
+      } else {
+        tick();
+        start();
+      }
+    };
+
+    if (!document.hidden) start();
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, []);
+
+  return (
+    <div className="hidden sm:flex items-center gap-1.5 font-metric tabular-nums text-muted-foreground/80">
+      <Clock className="h-3 w-3 text-muted-foreground/55" aria-hidden />
+      <span className="font-mono uppercase tracking-wider text-muted-foreground/55">{t('hud.utc')}</span>
+      <span ref={compactRef} className="lg:hidden text-foreground/75" />
+      <span ref={fullRef} className="hidden lg:inline text-foreground/75" />
     </div>
   );
 }
@@ -1072,6 +1124,8 @@ function App() {
             <div className="container mx-auto px-3 sm:px-4 h-9 flex items-center justify-between text-xs font-mono text-muted-foreground">
               <div className="flex items-center gap-3">
                 <WebSocketStatus />
+                <span className="hidden sm:inline text-muted-foreground/30">|</span>
+                <FooterUtcClock />
                 <span className="hidden sm:inline text-muted-foreground/30">|</span>
                 <div className="hidden sm:flex items-center gap-2 font-metric tabular-nums">
                   <span>↑ {formatSpeed(networkStats.totalUp)}</span>

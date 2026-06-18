@@ -1,8 +1,9 @@
-import { memo, useEffect, useRef, useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Radio, Clock, Cpu, AlertTriangle, ShieldCheck, ArrowDown, ArrowUp } from 'lucide-react';
+import { Radio, Cpu, AlertTriangle, ShieldCheck, ArrowDown, ArrowUp, MapPinned } from 'lucide-react';
 import type { NodeWithStatus } from '@/services/api';
-import { formatSpeed } from '@/lib/utils';
+import { extractRegionEmoji, formatSpeed } from '@/lib/utils';
+import { getCoords } from '@/data/regionCoords';
 
 interface GlobeTopStripProps {
   nodes: NodeWithStatus[];
@@ -16,54 +17,11 @@ interface GlobeTopStripProps {
  * Note on omissions (intentional — avoid duplicate signals already shown elsewhere):
  *  - FLOW (aggregate IN/OUT) → covered by the bottom telemetry feed (per-node rates).
  *  - FLEET (online/total)    → covered by the right sidebar status block.
- *  This strip focuses on the two things NOT shown in chrome elsewhere:
- *  the live UTC clock and average fleet CPU pressure, plus a critical-alert tally.
- *
- * Performance:
- *  - The UTC clock ticks every second. Originally that was a setState, which
- *    forced a full re-render of this component (and its useMemo over nodes)
- *    once per second — competing with cobe's RAF. Now the clock is written
- *    directly into a span via ref, so the React tree is untouched on tick.
- *  - The interval also pauses while the page is hidden, dropping the
- *    background CPU floor to ~0.
+ *  This strip focuses on Globe-local telemetry: fleet CPU pressure,
+ *  aggregate flow, visible zones, plus a critical-alert tally.
  */
 export const GlobeTopStrip = memo(function GlobeTopStrip({ nodes }: GlobeTopStripProps) {
   const { t } = useTranslation();
-  const utcRef = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    const tick = () => {
-      const el = utcRef.current;
-      if (!el) return;
-      const d = new Date();
-      el.textContent = `${String(d.getUTCFullYear())}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}:${String(d.getUTCSeconds()).padStart(2, '0')}Z`;
-    };
-    tick();
-    let id: ReturnType<typeof setInterval> | null = null;
-    const start = () => {
-      if (id != null) return;
-      id = setInterval(tick, 1000);
-    };
-    const stop = () => {
-      if (id == null) return;
-      clearInterval(id);
-      id = null;
-    };
-    const onVisibility = () => {
-      if (document.hidden) {
-        stop();
-      } else {
-        tick();
-        start();
-      }
-    };
-    if (!document.hidden) start();
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => {
-      stop();
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
-  }, []);
 
   const stats = useMemo(() => {
     let cpuSum = 0;
@@ -71,8 +29,12 @@ export const GlobeTopStrip = memo(function GlobeTopStrip({ nodes }: GlobeTopStri
     let critical = 0;
     let totalUp = 0;
     let totalDown = 0;
+    const zones = new Set<string>();
 
     for (const n of nodes) {
+      const emoji = extractRegionEmoji(n.region);
+      if (emoji && getCoords(emoji)) zones.add(emoji);
+
       if (n.status === 'online' && n.stats) {
         cpuSum += n.stats.cpu.usage;
         cpuCount++;
@@ -84,7 +46,7 @@ export const GlobeTopStrip = memo(function GlobeTopStrip({ nodes }: GlobeTopStri
     }
 
     const avgCpu = cpuCount > 0 ? cpuSum / cpuCount : 0;
-    return { avgCpu, critical, sampled: cpuCount, totalUp, totalDown };
+    return { avgCpu, critical, sampled: cpuCount, totalUp, totalDown, zoneCount: zones.size };
   }, [nodes]);
 
   const cpuTone =
@@ -102,16 +64,6 @@ export const GlobeTopStrip = memo(function GlobeTopStrip({ nodes }: GlobeTopStri
       </div>
 
       <Sep />
-
-      {/* UTC clock — written directly via ref to avoid per-second React renders */}
-      <div className="flex items-center gap-2 shrink-0">
-        <Clock className="h-3 w-3 text-muted-foreground/55" />
-        <span className="text-muted-foreground/60">{t('hud.utc')}</span>
-        <span
-          ref={utcRef}
-          className="font-metric text-foreground/85 tracking-normal normal-case"
-        />
-      </div>
 
       <Sep className="hidden sm:block" />
 
@@ -143,6 +95,16 @@ export const GlobeTopStrip = memo(function GlobeTopStrip({ nodes }: GlobeTopStri
 
       {/* Spacer */}
       <div className="flex-1 min-w-0" />
+
+      {stats.zoneCount > 0 && (
+        <div className="hidden sm:flex items-center gap-2 shrink-0">
+          <MapPinned className="h-3 w-3 text-primary/75" />
+          <span className="text-muted-foreground/60">ZONE</span>
+          <span className="font-metric tracking-normal text-foreground/85">
+            {String(stats.zoneCount).padStart(2, '0')}
+          </span>
+        </div>
+      )}
 
       {/* Critical counter — always shown when present */}
       {stats.critical > 0 ? (
