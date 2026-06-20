@@ -47,6 +47,14 @@
 - **自动重连机制** — WebSocket 断线自动重连，保证数据连续性
 - **响应式设计** — 完美适配桌面端、平板和移动设备
 
+### 📱 PWA 支持
+
+- **可安装应用体验** — 内置 Web App Manifest、Apple Touch Icon、maskable icon 与移动端状态栏适配，可添加到桌面或手机主屏
+- **离线应用外壳** — 预缓存主题静态资源、图表和地球视图相关 chunk，已安装 PWA 可在网络异常时打开最后一次加载过的界面
+- **最后状态快照** — 节点列表、最新在线状态和公开站点信息会写入本地快照；后端不可达时优先展示最近一次有效数据，并标记为 stale
+- **安全的更新提示** — 新版本不会静默刷新监控面板，而是通过 toast 提示用户选择合适时机 reload
+- **不缓存实时 API** — `/api`、WebSocket、`/admin`、`/terminal` 不进入 Service Worker 兜底，实时监控数据仍由 Komari 后端直接提供
+
 ### 🌐 国际化支持
 
 - 内置 **English / 简体中文 / 繁體中文** 三语
@@ -105,7 +113,9 @@ pnpm install
 pnpm run dev
 ```
 
-Vite 开发服务器将在 `http://localhost:5173` 启动，支持 HMR 热更新。开发环境通过环境变量 `VITE_KOMARI_BACKEND_URL` 指向真实 Komari 后端（参考 `.env.example`）。
+Vite 开发服务器默认在 `http://localhost:5174` 启动（可通过 `VITE_DEV_SERVER_PORT` 覆盖），支持 HMR 热更新。开发环境通过环境变量 `VITE_API_TARGET` 指向真实 Komari 后端（参考 `.env.example`）。
+
+> PWA Service Worker 在 `vite dev` 下默认关闭，避免影响 HMR 和 `/api` 代理；如需验证 PWA，请使用生产构建/预览或安装后的 PWA 窗口。
 
 ### 构建生产版本
 
