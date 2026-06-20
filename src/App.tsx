@@ -19,7 +19,7 @@ import { useTheme } from './hooks/useTheme'
 import { RecentStatsProvider } from './hooks/useRecentStats'
 import { ArrowLeft, ArrowUp, ArrowDown, Settings, Globe, LayoutGrid, List, Shield, Cpu, MemoryStick, HardDrive, Activity, Network, Clock, User, AlertTriangle, ExternalLink, Fingerprint, Calendar, Gauge, RefreshCw } from 'lucide-react'
 import { SystemIcon } from '@/lib/systemIcon'
-import { useState, useEffect, useCallback, useMemo, useRef, createContext, useContext, lazy, Suspense } from 'react'
+import { cloneElement, useState, useEffect, useCallback, useMemo, useRef, createContext, useContext, lazy, Suspense, type ReactElement, type ReactNode } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 import { Routes, Route, useNavigate, useParams, useLocation, Link } from 'react-router-dom'
@@ -52,6 +52,86 @@ function ChartsRouteFallback() {
     <div className="flex h-64 w-full items-center justify-center rounded-lg border border-border/50 bg-card/50">
       <HudSpinner size="lg" />
     </div>
+  );
+}
+
+function hasOverflow(element: HTMLElement) {
+  const tolerance = 1;
+  return (
+    element.scrollWidth > element.clientWidth + tolerance ||
+    element.scrollHeight > element.clientHeight + tolerance
+  );
+}
+
+function OverflowTooltip({
+  children,
+  content,
+  side = 'bottom',
+  contentClassName,
+}: {
+  children: ReactElement<React.HTMLAttributes<HTMLElement> & React.RefAttributes<HTMLElement>>;
+  content: ReactNode;
+  side?: 'top' | 'right' | 'bottom' | 'left';
+  contentClassName?: string;
+}) {
+  const triggerRef = useRef<HTMLElement | null>(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  const updateOverflow = useCallback(() => {
+    const next = triggerRef.current ? hasOverflow(triggerRef.current) : false;
+    setIsOverflowing(next);
+    if (!next) setOpen(false);
+    return next;
+  }, []);
+
+  useEffect(() => {
+    updateOverflow();
+    const element = triggerRef.current;
+    if (!element || typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(() => {
+      updateOverflow();
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [updateOverflow, content]);
+
+  const trigger = useMemo(
+    () => cloneElement(children, {
+      ref: (element: HTMLElement | null) => {
+        triggerRef.current = element;
+        const { ref } = children.props;
+        if (typeof ref === 'function') {
+          ref(element);
+        } else if (ref && typeof ref === 'object') {
+          ref.current = element;
+        }
+      },
+      onPointerEnter: (event: React.PointerEvent<HTMLElement>) => {
+        updateOverflow();
+        children.props.onPointerEnter?.(event);
+      },
+      onFocus: (event: React.FocusEvent<HTMLElement>) => {
+        updateOverflow();
+        children.props.onFocus?.(event);
+      },
+    }),
+    [children, updateOverflow],
+  );
+
+  return (
+    <Tooltip open={isOverflowing ? open : false} onOpenChange={(nextOpen) => {
+      const nextOverflow = updateOverflow();
+      setOpen(nextOverflow ? nextOpen : false);
+    }}>
+      <TooltipTrigger asChild>
+        {trigger}
+      </TooltipTrigger>
+      <TooltipContent side={side} className={contentClassName}>
+        {content}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -234,36 +314,32 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
             {(node.cpu_name || node.gpu_name) && (
               <div className="flex flex-col divide-y divide-border/20 sm:flex-row sm:divide-x sm:divide-y-0">
                 {node.cpu_name && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="stat-section flex min-w-0 flex-1 flex-col gap-1.5 p-3 sm:p-4 cursor-default">
-                        <div className="flex items-center gap-1.5">
-                          <span className="stat-chip stat-chip--cpu"><SystemIcon kind="cpu" value={node.cpu_name} className="h-3 w-3" /></span>
-                          <span className="type-hud-label">{t('label.cpu')}</span>
-                        </div>
-                        <div className="type-spec-value">{node.cpu_name} ({node.cpu_cores}C)</div>
+                  <OverflowTooltip
+                    content={`${node.cpu_name} (${node.cpu_cores}C)`}
+                    contentClassName="max-w-xs text-xs font-mono"
+                  >
+                    <div className="stat-section flex min-w-0 flex-1 flex-col gap-1.5 p-3 sm:p-4 cursor-default">
+                      <div className="flex items-center gap-1.5">
+                        <span className="stat-chip stat-chip--cpu"><SystemIcon kind="cpu" value={node.cpu_name} className="h-3 w-3" /></span>
+                        <span className="type-hud-label">{t('label.cpu')}</span>
                       </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-xs text-xs font-mono">
-                      {node.cpu_name} ({node.cpu_cores}C)
-                    </TooltipContent>
-                  </Tooltip>
+                      <div className="type-spec-value">{node.cpu_name} ({node.cpu_cores}C)</div>
+                    </div>
+                  </OverflowTooltip>
                 )}
                 {node.gpu_name && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="stat-section flex min-w-0 flex-1 flex-col gap-1.5 p-3 sm:p-4 cursor-default">
-                        <div className="flex items-center gap-1.5">
-                          <span className="stat-chip stat-chip--gpu"><SystemIcon kind="gpu" value={node.gpu_name} className="h-3 w-3" /></span>
-                          <span className="type-hud-label">{t('label.gpu')}</span>
-                        </div>
-                        <div className="type-spec-value">{node.gpu_name}</div>
+                  <OverflowTooltip
+                    content={node.gpu_name}
+                    contentClassName="max-w-xs text-xs font-mono"
+                  >
+                    <div className="stat-section flex min-w-0 flex-1 flex-col gap-1.5 p-3 sm:p-4 cursor-default">
+                      <div className="flex items-center gap-1.5">
+                        <span className="stat-chip stat-chip--gpu"><SystemIcon kind="gpu" value={node.gpu_name} className="h-3 w-3" /></span>
+                        <span className="type-hud-label">{t('label.gpu')}</span>
                       </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-xs text-xs font-mono">
-                      {node.gpu_name}
-                    </TooltipContent>
-                  </Tooltip>
+                      <div className="type-spec-value">{node.gpu_name}</div>
+                    </div>
+                  </OverflowTooltip>
                 )}
               </div>
             )}
@@ -271,40 +347,36 @@ function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
             {(node.os || node.arch) && (
               <div className="flex flex-col divide-y divide-border/20 sm:flex-row sm:divide-x sm:divide-y-0">
                 {node.os && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="stat-section flex min-w-0 flex-1 flex-col gap-1.5 p-3 sm:p-4 cursor-default">
-                        <div className="flex items-center gap-1.5">
-                          <span className="stat-chip stat-chip--system"><SystemIcon kind="os" value={node.os} className="h-3 w-3" /></span>
-                          <span className="type-hud-label">{t('label.system')}</span>
-                        </div>
-                        <div className="type-spec-value">
-                          {node.os}{node.kernel_version ? ` · ${node.kernel_version}` : ''}
-                        </div>
+                  <OverflowTooltip
+                    content={`${node.os}${node.kernel_version ? `\n${t('label.kernel')}: ${node.kernel_version}` : ''}`}
+                    contentClassName="max-w-xs text-xs font-mono whitespace-pre-line"
+                  >
+                    <div className="stat-section flex min-w-0 flex-1 flex-col gap-1.5 p-3 sm:p-4 cursor-default">
+                      <div className="flex items-center gap-1.5">
+                        <span className="stat-chip stat-chip--system"><SystemIcon kind="os" value={node.os} className="h-3 w-3" /></span>
+                        <span className="type-hud-label">{t('label.system')}</span>
                       </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-xs text-xs font-mono whitespace-pre-line">
-                      {node.os}{node.kernel_version ? `\n${t('label.kernel')}: ${node.kernel_version}` : ''}
-                    </TooltipContent>
-                  </Tooltip>
+                      <div className="type-spec-value">
+                        {node.os}{node.kernel_version ? ` · ${node.kernel_version}` : ''}
+                      </div>
+                    </div>
+                  </OverflowTooltip>
                 )}
                 {node.arch && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="stat-section flex min-w-0 flex-1 flex-col gap-1.5 p-3 sm:p-4 cursor-default">
-                        <div className="flex items-center gap-1.5">
-                          <span className="stat-chip stat-chip--system"><SystemIcon kind="arch" value={node.arch} className="h-3 w-3" /></span>
-                          <span className="type-hud-label">{t('label.arch')}</span>
-                        </div>
-                        <div className="type-spec-value">
-                          {node.arch}{node.virtualization ? ` · ${node.virtualization}` : ''}
-                        </div>
+                  <OverflowTooltip
+                    content={`${node.arch}${node.virtualization ? ` · ${node.virtualization}` : ''}`}
+                    contentClassName="max-w-xs text-xs font-mono"
+                  >
+                    <div className="stat-section flex min-w-0 flex-1 flex-col gap-1.5 p-3 sm:p-4 cursor-default">
+                      <div className="flex items-center gap-1.5">
+                        <span className="stat-chip stat-chip--system"><SystemIcon kind="arch" value={node.arch} className="h-3 w-3" /></span>
+                        <span className="type-hud-label">{t('label.arch')}</span>
                       </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-xs text-xs font-mono">
-                      {node.arch}{node.virtualization ? ` · ${node.virtualization}` : ''}
-                    </TooltipContent>
-                  </Tooltip>
+                      <div className="type-spec-value">
+                        {node.arch}{node.virtualization ? ` · ${node.virtualization}` : ''}
+                      </div>
+                    </div>
+                  </OverflowTooltip>
                 )}
               </div>
             )}
