@@ -18,7 +18,7 @@ interface GlobeTopStripProps {
  *  - FLOW (aggregate IN/OUT) → covered by the bottom telemetry feed (per-node rates).
  *  - FLEET (online/total)    → covered by the right sidebar status block.
  *  This strip focuses on Globe-local telemetry: fleet CPU pressure,
- *  aggregate flow, visible zones, plus a critical-alert tally.
+ *  aggregate flow, mapped region count, plus a critical-alert tally.
  */
 export const GlobeTopStrip = memo(function GlobeTopStrip({ nodes }: GlobeTopStripProps) {
   const { t } = useTranslation();
@@ -46,7 +46,7 @@ export const GlobeTopStrip = memo(function GlobeTopStrip({ nodes }: GlobeTopStri
     }
 
     const avgCpu = cpuCount > 0 ? cpuSum / cpuCount : 0;
-    return { avgCpu, critical, sampled: cpuCount, totalUp, totalDown, zoneCount: zones.size };
+    return { avgCpu, critical, sampled: cpuCount, totalUp, totalDown, regionCount: zones.size };
   }, [nodes]);
 
   const cpuTone =
@@ -96,12 +96,12 @@ export const GlobeTopStrip = memo(function GlobeTopStrip({ nodes }: GlobeTopStri
       {/* Spacer */}
       <div className="flex-1 min-w-0" />
 
-      {stats.zoneCount > 0 && (
+      {stats.regionCount > 0 && (
         <div className="hidden sm:flex items-center gap-2 shrink-0">
           <MapPinned className="h-3 w-3 text-primary/75" />
-          <span className="text-muted-foreground/60">ZONE</span>
+          <span className="text-muted-foreground/60">{t('hud.regions')}</span>
           <span className="font-metric tracking-normal text-foreground/85">
-            {String(stats.zoneCount).padStart(2, '0')}
+            {stats.regionCount}
           </span>
         </div>
       )}

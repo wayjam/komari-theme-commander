@@ -13,6 +13,10 @@ export interface ThemeConfig {
    *  (pre-privacy-mask) node name — the matching is done before names are
    *  replaced. Empty string disables arcs. */
   globe_hub_node: string;
+  /** Default globe rotation behaviour. `dynamic` auto-rotates on load;
+   *  `static` stays still until the viewer starts rotation via the on-page
+   *  control (manual drag always works regardless). */
+  globe_mode: 'dynamic' | 'static';
   /** When true, viewers with `prefers-reduced-motion: reduce` see a static
    *  globe (auto-rotation disabled, manual drag still works). When false
    *  (default), the globe always auto-rotates regardless of the visitor's
@@ -28,6 +32,7 @@ const defaultThemeConfig: ThemeConfig = {
   custom_footer: '',
   enable_privacy_mode: false,
   globe_hub_node: '',
+  globe_mode: 'dynamic',
   globe_respect_reduced_motion: false,
 };
 
@@ -120,6 +125,10 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
           if (epm === 'false') tc.enable_privacy_mode = false;
           const ghn = pick('globe_hub_node');
           if (typeof ghn === 'string') tc.globe_hub_node = ghn.trim();
+          const ggm = pick('globe_mode');
+          if (typeof ggm === 'string' && ['dynamic', 'static'].includes(ggm)) {
+            tc.globe_mode = ggm as ThemeConfig['globe_mode'];
+          }
           const grrm = pick('globe_respect_reduced_motion');
           if (typeof grrm === 'boolean') tc.globe_respect_reduced_motion = grrm;
           if (grrm === 'true') tc.globe_respect_reduced_motion = true;

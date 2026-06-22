@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, memo } from 'react';
 // Note: useState retained for selectedNodeId; useRef now used by FrameCounter for direct DOM writes.
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
+import { Pause, Play } from 'lucide-react';
 import { Globe } from '@/components/Globe';
 import { Sidebar } from '@/components/Sidebar';
 import { MobileFleetSheet } from '@/components/MobileFleetSheet';
@@ -25,6 +26,15 @@ interface GlobeViewProps {
   hubNodeUuid?: string | null;
 }
 
+const GLOBE_AUTO_ROTATE_KEY = 'globeAutoRotate';
+
+function readAutoRotatePreference(themeDefault: boolean): boolean {
+  const saved = localStorage.getItem(GLOBE_AUTO_ROTATE_KEY);
+  if (saved === 'true') return true;
+  if (saved === 'false') return false;
+  return themeDefault;
+}
+
 export function GlobeView({ nodes, loading = false, onViewCharts, hubNodeUuid = null }: GlobeViewProps) {
   const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
@@ -32,6 +42,29 @@ export function GlobeView({ nodes, loading = false, onViewCharts, hubNodeUuid = 
   const isMobile = useIsMobile(1024); // < lg → mobile/tablet portrait
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const clearSelection = useCallback(() => setSelectedNodeId(null), []);
+
+  const themeDefaultAutoRotate = themeConfig.globe_mode !== 'static';
+  const [autoRotate, setAutoRotate] = useState(() =>
+    readAutoRotatePreference(themeDefaultAutoRotate),
+  );
+
+  // Re-apply theme default when config loads and the viewer has no override.
+  useEffect(() => {
+    const saved = localStorage.getItem(GLOBE_AUTO_ROTATE_KEY);
+    if (saved === null) {
+      setAutoRotate(themeConfig.globe_mode !== 'static');
+    }
+  }, [themeConfig.globe_mode]);
+
+  const startRotation = useCallback(() => {
+    setAutoRotate(true);
+    localStorage.setItem(GLOBE_AUTO_ROTATE_KEY, 'true');
+  }, []);
+
+  const stopRotation = useCallback(() => {
+    setAutoRotate(false);
+    localStorage.setItem(GLOBE_AUTO_ROTATE_KEY, 'false');
+  }, []);
 
   // Feed enabled on themes with HUD aesthetic. Clean theme stays minimal.
   const showFeed = resolvedTheme === 'deepspace' || resolvedTheme === 'lumina';
@@ -130,8 +163,34 @@ export function GlobeView({ nodes, loading = false, onViewCharts, hubNodeUuid = 
             onClearSelection={clearSelection}
             hubNodeUuid={hubNodeUuid}
             respectReducedMotion={themeConfig.globe_respect_reduced_motion}
+            autoRotate={autoRotate}
             className="w-full h-full"
           />
+
+          {/* Rotation control — bottom-left, mirrors frame counter on the right */}
+          <div className="absolute bottom-3 left-3 z-20">
+            {autoRotate ? (
+              <button
+                type="button"
+                onClick={stopRotation}
+                className="globe-rotation-btn"
+                aria-label={t('hud.stopRotation')}
+              >
+                <Pause className="size-3" aria-hidden />
+                <span>{t('hud.stopRotation')}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={startRotation}
+                className="globe-rotation-btn"
+                aria-label={t('hud.startRotation')}
+              >
+                <Play className="size-3" aria-hidden />
+                <span>{t('hud.startRotation')}</span>
+              </button>
+            )}
+          </div>
 
           {/* Loading overlay — letterspacing matches the rest of the stage
               chrome (sector label, threats, frame counter all at 0.22em) so

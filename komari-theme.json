@@ -37,6 +37,14 @@
                 "help": "Node name shown as the central hub on the globe. When set, animated arcs are drawn from every other online node to this hub. Use the node's real name — privacy-mode masking is applied after matching, so this field always references the original name. Leave empty to disable arcs."
             },
             {
+                "key": "globe_mode",
+                "name": "Globe Mode",
+                "type": "select",
+                "options": "dynamic,static",
+                "default": "dynamic",
+                "help": "Dynamic: the globe auto-rotates. Static: the globe stays still until the viewer starts rotation manually."
+            },
+            {
                 "key": "globe_respect_reduced_motion",
                 "name": "Pause Globe for Reduced Motion",
                 "type": "switch",

@@ -259,9 +259,12 @@
     "online": "Online",
     "flow": "Flow",
     "avgCpu": "Avg CPU",
+    "regions": "Regions",
     "alert": "Alert",
     "nominal": "All Nominal",
     "sector": "Sector",
+    "startRotation": "Start",
+    "stopRotation": "Stop",
     "feed": {
       "idle": "Telemetry stream idle",
       "signalLost": "Signal lost",

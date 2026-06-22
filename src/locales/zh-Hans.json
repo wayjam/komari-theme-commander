@@ -259,9 +259,12 @@
     "online": "在线",
     "flow": "流量",
     "avgCpu": "均CPU",
+    "regions": "区域",
     "alert": "告警",
     "nominal": "全部正常",
     "sector": "扇区",
+    "startRotation": "开始转动",
+    "stopRotation": "停止转动",
     "feed": {
       "idle": "遥测信道空闲",
       "signalLost": "信号丢失",

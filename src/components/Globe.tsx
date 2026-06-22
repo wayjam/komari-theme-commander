@@ -25,6 +25,10 @@ interface GlobeProps {
    *  setting so admins can decide per deployment whether to honour the OS
    *  signal. */
   respectReducedMotion?: boolean;
+  /** When false, auto-rotation is paused (manual drag and selection slerp
+   *  still work). Driven by the `globe_mode` theme setting and the on-page
+   *  start/stop control. Default true. */
+  autoRotate?: boolean;
 }
 
 export interface GlobeHandle {
@@ -172,6 +176,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
     onClearSelection,
     hubNodeUuid = null,
     respectReducedMotion = false,
+    autoRotate = true,
   },
   ref
 ) {
@@ -376,6 +381,8 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
   // every `change` event and on every frame's `else if` branch.
   const respectReducedMotionRef = useRef(respectReducedMotion);
   respectReducedMotionRef.current = respectReducedMotion;
+  const autoRotateRef = useRef(autoRotate);
+  autoRotateRef.current = autoRotate;
   // Mirror `nodes` into a ref so the auto-rotate effect can look up the
   // selected node's coordinates without re-firing every WS tick (every 2s).
   // Without this, the effect was re-depending on `nodes`, which meant every
@@ -565,15 +572,44 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
      * every render via `respectReducedMotionRef`, so flipping the admin
      * switch (or the OS preference) takes effect immediately without
      * destroying the cobe instance. */
-    const computeAutoSpin = () =>
-      !(respectReducedMotionRef.current && (reduceMotionMQ?.matches ?? false));
+    const computeAutoSpin = () => {
+      if (!autoRotateRef.current) return false;
+      return !(respectReducedMotionRef.current && (reduceMotionMQ?.matches ?? false));
+    };
     let autoSpin = computeAutoSpin();
     let visibilityPaused = typeof document !== 'undefined' && document.hidden;
     let inViewport = true;
     let running = false;
 
-    const tick = () => {
+    /* Frame-rate cap.
+     *
+     * cobe re-runs the full WebGL redraw + repositions every CSS-anchored
+     * overlay on each `globe.update()`. The RAF loop used to fire that once
+     * per display refresh, so on a 120/144Hz panel the globe repainted
+     * 120-144×/s — measured ~119fps — which is this view's single biggest
+     * CPU cost and is visually indistinguishable from 60fps for a slow
+     * auto-rotation. Cap redraws to TARGET_FPS. 60Hz users are unaffected
+     * (their refresh interval already exceeds FRAME_INTERVAL); high-refresh
+     * panels roughly halve the per-frame work. The `-4` slack keeps us from
+     * accidentally dropping a frame at exactly 60Hz due to timer jitter. */
+    const TARGET_FPS = 60;
+    const FRAME_INTERVAL = 1000 / TARGET_FPS - 4;
+    /* Auto-spin expressed in radians/second, integrated against the real
+     * frame delta, so rotation speed is identical on every display. The old
+     * per-frame `+= 0.003` increment made 120Hz panels spin twice as fast as
+     * 60Hz ones. 0.18 rad/s == the original 0.003/frame at 60fps. */
+    const SPIN_RATE = 0.18;
+    let lastDrawTs = 0;
+
+    const tick = (now: number) => {
       rafId = requestAnimationFrame(tick);
+
+      // Throttle to TARGET_FPS: bail before any work on refreshes that
+      // arrive sooner than our target frame interval.
+      if (now - lastDrawTs < FRAME_INTERVAL) return;
+      // Clamp dt so a resume from an idle/hidden gap can't produce a large
+      // rotation jump on the first frame back.
+      const dt = lastDrawTs ? Math.min(0.05, (now - lastDrawTs) / 1000) : 1 / TARGET_FPS;
 
       const dragging = pointerInteracting.current !== null;
       const slerping =
@@ -589,11 +625,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
           targetThetaRef.current = null;
         }
       } else if (!dragging && !selectedNodeIdRef.current) {
-        // Default: per-frame auto-spin. Match display refresh so motion
-        // reads smooth. The original 0.003 step at 60Hz (~0.18 rad/s) is
-        // restored here; on 120Hz panels rAF fires twice as often and the
-        // globe will appear to rotate ~2× faster, which is fine — that's
-        // the same trade-off cobe's stock implementation makes.
+        // Default: time-based auto-spin, capped to TARGET_FPS above.
         //
         // Re-evaluate `autoSpin` from the ref each frame so a runtime
         // toggle of the `globe_respect_reduced_motion` admin switch (or a
@@ -601,7 +633,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
         // without restarting the loop. This is a single ref read + bool
         // AND per frame — negligible cost.
         autoSpin = computeAutoSpin();
-        if (autoSpin) phiRef.current += 0.003;
+        if (autoSpin) phiRef.current += SPIN_RATE * dt;
         else return; // reduced-motion (opt-in): behave like "selected idle" — no redraw
       } else if (!dragging) {
         // Selected + no slerp = idle. phi/theta unchanged since last frame
@@ -612,6 +644,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
       }
       // Dragging falls through with phi already mutated by handlePointerMove.
 
+      lastDrawTs = now;
       globe.update({ phi: phiRef.current, theta: thetaRef.current });
     };
 
