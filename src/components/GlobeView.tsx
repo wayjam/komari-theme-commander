@@ -28,41 +28,40 @@ interface GlobeViewProps {
 
 const GLOBE_AUTO_ROTATE_KEY = 'globeAutoRotate';
 
-function readAutoRotatePreference(themeDefault: boolean): boolean {
+/** User override from the on-page start/stop control. `null` = follow
+ *  `theme_settings.globe_mode` from the server. */
+function readAutoRotateOverride(): boolean | null {
   const saved = localStorage.getItem(GLOBE_AUTO_ROTATE_KEY);
   if (saved === 'true') return true;
   if (saved === 'false') return false;
-  return themeDefault;
+  return null;
 }
 
 export function GlobeView({ nodes, loading = false, onViewCharts, hubNodeUuid = null }: GlobeViewProps) {
   const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
-  const { themeConfig } = useAppConfig();
+  const { themeConfig, loaded: configLoaded } = useAppConfig();
   const isMobile = useIsMobile(1024); // < lg → mobile/tablet portrait
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const clearSelection = useCallback(() => setSelectedNodeId(null), []);
 
-  const themeDefaultAutoRotate = themeConfig.globe_mode !== 'static';
-  const [autoRotate, setAutoRotate] = useState(() =>
-    readAutoRotatePreference(themeDefaultAutoRotate),
+  /* Follow server `globe_mode` until the viewer clicks start/stop (which
+   * persists a local override). Derived — not useState — so admin changes
+   * and visibility refetches apply without a remount. */
+  const [autoRotateOverride, setAutoRotateOverride] = useState<boolean | null>(
+    readAutoRotateOverride,
   );
-
-  // Re-apply theme default when config loads and the viewer has no override.
-  useEffect(() => {
-    const saved = localStorage.getItem(GLOBE_AUTO_ROTATE_KEY);
-    if (saved === null) {
-      setAutoRotate(themeConfig.globe_mode !== 'static');
-    }
-  }, [themeConfig.globe_mode]);
+  const autoRotate = configLoaded
+    ? (autoRotateOverride ?? (themeConfig.globe_mode !== 'static'))
+    : false;
 
   const startRotation = useCallback(() => {
-    setAutoRotate(true);
+    setAutoRotateOverride(true);
     localStorage.setItem(GLOBE_AUTO_ROTATE_KEY, 'true');
   }, []);
 
   const stopRotation = useCallback(() => {
-    setAutoRotate(false);
+    setAutoRotateOverride(false);
     localStorage.setItem(GLOBE_AUTO_ROTATE_KEY, 'false');
   }, []);
 
@@ -110,13 +109,19 @@ export function GlobeView({ nodes, loading = false, onViewCharts, hubNodeUuid = 
         <GlobeTopStrip nodes={nodes} />
 
         {/* ② Stage (globe + ambient layers) */}
-        <div className="relative flex-1 min-w-0 min-h-0 flex items-center justify-center overflow-hidden">
+        <div
+          className="relative flex-1 min-w-0 min-h-0 flex items-center justify-center overflow-hidden"
+          data-globe-marker-style={themeConfig.globe_marker_style}
+          data-globe-mode={themeConfig.globe_mode}
+        >
+          <div className="globe-stage-decor absolute inset-0 pointer-events-none" aria-hidden>
           {/* All static decoration (ambient, radar, cardinals, sector label,
               frame counter) is grouped in a memoed sub-component so the WS
               tick that mints a new `nodes` array doesn't cause React to
               re-evaluate ~15 div elements + className concat + style
               objects every 2s. They depend only on theme + locale. */}
           <StageChrome theme={resolvedTheme} t={t} />
+          </div>
 
           {/* Threats — top right (compact, single column).
               Pulses are staggered by index so the four red elements (header
@@ -154,18 +159,28 @@ export function GlobeView({ nodes, loading = false, onViewCharts, hubNodeUuid = 
             </div>
           )}
 
-          {/* Globe canvas */}
-          <Globe
-            nodes={nodes}
-            theme={resolvedTheme}
-            selectedNodeId={selectedNodeId}
-            onSelectNode={setSelectedNodeId}
-            onClearSelection={clearSelection}
-            hubNodeUuid={hubNodeUuid}
-            respectReducedMotion={themeConfig.globe_respect_reduced_motion}
-            autoRotate={autoRotate}
-            className="w-full h-full"
-          />
+          {/* Globe canvas — wait for theme_settings before mounting cobe so
+              globe_marker_style is correct on first createGlobe(). Remount
+              when the admin changes marker tier (rich/calm/lite). */}
+          {configLoaded ? (
+            <Globe
+              key={themeConfig.globe_marker_style}
+              nodes={nodes}
+              theme={resolvedTheme}
+              selectedNodeId={selectedNodeId}
+              onSelectNode={setSelectedNodeId}
+              onClearSelection={clearSelection}
+              hubNodeUuid={hubNodeUuid}
+              respectReducedMotion={themeConfig.globe_respect_reduced_motion}
+              autoRotate={autoRotate}
+              markerStyle={themeConfig.globe_marker_style}
+              className="w-full h-full"
+            />
+          ) : (
+            <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+              <HudSpinner size="lg" />
+            </div>
+          )}
 
           {/* Rotation control — bottom-left, mirrors frame counter on the right */}
           <div className="absolute bottom-3 left-3 z-20">
@@ -287,13 +302,7 @@ const StageChrome = memo(function StageChrome({ theme, t }: StageChromeProps) {
         </>
       )}
 
-      {/* Radar background */}
-      <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
-        <div className="radar-scan" />
-        <div className="absolute w-[60%] aspect-square border border-primary/10 rounded-full" />
-        <div className="absolute w-[40%] aspect-square border border-primary/10 rounded-full" />
-        <div className="absolute w-[20%] aspect-square border border-primary/10 rounded-full" />
-      </div>
+      {/* Radar background — moved to Globe overlay (above canvas, below markers) */}
 
       {/* Cardinal markers — N / E / S / W */}
       <CardinalMarkers />

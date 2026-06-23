@@ -791,7 +791,91 @@
     50% { opacity: 0.7; }
   }
 
-  /* Radar Scan Animation */
+  /* Radar Scan Animation — base sweep; when scoped under `.globe-radar-layer`
+     it is sized to the globe square (see below). */
+  .globe-stage-decor {
+    /* Isolate decor paint without clipping the oversized radar sweep. */
+    contain: layout style;
+  }
+
+  /* Covers the full globe stage slot (flex area), not just the square canvas. */
+  .globe-radar-layer {
+    position: absolute;
+    inset: 0;
+    container-type: size;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 6;
+  }
+
+  .globe-radar-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    border: 1px solid color-mix(in oklch, var(--primary) 7%, transparent);
+    pointer-events: none;
+  }
+
+  /* Size rings from the shorter stage axis so they stay circular in wide layouts. */
+  .globe-radar-ring-60 { width: min(60cqw, 60cqh); }
+  .globe-radar-ring-40 { width: min(40cqw, 40cqh); }
+  .globe-radar-ring-20 { width: min(20cqw, 20cqh); }
+
+  .globe-radar-layer .radar-scan {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    /* Circle must exceed the rectangular slot diagonal while rotating. */
+    width: max(200cqw, 200cqh);
+    height: max(200cqw, 200cqh);
+    transform: translate(-50%, -50%);
+    background: conic-gradient(
+      from 0deg,
+      var(--primary) 0deg,
+      transparent 90deg,
+      transparent 360deg
+    );
+    border-radius: 50%;
+    opacity: 0.05;
+    pointer-events: none;
+    animation: radar-rotate 4s linear infinite;
+    will-change: transform;
+    z-index: 1;
+  }
+
+  [data-theme="deepspace"] .globe-radar-layer .radar-scan {
+    opacity: 0.11;
+    background: conic-gradient(
+      from 0deg,
+      var(--primary) 0deg,
+      color-mix(in oklch, var(--primary) 50%, transparent) 30deg,
+      color-mix(in oklch, var(--primary) 18%, transparent) 70deg,
+      transparent 120deg,
+      transparent 360deg
+    );
+  }
+
+  [data-theme="deepspace"] .globe-radar-layer .radar-scan::after {
+    content: 'SCANNING...';
+    position: absolute;
+    top: 10%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 8px;
+    font-family: monospace;
+    color: var(--primary);
+    letter-spacing: 0.5em;
+    opacity: 0.5;
+  }
+
+  [data-theme="clean"] .globe-radar-layer {
+    display: none;
+  }
+
+  /* Legacy hook — keep for any non-globe use; globe uses `.globe-radar-layer`. */
   .radar-scan {
     position: absolute;
     top: 50%;
@@ -809,6 +893,8 @@
     opacity: 0.1;
     pointer-events: none;
     animation: radar-rotate 4s linear infinite;
+    will-change: transform;
+    contain: paint;
     z-index: 5;
   }
 
@@ -2946,12 +3032,13 @@
      component bridges the per-id visibility var into a stable `--vis`.
   */
   .globe-region-pulse,
-  .globe-selected-overlay {
+  .globe-selected-overlay,
+  .globe-region-speed {
     position: absolute;
     pointer-events: none;
     opacity: var(--vis, 0);
-    filter: blur(calc((1 - var(--vis, 0)) * 5px));
-    transition: opacity 0.28s ease, filter 0.28s ease;
+    transition: opacity 0.28s ease;
+    contain: layout style paint;
   }
 
   .globe-region-pulse {
@@ -3415,7 +3502,6 @@
      onto the back hemisphere.
   */
   .globe-region-speed {
-    position: absolute;
     top: anchor(center);
     left: anchor(center);
     /* Vertical offset (16px) pushes the pill clear of the 34px marker
@@ -3424,10 +3510,6 @@
        southern crosshair tick. Horizontally centered via -50%. */
     translate: -50% 16px;
     z-index: 7;
-    pointer-events: none;
-    opacity: var(--vis, 0);
-    filter: blur(calc((1 - var(--vis, 0)) * 3px));
-    transition: opacity 0.28s ease, filter 0.28s ease;
 
     display: inline-flex;
     align-items: center;
@@ -3524,6 +3606,26 @@
       transform: scale(1.05);
       opacity: 0;
     }
+  }
+
+  /* Calm marker style — flat cores, no pulse rings or hub motion extras. */
+  [data-globe-marker-style="calm"] .globe-region-pulse-ring,
+  [data-globe-marker-style="calm"] .globe-region-pulse-ring-delay {
+    display: none;
+  }
+
+  [data-globe-marker-style="calm"] .globe-region-pulse.is-hub::before,
+  [data-globe-marker-style="calm"] .globe-region-pulse.is-hub::after {
+    display: none;
+  }
+
+  [data-globe-marker-style="calm"] .globe-region-pulse.is-hub .globe-region-core {
+    animation: none;
+  }
+
+  [data-globe-marker-style="calm"] .globe-region-pulse.is-hub {
+    width: 38px;
+    height: 38px;
   }
 
   @supports not (anchor-name: --test) {

@@ -52,6 +52,14 @@
                 "help": "When enabled, the globe stops auto-rotating for viewers who prefer reduced motion (manual drag still works)"
             },
             {
+                "key": "globe_marker_style",
+                "name": "Globe Marker Style",
+                "type": "select",
+                "options": "rich,calm,lite",
+                "default": "rich",
+                "help": "Full: animated pulse markers with speed pills when a hub is set. Calm: flat markers — click and selection label kept, no pulse or speed pills. Lite (performance): WebGL dots only — select nodes from the sidebar or mobile fleet; significantly lower CPU while the globe rotates."
+            },
+            {
                 "key": "enable_uptime",
                 "name": "Enable Uptime View",
                 "type": "switch",

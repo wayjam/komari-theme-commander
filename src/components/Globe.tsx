@@ -29,7 +29,13 @@ interface GlobeProps {
    *  still work). Driven by the `globe_mode` theme setting and the on-page
    *  start/stop control. Default true. */
   autoRotate?: boolean;
+  /** Marker presentation tier. `rich`: full HTML pulse + speed pills;
+   *  `calm`: flat cores, no pulse (click + selection label kept);
+   *  `lite`: WebGL dots only — no id, no HTML overlays, select via sidebar. */
+  markerStyle?: 'rich' | 'calm' | 'lite';
 }
+
+export type GlobeMarkerStyle = NonNullable<GlobeProps['markerStyle']>;
 
 export interface GlobeHandle {
   rotateToLocation: (lat: number, lng: number) => void;
@@ -63,12 +69,12 @@ const THEME_CONFIG = {
   lumina: {
     dark: 0 as const,
     baseColor: [0.82, 0.88, 0.95] as [number, number, number],
-    glowColor: [0.6, 0.86, 1.0] as [number, number, number],
+    glowColor: [0.58, 0.82, 0.9] as [number, number, number],
     markerColor: [0.12, 0.55, 0.72] as [number, number, number],
     // Brighter, more saturated teal than the marker color — arcs need extra
     // luminance to read as energy beams against the bright sphere.
     arcColor: [0.1, 0.62, 0.82] as [number, number, number],
-    mapBrightness: 7,
+    mapBrightness: 9.5,
     diffuse: 1.0,
     markerElevation: 0,
     scale: 1.0,
@@ -77,13 +83,13 @@ const THEME_CONFIG = {
   deepspace: {
     dark: 1 as const,
     baseColor: [0.15, 0.18, 0.28] as [number, number, number],
-    glowColor: [0.0, 0.8, 1.0] as [number, number, number],
+    glowColor: [0.0, 0.55, 0.74] as [number, number, number],
     markerColor: [0.0, 1.0, 0.9] as [number, number, number],
     // Slightly mint-shifted from the cyan glow so beams don't blend into
     // the halo — preserves the "data is moving" silhouette against the
     // ambient atmospheric glow.
     arcColor: [0.35, 1.0, 0.85] as [number, number, number],
-    mapBrightness: 4.5,
+    mapBrightness: 6.25,
     diffuse: 1.4,
     markerElevation: 0.012,
     scale: 0.98,
@@ -92,10 +98,10 @@ const THEME_CONFIG = {
   clean: {
     dark: 0 as const,
     baseColor: [0.9, 0.9, 0.92] as [number, number, number],
-    glowColor: [0.85, 0.85, 0.9] as [number, number, number],
+    glowColor: [0.88, 0.88, 0.92] as [number, number, number],
     markerColor: [0.3, 0.4, 0.8] as [number, number, number],
     arcColor: [0.3, 0.4, 0.8] as [number, number, number],
-    mapBrightness: 6,
+    mapBrightness: 8,
     diffuse: 1.2,
     markerElevation: 0,
     scale: 1.0,
@@ -166,6 +172,95 @@ function latLngToAngles(lat: number, lng: number): [number, number] {
   ];
 }
 
+/** Snap measured/declared refresh rate to a common bucket. */
+function normalizeRefreshHz(hz: number): number {
+  if (hz >= 100) return 120;
+  if (hz >= 52) return 60;
+  if (hz >= 38) return 40;
+  return 30;
+}
+
+/** Best-effort display refresh rate (Chrome `screen.refreshRate`; else 60). */
+function estimateRefreshHz(): number {
+  if (typeof window === 'undefined') return 60;
+  const declared = (window.screen as Screen & { refreshRate?: number }).refreshRate;
+  if (typeof declared === 'number' && declared >= 30 && declared <= 240) {
+    return normalizeRefreshHz(declared);
+  }
+  return 60;
+}
+
+/** Auto-spin fps aligned to vsync — 45fps on 60Hz causes visible judder. */
+function pickAutoSpinFps(refreshHz: number, markerStyle: GlobeMarkerStyle): number {
+  const lowPower =
+    markerStyle === 'lite' ||
+    (typeof window !== 'undefined' && window.innerWidth < 640) ||
+    ((typeof navigator !== 'undefined' ? navigator.hardwareConcurrency : 8) ?? 8) <= 4;
+
+  if (refreshHz >= 120) return 60;
+  if (refreshHz >= 60) return lowPower ? 30 : 60;
+  return 30;
+}
+
+/** DPR cap — slightly higher on sharp Retina desktops when the globe is small. */
+function getGlobeDpr(canvasCssSize: number): number {
+  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+  const isNarrow = typeof window !== 'undefined' && window.innerWidth < 640;
+  if (isNarrow) return Math.min(dpr, 2);
+  if (dpr >= 2 && canvasCssSize <= 720) return Math.min(dpr, 2.5);
+  return Math.min(dpr, 2);
+}
+
+/** Scale mapSamples with backing-buffer size — large screens need more samples. */
+function getMapSamples(canvasCssSize: number, markerStyle: GlobeMarkerStyle): number {
+  const dpr = getGlobeDpr(canvasCssSize);
+  const backing = canvasCssSize * dpr;
+  const lite = markerStyle === 'lite';
+  const isNarrow = typeof window !== 'undefined' && window.innerWidth < 640;
+
+  if (isNarrow || lite) {
+    return backing >= 1000 ? 10000 : 8000;
+  }
+  if (backing >= 1400) return 16000;
+  if (backing >= 1100) return 14000;
+  if (backing >= 800) return 12000;
+  return 10000;
+}
+
+interface GlobeRenderProfile {
+  devicePixelRatio: number;
+  mapSamples: number;
+  autoSpinFps: number;
+}
+
+function getGlobeRenderProfile(
+  canvasCssSize: number,
+  markerStyle: GlobeMarkerStyle,
+): GlobeRenderProfile {
+  const refreshHz = estimateRefreshHz();
+  return {
+    devicePixelRatio: getGlobeDpr(canvasCssSize),
+    mapSamples: getMapSamples(canvasCssSize, markerStyle),
+    autoSpinFps: pickAutoSpinFps(refreshHz, markerStyle),
+  };
+}
+
+/** Strip marker ids in lite mode so cobe skips per-frame CSS anchor work. */
+function toCobeMarkers(regions: RegionMarker[], style: GlobeMarkerStyle): Marker[] {
+  if (style === 'lite') {
+    return regions.map(({ location, size, color }) => ({ location, size, color }));
+  }
+  return regions;
+}
+
+/** Strip arc ids in lite mode — WebGL arcs remain, anchor DOM is skipped. */
+function toCobeArcs(arcs: Arc[], style: GlobeMarkerStyle): Arc[] {
+  if (style === 'lite') {
+    return arcs.map(({ from, to }) => ({ from, to }));
+  }
+  return arcs;
+}
+
 export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
   {
     nodes,
@@ -177,6 +272,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
     hubNodeUuid = null,
     respectReducedMotion = false,
     autoRotate = true,
+    markerStyle = 'rich',
   },
   ref
 ) {
@@ -201,6 +297,8 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
   // selection overlay must portal into that same wrapper for CSS
   // `position-anchor: --cobe-{id}` to resolve against cobe's anchors.
   const [cobeWrapper, setCobeWrapper] = useState<HTMLElement | null>(null);
+  /** True once cobe has been created with a non-zero host size. */
+  const [globeReady, setGlobeReady] = useState(false);
 
   // Mobile portrait exposed a subtle sizing bug: CSS `height: 100%` +
   // `aspect-ratio: 1` can still resolve to a non-square used size when the
@@ -209,6 +307,13 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
   // it into a rectangle. Measure the available slot and force the host to a
   // concrete square: min(parent width, parent height).
   const globeSlotRef = useRef<HTMLDivElement>(null);
+  const [radarPortalRoot, setRadarPortalRoot] = useState<HTMLElement | null>(null);
+  const bindGlobeSlot = useCallback((el: HTMLDivElement | null) => {
+    globeSlotRef.current = el;
+    setRadarPortalRoot(el);
+  }, []);
+  /** Restart hook for the long-lived RAF loop (slerp / drag / auto-spin resume). */
+  const loopControlRef = useRef<{ start: () => void } | null>(null);
 
   const rotateToLocation = useCallback((lat: number, lng: number) => {
     const [phi, theta] = latLngToAngles(lat, lng);
@@ -349,6 +454,11 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
     return result;
   }, [regionMarkers, hubRegionId]);
 
+  const regionMarkersRef = useRef(regionMarkers);
+  regionMarkersRef.current = regionMarkers;
+  const arcsRef = useRef(arcs);
+  arcsRef.current = arcs;
+
   /* ─────────── Selected node lookup (for overlay) ─────────── */
   const selectedRegion = useMemo(() => {
     if (!selectedNodeId) return null;
@@ -383,6 +493,8 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
   respectReducedMotionRef.current = respectReducedMotion;
   const autoRotateRef = useRef(autoRotate);
   autoRotateRef.current = autoRotate;
+  const markerStyleRef = useRef(markerStyle);
+  markerStyleRef.current = markerStyle;
   // Mirror `nodes` into a ref so the auto-rotate effect can look up the
   // selected node's coordinates without re-firing every WS tick (every 2s).
   // Without this, the effect was re-depending on `nodes`, which meant every
@@ -455,60 +567,75 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
     };
   }, []);
 
-  /* ─────────── Create globe (once on mount) ─────────── */
+  /* ─────────── Create globe (once host has a real size) ─────────── */
   useEffect(() => {
     const canvas = canvasRef.current;
     const host = canvasHostRef.current;
+    const slot = globeSlotRef.current;
     if (!canvas || !host) return;
 
-    const dpr = Math.min(window.devicePixelRatio, 2);
-    // `host` is the square element we own. Its CSS already constrains it
-    // to `min(parent.clientWidth, parent.clientHeight)` via aspect-ratio,
-    // so reading clientWidth is enough (it's also the height).
-    const size = host.clientWidth;
-    widthRef.current = size;
+    let cleanup: (() => void) | null = null;
+    let waitRo: ResizeObserver | null = null;
 
-    // mapSamples drives the per-frame dot count; 16k was overkill at the
-    // sizes we render at. 8k on narrow viewports keeps per-pixel density
-    // comparable while cutting GPU cost ~33%.
-    const isNarrow = typeof window !== 'undefined' && window.innerWidth < 640;
-    const mapSamples = isNarrow ? 8000 : 12000;
+    const mountGlobe = (): boolean => {
+      if (cleanup) return true;
 
-    const initialConfig = THEME_CONFIG[theme];
+      const size = host.clientWidth;
+      const height = host.clientHeight;
+      // Wait until the square-sizing layout effect has applied equal
+      // width/height — lazy-loaded GlobeView can mount before flex layout
+      // settles, and a non-square or zero host breaks cobe anchor math.
+      if (size === 0 || height === 0 || size !== height) return false;
 
-    const globe = createGlobe(canvas, {
+      widthRef.current = size;
+      const renderProfile = getGlobeRenderProfile(size, markerStyleRef.current);
+      const spinFpsRef = { current: renderProfile.autoSpinFps };
+
+      const initialConfig = THEME_CONFIG[theme];
+
+      const globe = createGlobe(canvas, {
       // v2 takes CSS pixels here (it multiplies by dpr internally) — the
       // 0.6.5 signature took pre-multiplied backing-buffer pixels. Don't
       // pre-multiply or you'll end up at 4× resolution and a blurry canvas
       // scaled down by `canvas.style.width`.
-      devicePixelRatio: dpr,
+      devicePixelRatio: renderProfile.devicePixelRatio,
       width: size,
       height: size,
       phi: phiRef.current,
       theta: thetaRef.current,
       dark: initialConfig.dark,
       diffuse: initialConfig.diffuse,
-      mapSamples,
+      mapSamples: renderProfile.mapSamples,
       mapBrightness: initialConfig.mapBrightness,
       baseColor: initialConfig.baseColor,
       markerColor: initialConfig.markerColor,
       glowColor: initialConfig.glowColor,
       markerElevation: initialConfig.markerElevation,
       scale: initialConfig.scale,
-      markers: regionMarkers,
+      markers: toCobeMarkers(regionMarkersRef.current, markerStyleRef.current),
       // Arcs animate themselves. Initial array is whatever the useMemo
       // computed on first render — the dedicated update effect below pushes
       // any later changes (hub config / online regions).
-      arcs,
+      arcs: toCobeArcs(arcsRef.current, markerStyleRef.current),
       arcColor: initialConfig.arcColor,
       arcWidth: ARC_WIDTH,
       arcHeight: ARC_HEIGHT,
     });
     globeRef.current = globe;
 
+    // Sync latest markers/arcs + camera after init (effects may have run
+    // while globeRef was still null during lazy-layout / zero-size frame).
+    globe.update({
+      markers: toCobeMarkers(regionMarkersRef.current, markerStyleRef.current),
+      arcs: toCobeArcs(arcsRef.current, markerStyleRef.current),
+      phi: phiRef.current,
+      theta: thetaRef.current,
+    });
+
     // Expose cobe's wrapper to React so the selection overlay can portal
     // into it (anchor `<div>`s live inside this wrapper).
     setCobeWrapper(canvas.parentElement);
+    setGlobeReady(true);
 
     /* RAF loop. v2 removed `onRender` — caller drives the loop and pushes
      * camera state via `globe.update()`. We only push phi/theta here;
@@ -552,6 +679,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
      * stats-only update doesn't cause a redundant WebGL upload.
      */
     let rafId = 0;
+    let wakeTimer: ReturnType<typeof setTimeout> | null = null;
     const reduceMotionMQ =
       typeof window !== 'undefined' && typeof window.matchMedia === 'function'
         ? window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -581,35 +709,67 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
     let inViewport = true;
     let running = false;
 
-    /* Frame-rate cap.
-     *
-     * cobe re-runs the full WebGL redraw + repositions every CSS-anchored
-     * overlay on each `globe.update()`. The RAF loop used to fire that once
-     * per display refresh, so on a 120/144Hz panel the globe repainted
-     * 120-144×/s — measured ~119fps — which is this view's single biggest
-     * CPU cost and is visually indistinguishable from 60fps for a slow
-     * auto-rotation. Cap redraws to TARGET_FPS. 60Hz users are unaffected
-     * (their refresh interval already exceeds FRAME_INTERVAL); high-refresh
-     * panels roughly halve the per-frame work. The `-4` slack keeps us from
-     * accidentally dropping a frame at exactly 60Hz due to timer jitter. */
-    const TARGET_FPS = 60;
-    const FRAME_INTERVAL = 1000 / TARGET_FPS - 4;
+    /* Frame-rate cap — auto-spin fps is chosen to divide evenly into the
+     * display refresh (60→60/30, 120→60) so motion stays smooth. Drag /
+     * slerp stay at 60fps for responsiveness. */
+    const INTERACTION_FPS = 60;
+    const interactionInterval = 1000 / INTERACTION_FPS - 4;
+    const getAutoSpinInterval = () => 1000 / spinFpsRef.current - 4;
+    const getFrameInterval = () => {
+      const dragging = pointerInteracting.current !== null;
+      const slerping =
+        targetPhiRef.current !== null && targetThetaRef.current !== null;
+      return dragging || slerping ? interactionInterval : getAutoSpinInterval();
+    };
     /* Auto-spin expressed in radians/second, integrated against the real
-     * frame delta, so rotation speed is identical on every display. The old
-     * per-frame `+= 0.003` increment made 120Hz panels spin twice as fast as
-     * 60Hz ones. 0.18 rad/s == the original 0.003/frame at 60fps. */
-    const SPIN_RATE = 0.18;
+     * frame delta, so rotation speed is identical on every display. */
+    const SPIN_RATE = 0.16;
     let lastDrawTs = 0;
 
-    const tick = (now: number) => {
-      rafId = requestAnimationFrame(tick);
+    const clearWake = () => {
+      if (wakeTimer !== null) {
+        clearTimeout(wakeTimer);
+        wakeTimer = null;
+      }
+    };
 
-      // Throttle to TARGET_FPS: bail before any work on refreshes that
-      // arrive sooner than our target frame interval.
-      if (now - lastDrawTs < FRAME_INTERVAL) return;
-      // Clamp dt so a resume from an idle/hidden gap can't produce a large
-      // rotation jump on the first frame back.
-      const dt = lastDrawTs ? Math.min(0.05, (now - lastDrawTs) / 1000) : 1 / TARGET_FPS;
+    const scheduleTick = (delayMs = 0) => {
+      clearWake();
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+      if (delayMs > 0) {
+        wakeTimer = setTimeout(() => {
+          wakeTimer = null;
+          rafId = requestAnimationFrame(tick);
+        }, delayMs);
+      } else {
+        rafId = requestAnimationFrame(tick);
+      }
+    };
+
+    const stopLoop = () => {
+      running = false;
+      clearWake();
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+    };
+
+    const tick = (now: number) => {
+      rafId = 0;
+      const interval = getFrameInterval();
+
+      if (lastDrawTs && now - lastDrawTs < interval) {
+        scheduleTick(interval - (now - lastDrawTs));
+        return;
+      }
+
+      const dt = lastDrawTs
+        ? Math.min(0.05, (now - lastDrawTs) / 1000)
+        : 1 / INTERACTION_FPS;
 
       const dragging = pointerInteracting.current !== null;
       const slerping =
@@ -625,31 +785,25 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
           targetThetaRef.current = null;
         }
       } else if (!dragging && !selectedNodeIdRef.current) {
-        // Default: time-based auto-spin, capped to TARGET_FPS above.
-        //
-        // Re-evaluate `autoSpin` from the ref each frame so a runtime
-        // toggle of the `globe_respect_reduced_motion` admin switch (or a
-        // user flipping their OS reduce-motion preference) is picked up
-        // without restarting the loop. This is a single ref read + bool
-        // AND per frame — negligible cost.
         autoSpin = computeAutoSpin();
         if (autoSpin) phiRef.current += SPIN_RATE * dt;
-        else return; // reduced-motion (opt-in): behave like "selected idle" — no redraw
+        else {
+          stopLoop();
+          return;
+        }
       } else if (!dragging) {
-        // Selected + no slerp = idle. phi/theta unchanged since last frame
-        // → the WebGL redraw would be visually identical. Skip it entirely.
-        // This is the deepest CPU-saving branch and is the common state
-        // while a user is reading a node's details.
+        stopLoop();
         return;
       }
-      // Dragging falls through with phi already mutated by handlePointerMove.
 
       lastDrawTs = now;
       globe.update({ phi: phiRef.current, theta: thetaRef.current });
+      scheduleTick(getFrameInterval());
     };
 
     const handleMotionChange = () => {
       autoSpin = computeAutoSpin();
+      if (autoSpin) start();
     };
     reduceMotionMQ?.addEventListener?.('change', handleMotionChange);
 
@@ -658,15 +812,14 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
       if (visibilityPaused) return;
       if (!inViewport) return;
       running = true;
-      rafId = requestAnimationFrame(tick);
+      scheduleTick(0);
     };
 
     const stop = () => {
-      if (!running) return;
-      running = false;
-      cancelAnimationFrame(rafId);
+      stopLoop();
     };
 
+    loopControlRef.current = { start };
     start();
 
     /* Visibility — explicit stop in addition to browser's rAF throttling.
@@ -697,9 +850,18 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
     );
     intersectionObserver.observe(host);
 
-    /* Resize. v2 supports live `update({ width, height })` so we no longer
-     * destroy/rebuild the globe (which would have leaked cobe's wrapper
-     * div on every resize anyway). */
+    const applyRenderProfile = (cssSize: number) => {
+      const profile = getGlobeRenderProfile(cssSize, markerStyleRef.current);
+      spinFpsRef.current = profile.autoSpinFps;
+      globe.update({
+        width: cssSize,
+        height: cssSize,
+        devicePixelRatio: profile.devicePixelRatio,
+        mapSamples: profile.mapSamples,
+      });
+    };
+
+    /* Resize — also re-tune DPR / mapSamples for the new backing-buffer size. */
     let resizeTimer: ReturnType<typeof setTimeout> | null = null;
     let lastSize = size;
     const resizeObserver = new ResizeObserver(() => {
@@ -707,28 +869,41 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
       if (newSize === lastSize || newSize === 0) return;
       lastSize = newSize;
       widthRef.current = newSize;
-      // Debounce the WebGL viewport update so drag-resize doesn't thrash.
       if (resizeTimer) clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
-        globe.update({ width: newSize, height: newSize });
+        applyRenderProfile(newSize);
       }, 200);
     });
     resizeObserver.observe(host);
 
-    return () => {
+    cleanup = () => {
       stop();
       document.removeEventListener('visibilitychange', onVisibility);
       reduceMotionMQ?.removeEventListener?.('change', handleMotionChange);
       intersectionObserver.disconnect();
       if (resizeTimer) clearTimeout(resizeTimer);
       resizeObserver.disconnect();
-      // cobe.destroy() releases WebGL resources and removes the anchor
-      // <div>s + injected <style> tag, but leaves the wrapper <div> in
-      // place. The wrapper will be removed when React unmounts our parent
-      // container in the same tick.
       globe.destroy();
       globeRef.current = null;
+      loopControlRef.current = null;
+      setGlobeReady(false);
       setCobeWrapper(null);
+    };
+
+    return true;
+    };
+
+    if (!mountGlobe()) {
+      waitRo = new ResizeObserver(() => {
+        if (mountGlobe()) waitRo?.disconnect();
+      });
+      waitRo.observe(host);
+      if (slot) waitRo.observe(slot);
+    }
+
+    return () => {
+      waitRo?.disconnect();
+      cleanup?.();
     };
     // Globe is created exactly once. All later changes flow through
     // dedicated `globe.update({...})` effects below.
@@ -743,7 +918,12 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
    * is called, so this nudge guarantees a paint. */
   useEffect(() => {
     globeRef.current?.update({});
+    loopControlRef.current?.start();
   }, [selectedNodeId]);
+
+  useEffect(() => {
+    if (autoRotate) loopControlRef.current?.start();
+  }, [autoRotate]);
 
   /* ─────────── Push marker updates ───────────
    *
@@ -759,36 +939,44 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
    * — none of which is free at 30+ region count.
    */
   const markerSignature = useMemo(() => {
-    let sig = '';
+    let sig = `${markerStyle}|`;
     for (const m of regionMarkers) {
-      sig += `${m.id}:${m.status}:${m.totalNodes}:${m.onlineNodes}:${m.size.toFixed(3)}|`;
+      if (markerStyle === 'lite') {
+        sig += `${m.location[0]},${m.location[1]}:${m.status}:${m.totalNodes}:${m.onlineNodes}:${m.size.toFixed(3)}|`;
+      } else {
+        sig += `${m.id}:${m.status}:${m.totalNodes}:${m.onlineNodes}:${m.size.toFixed(3)}|`;
+      }
     }
     return sig;
-  }, [regionMarkers]);
+  }, [regionMarkers, markerStyle]);
 
   useEffect(() => {
-    globeRef.current?.update({ markers: regionMarkers });
+    if (!globeReady) return;
+    globeRef.current?.update({
+      markers: toCobeMarkers(regionMarkers, markerStyle),
+    });
     // Intentionally depend on the structural signature, not the array
     // reference — we don't want to re-upload markers just because the
     // parent rerendered with stat-only changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [markerSignature]);
+  }, [markerSignature, globeReady]);
 
   /* ─────────── Push arc updates (deepspace data-stream lines) ─────────── */
   const arcSignature = useMemo(() => {
-    let sig = '';
+    let sig = `${markerStyle}|`;
     for (const a of arcs) {
       // `to` is fixed (the hub) but we include it for correctness on hub
       // changes; cheap relative to the rest of the work skipped.
-      sig += `${a.id}:${a.from[0]},${a.from[1]}->${a.to[0]},${a.to[1]}|`;
+      sig += `${a.id ?? ''}:${a.from[0]},${a.from[1]}->${a.to[0]},${a.to[1]}|`;
     }
     return sig;
-  }, [arcs]);
+  }, [arcs, markerStyle]);
 
   useEffect(() => {
-    globeRef.current?.update({ arcs });
+    if (!globeReady) return;
+    globeRef.current?.update({ arcs: toCobeArcs(arcs, markerStyle) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [arcSignature]);
+  }, [arcSignature, globeReady]);
 
   /* ─────────── Push theme updates (no destroy/rebuild) ─────────── */
   useEffect(() => {
@@ -820,6 +1008,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
     targetPhiRef.current = null;
     targetThetaRef.current = null;
     e.currentTarget.style.cursor = 'grabbing';
+    loopControlRef.current?.start();
   }, []);
 
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -833,6 +1022,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
   const handlePointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     pointerInteracting.current = null;
     e.currentTarget.style.cursor = 'grab';
+    loopControlRef.current?.start();
   }, []);
 
   const handleGlobeClick = useCallback((e: React.MouseEvent) => {
@@ -848,7 +1038,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
   }, [onSelectNode]);
 
   return (
-    <div ref={globeSlotRef} className={`relative flex items-center justify-center ${className ?? ''}`}>
+    <div ref={bindGlobeSlot} className={`relative flex items-center justify-center ${className ?? ''}`}>
       {/* Stable square host. The layout effect above writes concrete
           `width`/`height` pixels based on min(slot width, slot height), so
           cobe's wrapper (and the canvas + anchor divs inside it) all share
@@ -874,7 +1064,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
           onPointerLeave={handlePointerUp}
           style={{ display: 'block', width: '100%', height: '100%' }}
         />
-        {cobeWrapper && regionMarkers.map(region => createPortal(
+        {markerStyle !== 'lite' && cobeWrapper && globeReady && regionMarkers.map(region => createPortal(
           <RegionPulseOverlay
             key={region.id}
             regionId={region.id}
@@ -887,11 +1077,9 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
           />,
           cobeWrapper
         ))}
-        {/* Per-marker speed pill — only mounted while the hub-and-spoke arc
-            system is active. Offline-only regions are excluded (no
-            meaningful traffic to show). The hub itself keeps a pill too:
-            it tells viewers what's coming in across the arcs in aggregate. */}
-        {cobeWrapper && hubRegionId && regionMarkers
+        {/* Per-marker speed pill — rich mode only while hub-and-spoke arcs
+            are active. */}
+        {markerStyle === 'rich' && cobeWrapper && globeReady && hubRegionId && regionMarkers
           .filter(region => region.status !== 'offline')
           .map(region => createPortal(
             <RegionSpeedOverlay
@@ -903,7 +1091,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
             />,
             cobeWrapper
           ))}
-        {cobeWrapper && selectedRegion && createPortal(
+        {markerStyle !== 'lite' && cobeWrapper && globeReady && selectedRegion && createPortal(
           <SelectionOverlay
             regionId={selectedRegion.region.id}
             emoji={selectedRegion.region.emoji}
@@ -919,6 +1107,25 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
           cobeWrapper
         )}
       </div>
+      {radarPortalRoot && globeReady && createPortal(
+        <GlobeRadarOverlay />,
+        radarPortalRoot,
+      )}
+    </div>
+  );
+});
+
+/** HUD radar sweep — portaled into the globe *stage slot* (full flex area),
+ *  not the square cobe canvas, so rings + sweep cover the whole HUD frame.
+ *  Sits above the WebGL canvas via z-index; `pointer-events: none` keeps
+ *  node clicks and canvas drag working. */
+const GlobeRadarOverlay = memo(function GlobeRadarOverlay() {
+  return (
+    <div className="globe-radar-layer" aria-hidden>
+      <div className="radar-scan" />
+      <div className="globe-radar-ring globe-radar-ring-60" />
+      <div className="globe-radar-ring globe-radar-ring-40" />
+      <div className="globe-radar-ring globe-radar-ring-20" />
     </div>
   );
 });

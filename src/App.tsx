@@ -934,14 +934,21 @@ function App() {
       if (v === 'uptime') return themeConfig.enable_uptime;
       return true;
     };
-    // If no saved preference, apply default_view from config
+    // No saved preference — follow server default (don't write localStorage yet;
+    // only persist when the viewer explicitly picks a view tab).
     if (!savedView) {
-      handleSetViewMode(themeConfig.default_view);
+      setViewMode(themeConfig.default_view);
     } else if (!isViewEnabled(viewMode)) {
-      // Current view is disabled — fallback
       handleSetViewMode(themeConfig.default_view);
     }
-  }, [appConfig.loaded, themeConfig, viewMode, handleSetViewMode]);
+  }, [
+    appConfig.loaded,
+    themeConfig.default_view,
+    themeConfig.enable_globe,
+    themeConfig.enable_uptime,
+    viewMode,
+    handleSetViewMode,
+  ]);
 
   useEffect(() => {
     const init = async () => {
