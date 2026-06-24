@@ -3,7 +3,8 @@
     "online": "ONLINE",
     "offline": "OFFLINE",
     "on": "ON",
-    "off": "OFF"
+    "off": "OFF",
+    "expiryWarning": "EXPIRED / ALMOST"
   },
   "label": {
     "cpu": "CPU",
@@ -96,6 +97,10 @@
     "tag": "TAG",
     "status": "STATUS",
     "matched": "matched",
+    "sort": "SORT",
+    "sortByCurrent": "Current order",
+    "sortByExpiryAsc": "Expiry (soonest)",
+    "sortByExpiryDesc": "Expiry (latest)",
     "sortByActivity": "Sort by network traffic"
   },
   "placeholder": {

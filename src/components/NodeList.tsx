@@ -6,7 +6,7 @@ import { NodeTable } from './NodeTable';
 import { HudSpinner } from './HudSpinner';
 import { RefreshCw, Search, X, ChevronDown } from 'lucide-react';
 import type { NodeWithStatus } from '@/services/api';
-import { cn } from '@/lib/utils';
+import { cn, isExpiredOrAlmostExpired, getExpiryTimestamp } from '@/lib/utils';
 import { parseTagList } from '@/lib/parseTags';
 
 interface NodeListProps {
@@ -21,11 +21,14 @@ function FilterDropdown({
   value,
   options,
   onChange,
+  neutralValue = 'all',
 }: {
   label: string;
   value: string;
   options: { value: string; label: string }[];
   onChange: (v: string) => void;
+  /** When value matches this, use inactive styling (no highlight). */
+  neutralValue?: string;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -54,7 +57,7 @@ function FilterDropdown({
           'flex items-center gap-1.5 h-9 sm:h-6 px-2.5 rounded text-xs font-mono transition-colors cursor-pointer shrink-0',
           'border border-border/40 hover:border-primary/40 hover:text-primary',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-          value !== 'all'
+          value !== neutralValue
             ? 'bg-primary/10 border-primary/30 text-primary'
             : 'bg-muted/30 text-muted-foreground'
         )}
@@ -169,6 +172,7 @@ export function NodeList({ nodes = [], loading = false, onRefresh, defaultView =
   const [groupFilter, setGroupFilter] = useState<string>('all');
   const [tagFilter, setTagFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sortMode, setSortMode] = useState<'weight' | 'expiry-asc' | 'expiry-desc'>('weight');
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -206,7 +210,11 @@ export function NodeList({ nodes = [], loading = false, onRefresh, defaultView =
         const labels = parseTagList(node.tags).map(p => p.label);
         if (!labels.includes(tagFilter)) return false;
       }
-      if (statusFilter !== 'all' && node.status !== statusFilter) return false;
+      if (statusFilter === 'expiry-warning') {
+        if (!isExpiredOrAlmostExpired(node.expired_at)) return false;
+      } else if (statusFilter !== 'all' && node.status !== statusFilter) {
+        return false;
+      }
       if (q) {
         // Search against parsed labels so users typing `prod` still match
         // `prod<red>`, and typing `red` doesn't accidentally hit every tag
@@ -228,16 +236,30 @@ export function NodeList({ nodes = [], loading = false, onRefresh, defaultView =
   // filtered set hasn't changed. Without `useMemo`, every WS tick produces a
   // new array → VirtualGrid / NodeTable see a new prop reference → the entire
   // virtualizer/react-table recomputes even though nothing meaningful changed.
-  const sortedNodes = useMemo(
-    () => [...filteredNodes].sort((a, b) => a.weight - b.weight),
-    [filteredNodes],
-  );
+  const sortedNodes = useMemo(() => {
+    const list = [...filteredNodes];
+    if (sortMode === 'weight') {
+      list.sort((a, b) => a.weight - b.weight);
+      return list;
+    }
+    const asc = sortMode === 'expiry-asc';
+    list.sort((a, b) => {
+      const ta = getExpiryTimestamp(a.expired_at);
+      const tb = getExpiryTimestamp(b.expired_at);
+      if (ta === null && tb === null) return a.weight - b.weight;
+      if (ta === null) return 1;
+      if (tb === null) return -1;
+      const diff = asc ? ta - tb : tb - ta;
+      return diff !== 0 ? diff : a.weight - b.weight;
+    });
+    return list;
+  }, [filteredNodes, sortMode]);
 
   const onlineCount = useMemo(
     () => nodes.reduce((acc, n) => acc + (n.status === 'online' ? 1 : 0), 0),
     [nodes],
   );
-  const hasFilters = groupFilter !== 'all' || tagFilter !== 'all' || statusFilter !== 'all' || searchQuery !== '';
+  const hasFilters = groupFilter !== 'all' || tagFilter !== 'all' || statusFilter !== 'all' || sortMode !== 'weight' || searchQuery !== '';
 
   const groupOptions = useMemo(() => [
     { value: 'all', label: t('filter.all') },
@@ -251,6 +273,12 @@ export function NodeList({ nodes = [], loading = false, onRefresh, defaultView =
     { value: 'all', label: t('filter.all') },
     { value: 'online', label: t('status.online') },
     { value: 'offline', label: t('status.offline') },
+    { value: 'expiry-warning', label: t('status.expiryWarning') },
+  ], [t]);
+  const sortOptions = useMemo(() => [
+    { value: 'weight', label: t('filter.sortByCurrent') },
+    { value: 'expiry-asc', label: t('filter.sortByExpiryAsc') },
+    { value: 'expiry-desc', label: t('filter.sortByExpiryDesc') },
   ], [t]);
   const skeletonCardWidths = [58, 74, 66, 82, 62, 70];
 
@@ -379,7 +407,7 @@ export function NodeList({ nodes = [], loading = false, onRefresh, defaultView =
           <div className="flex items-center gap-2 shrink-0 relative z-10">
             {hasFilters && (
               <button
-                onClick={() => { setGroupFilter('all'); setTagFilter('all'); setStatusFilter('all'); setSearchQuery(''); }}
+                onClick={() => { setGroupFilter('all'); setTagFilter('all'); setStatusFilter('all'); setSortMode('weight'); setSearchQuery(''); }}
                 className="text-xs font-mono text-destructive hover:text-destructive/80 transition-colors h-6 px-2 rounded hover:bg-destructive/10 cursor-pointer border border-transparent hover:border-destructive/20 hidden sm:block"
               >
                 {t('action.clear')}
@@ -431,6 +459,7 @@ export function NodeList({ nodes = [], loading = false, onRefresh, defaultView =
             <FilterDropdown label={t('filter.group')} value={groupFilter} options={groupOptions} onChange={setGroupFilter} />
             <FilterDropdown label={t('filter.tag')} value={tagFilter} options={tagOptions} onChange={setTagFilter} />
             <FilterDropdown label={t('filter.status')} value={statusFilter} options={statusOptions} onChange={setStatusFilter} />
+            <FilterDropdown label={t('filter.sort')} value={sortMode} options={sortOptions} neutralValue="weight" onChange={v => setSortMode(v as typeof sortMode)} />
           </div>
         </div>
       </div>

@@ -191,6 +191,24 @@ export function getExpiryStatus(
   return 'normal';
 }
 
+/** True when the node is expired or within the 7-day warning window. */
+export function isExpiredOrAlmostExpired(
+  expiredAt: string | null | undefined
+): boolean {
+  const status = getExpiryStatus(expiredAt);
+  return status === 'expired' || status === 'warning';
+}
+
+/** Millisecond timestamp for sorting; null when no valid expiry is set. */
+export function getExpiryTimestamp(
+  expiredAt: string | null | undefined
+): number | null {
+  if (!expiredAt) return null;
+  const d = dayjs(expiredAt);
+  if (!d.isValid() || d.year() <= 1) return null;
+  return d.valueOf();
+}
+
 /** Format expiry date as short text */
 export function formatExpiry(expiredAt: string): string {
   const d = dayjs(expiredAt);

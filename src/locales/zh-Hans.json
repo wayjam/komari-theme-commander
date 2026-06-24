@@ -3,7 +3,8 @@
     "online": "在线",
     "offline": "离线",
     "on": "在线",
-    "off": "离线"
+    "off": "离线",
+    "expiryWarning": "已过期/即将过期"
   },
   "label": {
     "cpu": "CPU",
@@ -96,6 +97,10 @@
     "tag": "标签",
     "status": "状态",
     "matched": "匹配",
+    "sort": "排序",
+    "sortByCurrent": "当前顺序",
+    "sortByExpiryAsc": "到期时间（最近）",
+    "sortByExpiryDesc": "到期时间（最远）",
     "sortByActivity": "按网络流量排序"
   },
   "placeholder": {

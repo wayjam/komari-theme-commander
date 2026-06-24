@@ -3,7 +3,8 @@
     "online": "上線",
     "offline": "離線",
     "on": "上線",
-    "off": "離線"
+    "off": "離線",
+    "expiryWarning": "已過期/即將過期"
   },
   "label": {
     "cpu": "CPU",
@@ -96,6 +97,10 @@
     "tag": "標籤",
     "status": "狀態",
     "matched": "匹配",
+    "sort": "排序",
+    "sortByCurrent": "目前順序",
+    "sortByExpiryAsc": "到期時間（最近）",
+    "sortByExpiryDesc": "到期時間（最遠）",
     "sortByActivity": "依網路流量排序"
   },
   "placeholder": {
