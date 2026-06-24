@@ -195,6 +195,30 @@
     "title": "節點群",
     "status": "節點群狀態"
   },
+  "assetStats": {
+    "title": "計費彙總",
+    "short": "計費",
+    "subtitle": "計費 {{billable}} / 共 {{total}} 節點",
+    "noBillable": "暫無計費節點",
+    "noBillableHint": "僅計入已設定價格的節點，免費或未設定價格的不包含在內。",
+    "currencyBlock": "{{currency}} 節點",
+    "nodeCount": "{{count}} 節點",
+    "cycleTotal": "週期",
+    "monthlyEst": "月均",
+    "remaining": "剩餘",
+    "remainingHint": "依計費週期折算，估算到期前剩餘的預付價值。",
+    "mixedCurrencyNote": "多幣別分別彙總，未做匯率換算。",
+    "breakdown": "明細",
+    "rowMonthly": "月均 {{amount}}",
+    "groupBy": "分組",
+    "groupByGroup": "依分組",
+    "groupByRegion": "依區域",
+    "sort": "排序",
+    "sortValueDesc": "金額 高→低",
+    "sortValueAsc": "金額 低→高",
+    "sortWeight": "權重",
+    "sortName": "名稱"
+  },
   "table": {
     "status": "狀態",
     "node": "節點"

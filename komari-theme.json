@@ -67,6 +67,13 @@
                 "help": "Show the uptime leaderboard view option"
             },
             {
+                "key": "enable_asset_stats",
+                "name": "Enable Billing Summary",
+                "type": "switch",
+                "default": false,
+                "help": "Show the billing summary button in grid and table views (logged-in users only). Summarizes billing cycle cost, monthly estimate, and remaining value by group or region."
+            },
+            {
                 "name": "Appearance",
                 "type": "title"
             },

@@ -10,6 +10,7 @@ const samplePublicInfo = {
     enable_globe: true,
     enable_privacy_mode: false,
     enable_uptime: true,
+    enable_asset_stats: true,
     globe_hub_node: '  hub-node  ',
     globe_marker_style: 'lite',
     globe_mode: 'static',
@@ -34,6 +35,7 @@ describe('parseThemeConfigFromPublicSettings', () => {
     expect(tc.default_view).toBe('globe');
     expect(tc.enable_globe).toBe(true);
     expect(tc.enable_uptime).toBe(true);
+    expect(tc.enable_asset_stats).toBe(true);
     expect(tc.enable_privacy_mode).toBe(false);
     expect(tc.globe_respect_reduced_motion).toBe(false);
     expect(tc.custom_footer).toBe('Footer text');

@@ -195,6 +195,30 @@
     "title": "节点群",
     "status": "节点群状态"
   },
+  "assetStats": {
+    "title": "计费汇总",
+    "short": "计费",
+    "subtitle": "计费 {{billable}} / 共 {{total}} 节点",
+    "noBillable": "暂无计费节点",
+    "noBillableHint": "仅计入已设置价格的节点，免费或未设置价格的不包含在内。",
+    "currencyBlock": "{{currency}} 节点",
+    "nodeCount": "{{count}} 节点",
+    "cycleTotal": "周期",
+    "monthlyEst": "月均",
+    "remaining": "剩余",
+    "remainingHint": "按计费周期折算，估算到期前剩余的预付费价值。",
+    "mixedCurrencyNote": "多币种分别汇总，未做汇率换算。",
+    "breakdown": "明细",
+    "rowMonthly": "月均 {{amount}}",
+    "groupBy": "分组",
+    "groupByGroup": "按分组",
+    "groupByRegion": "按区域",
+    "sort": "排序",
+    "sortValueDesc": "金额 高→低",
+    "sortValueAsc": "金额 低→高",
+    "sortWeight": "权重",
+    "sortName": "名称"
+  },
   "table": {
     "status": "状态",
     "node": "节点"

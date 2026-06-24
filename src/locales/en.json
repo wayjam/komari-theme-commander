@@ -195,6 +195,30 @@
     "title": "FLEET",
     "status": "FLEET STATUS"
   },
+  "assetStats": {
+    "title": "Billing Summary",
+    "short": "BILLING",
+    "subtitle": "{{billable}} billable / {{total}} nodes",
+    "noBillable": "No billable nodes",
+    "noBillableHint": "Nodes with a set price appear here. Free or unset nodes are excluded.",
+    "currencyBlock": "{{currency}} nodes",
+    "nodeCount": "{{count}} nodes",
+    "cycleTotal": "Cycle",
+    "monthlyEst": "Mo. est.",
+    "remaining": "Remaining",
+    "remainingHint": "Estimated prepaid value left until expiry, prorated by billing cycle.",
+    "mixedCurrencyNote": "Totals are grouped by currency; no exchange conversion is applied.",
+    "breakdown": "Breakdown",
+    "rowMonthly": "Mo. {{amount}}",
+    "groupBy": "Group",
+    "groupByGroup": "By group",
+    "groupByRegion": "By region",
+    "sort": "Sort",
+    "sortValueDesc": "Value high → low",
+    "sortValueAsc": "Value low → high",
+    "sortWeight": "Weight",
+    "sortName": "Name"
+  },
   "table": {
     "status": "STS",
     "node": "NODE"

@@ -4,10 +4,12 @@ import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import { NodeCard } from './NodeCard';
 import { NodeTable } from './NodeTable';
 import { HudSpinner } from './HudSpinner';
-import { RefreshCw, Search, X, ChevronDown } from 'lucide-react';
+import { RefreshCw, Search, X, ChevronDown, Landmark } from 'lucide-react';
 import type { NodeWithStatus } from '@/services/api';
 import { cn, isExpiredOrAlmostExpired, getExpiryTimestamp } from '@/lib/utils';
 import { parseTagList } from '@/lib/parseTags';
+import { useAppConfig } from '@/hooks/useAppConfig';
+import { AssetStatsPanel } from './AssetStatsPanel';
 
 interface NodeListProps {
   nodes?: NodeWithStatus[];
@@ -169,6 +171,9 @@ function VirtualGrid({ nodes }: { nodes: NodeWithStatus[] }) {
 
 export function NodeList({ nodes = [], loading = false, onRefresh, defaultView = 'grid' }: NodeListProps) {
   const { t } = useTranslation();
+  const { isLoggedIn, themeConfig } = useAppConfig();
+  const showAssetStats = themeConfig.enable_asset_stats && isLoggedIn;
+  const [assetStatsOpen, setAssetStatsOpen] = useState(false);
   const [groupFilter, setGroupFilter] = useState<string>('all');
   const [tagFilter, setTagFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -413,6 +418,17 @@ export function NodeList({ nodes = [], loading = false, onRefresh, defaultView =
                 {t('action.clear')}
               </button>
             )}
+            {showAssetStats && (
+              <button
+                type="button"
+                onClick={() => setAssetStatsOpen(true)}
+                className="flex items-center justify-center gap-1.5 h-9 sm:h-6 px-3 rounded text-xxs font-mono border border-border/40 text-foreground hover:border-primary/50 hover:text-primary hover:bg-primary/5 bg-background/50 transition-colors duration-200 cursor-pointer"
+                title={t('assetStats.title')}
+              >
+                <Landmark className="h-3 w-3 shrink-0" aria-hidden />
+                <span className="uppercase tracking-widest font-bold hidden sm:inline">{t('assetStats.short')}</span>
+              </button>
+            )}
             {onRefresh && (
               <button
                 onClick={handleRefresh}
@@ -477,6 +493,9 @@ export function NodeList({ nodes = [], loading = false, onRefresh, defaultView =
         <VirtualGrid nodes={sortedNodes} />
       ) : (
         <NodeTable nodes={sortedNodes} />
+      )}
+      {assetStatsOpen && (
+        <AssetStatsPanel nodes={nodes} onClose={() => setAssetStatsOpen(false)} />
       )}
     </div>
   );

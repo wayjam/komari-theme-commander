@@ -39,7 +39,8 @@
 
 ### 🎯 高级功能
 
-- **智能过滤系统** — 支持按组、标签、在线状态多维度筛选节点；侧边节点流支持按 CPU / 流量排序
+- **智能过滤系统** — Grid / Table 支持按组、标签、在线状态（含即将到期）筛选，以及按到期时间排序；侧边节点流支持按 CPU / 流量排序
+- **计费汇总（Billing Summary）** — Grid / Table 视图可开启计费汇总弹窗，按币种汇总周期费用、月均支出与剩余价值，并支持按分组 / 区域查看明细（需登录，主题设置中默认关闭）
 - **Globe Hub 模式** — 配置任意节点为「中枢」后，地球上会以该节点为中心绘制到其它在线节点的弧线动画
 - **隐私模式（Privacy Mode）** — 一键将所有节点名替换为随机假名（如 `Sierra-Host-426`），适合公开分享演示
 - **流量配额监控** — 可视化展示流量使用情况（支持 MAX / ↑+↓ 多种统计口径）
@@ -67,17 +68,22 @@
 
 ## ⚙️ 主题配置
 
-主题在 Komari 后台的 **Theme Settings** 面板提供可视化配置，所有修改实时生效。
+主题在 Komari 后台的 **Theme Settings** 面板提供可视化配置，所有修改实时生效（切换回前台标签页后自动刷新，无需硬重载）。
+
+配置项定义见 [`komari-theme.json`](./komari-theme.json)，通过 `theme_settings` 下发至前端。
 
 ### 视图设置（View Settings）
 
 | 配置项 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
-| `default_view` | select | `globe` | 首次访问时展示的视图模式（`globe` / `grid` / `table` / `uptime`） |
+| `default_view` | select | `globe` | 首次访问时展示的视图模式（`globe` / `grid` / `table` / `uptime`）。若所选视图被禁用，会自动回退到第一个可用视图 |
 | `enable_globe` | switch | ✅ | 是否显示 3D 地球视图选项 |
-| `globe_hub_node` | string | 空 | 指定一个节点名作为地球中枢；启用后该节点会被点亮，并绘制到其它在线节点的弧线动画。即使开启隐私模式，此处仍需填写**真实节点名** |
+| `globe_hub_node` | string | 空 | 指定一个节点名作为地球中枢；启用后该节点会被点亮，并绘制到其它在线节点的弧线动画。即使开启隐私模式，此处仍需填写**真实节点名**；留空则禁用弧线 |
+| `globe_mode` | select | `dynamic` | 地球旋转模式：`dynamic` 加载后自动旋转；`static` 默认静止，需用户手动开启旋转（拖拽始终可用） |
 | `globe_respect_reduced_motion` | switch | ❌ | 开启后，对偏好「减少动效」的用户暂停地球自动旋转（仍可手动拖拽） |
+| `globe_marker_style` | select | `rich` | 地球节点标记样式：`rich` 脉冲动画 + Hub 速度标签；`calm` 扁平标记，保留点击与选中标签；`lite` 仅 WebGL 圆点，CPU 占用更低，需从侧栏或移动端舰队列表选择节点 |
 | `enable_uptime` | switch | ✅ | 是否显示在线时长排行视图选项 |
+| `enable_asset_stats` | switch | ❌ | 是否在 Grid / Table 视图显示「计费汇总」按钮。汇总各节点计费周期、月均支出与剩余价值，支持按分组或区域查看明细；**仅对已登录用户显示**，多币种分别汇总、不做汇率换算 |
 
 ### 外观设置（Appearance）
 
@@ -85,12 +91,7 @@
 |--------|------|--------|------|
 | `default_theme` | select | `clean` | 首次访问者的默认配色主题（`lumina` / `deepspace` / `clean` / `auto`）。`auto` 会跟随系统：light → Lumina，dark → DeepSpace |
 | `custom_footer` | string | 空 | 自定义页脚区域显示的文本内容 |
-
-### 隐私设置（Privacy）
-
-| 配置项 | 类型 | 默认值 | 说明 |
-|--------|------|--------|------|
-| `enable_privacy_mode` | switch | ❌ | 开启后，未登录用户看到的所有节点名称将自动替换为随机生成的假名称以保护隐私；已登录用户默认不启用，但可通过头部按钮手动切换 |
+| `enable_privacy_mode` | switch | ❌ | 开启后，**所有用户**（含已登录）看到的节点名称将替换为随机假名以保护隐私；已登录管理员仍可通过头部按钮临时关闭隐私模式 |
 
 ## ⚙️ Development
 

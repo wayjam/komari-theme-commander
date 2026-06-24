@@ -6,6 +6,8 @@ export interface ThemeConfig {
   default_view: 'globe' | 'grid' | 'table' | 'uptime';
   enable_globe: boolean;
   enable_uptime: boolean;
+  /** Fleet asset / billing statistics panel in grid & table views. */
+  enable_asset_stats: boolean;
   default_theme: 'lumina' | 'deepspace' | 'clean' | 'auto';
   custom_footer: string;
   enable_privacy_mode: boolean;
@@ -31,6 +33,7 @@ const defaultThemeConfig: ThemeConfig = {
   default_view: 'globe',
   enable_globe: true,
   enable_uptime: true,
+  enable_asset_stats: false,
   default_theme: 'clean',
   custom_footer: '',
   enable_privacy_mode: false,
@@ -100,6 +103,10 @@ export function parseThemeConfigFromPublicSettings(
   if (typeof eu === 'boolean') tc.enable_uptime = eu;
   if (eu === 'true') tc.enable_uptime = true;
   if (eu === 'false') tc.enable_uptime = false;
+  const eas = pick('enable_asset_stats');
+  if (typeof eas === 'boolean') tc.enable_asset_stats = eas;
+  if (eas === 'true') tc.enable_asset_stats = true;
+  if (eas === 'false') tc.enable_asset_stats = false;
   const dt = pick('default_theme');
   if (typeof dt === 'string' && ['lumina', 'deepspace', 'clean', 'auto'].includes(dt)) {
     tc.default_theme = dt as ThemeConfig['default_theme'];
