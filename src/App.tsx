@@ -135,18 +135,44 @@ function OverflowTooltip({
   );
 }
 
-function FooterUtcClock() {
+function FooterSep({ className }: { className?: string }) {
+  return (
+    <span
+      aria-hidden
+      className={cn('text-muted-foreground/30 select-none shrink-0', className)}
+    >
+      |
+    </span>
+  );
+}
+
+function FooterLocalClock() {
   const { t } = useTranslation();
+  const mobileRef = useRef<HTMLSpanElement>(null);
+  const timeRef = useRef<HTMLSpanElement>(null);
   const fullRef = useRef<HTMLSpanElement>(null);
-  const compactRef = useRef<HTMLSpanElement>(null);
+  const tzRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
+    const pad = (n: number) => String(n).padStart(2, '0');
     const tick = () => {
       const d = new Date();
-      const date = `${String(d.getUTCFullYear())}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
-      const time = `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}:${String(d.getUTCSeconds()).padStart(2, '0')}Z`;
+      const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      const time = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+      const timeShort = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      if (mobileRef.current) mobileRef.current.textContent = timeShort;
+      if (timeRef.current) timeRef.current.textContent = time;
       if (fullRef.current) fullRef.current.textContent = `${date} ${time}`;
-      if (compactRef.current) compactRef.current.textContent = time;
+      if (tzRef.current) {
+        try {
+          const tz = new Intl.DateTimeFormat(undefined, { timeZoneName: 'short' })
+            .formatToParts(d)
+            .find(part => part.type === 'timeZoneName')?.value;
+          tzRef.current.textContent = tz ?? t('hud.local');
+        } catch {
+          tzRef.current.textContent = t('hud.local');
+        }
+      }
     };
     tick();
 
@@ -175,14 +201,82 @@ function FooterUtcClock() {
       stop();
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, []);
+  }, [t]);
 
   return (
-    <div className="hidden sm:flex items-center gap-1.5 font-metric tabular-nums text-muted-foreground/80">
-      <Clock className="h-3 w-3 text-muted-foreground/55" aria-hidden />
-      <span className="font-mono uppercase tracking-wider text-muted-foreground/55">{t('hud.utc')}</span>
-      <span ref={compactRef} className="lg:hidden text-foreground/75" />
-      <span ref={fullRef} className="hidden lg:inline text-foreground/75" />
+    <>
+      {/* Narrow: icon + HH:MM */}
+      <div
+        className="flex md:hidden items-center gap-1 font-metric tabular-nums text-muted-foreground/80 shrink-0"
+        title={t('hud.local')}
+      >
+        <Clock className="h-3 w-3 text-muted-foreground/55" aria-hidden />
+        <span ref={mobileRef} className="text-foreground/75" />
+      </div>
+      {/* md: tz label + time; lg+: full date */}
+      <div className="hidden md:flex items-center gap-1.5 font-metric tabular-nums text-muted-foreground/80 shrink-0">
+        <Clock className="h-3 w-3 text-muted-foreground/55" aria-hidden />
+        <span
+          ref={tzRef}
+          className="font-mono uppercase tracking-wider text-muted-foreground/55"
+        >
+          {t('hud.local')}
+        </span>
+        <span ref={timeRef} className="lg:hidden text-foreground/75" />
+        <span ref={fullRef} className="hidden lg:inline text-foreground/75" />
+      </div>
+    </>
+  );
+}
+
+interface FooterFleetMetricsProps {
+  avgCpu: number;
+  totalUp: number;
+  totalDown: number;
+}
+
+function FooterFleetMetrics({ avgCpu, totalUp, totalDown }: FooterFleetMetricsProps) {
+  const { t } = useTranslation();
+  const cpuTone =
+    avgCpu < 60 ? 'text-success' : avgCpu < 85 ? 'text-warning' : 'text-destructive';
+  const upLabel = t('label.netUp');
+  const downLabel = t('label.netDown');
+
+  return (
+    <div
+      className="flex flex-wrap items-center gap-x-2 gap-y-0.5 sm:gap-x-3 min-w-0"
+      aria-label={`${t('hud.avgCpu')} ${avgCpu.toFixed(0)}%, ${upLabel} ${formatSpeed(totalUp)}, ${downLabel} ${formatSpeed(totalDown)}`}
+    >
+      <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+        <Cpu className={cn('h-3 w-3 shrink-0 opacity-70', cpuTone)} aria-hidden />
+        <span className="hidden sm:inline text-muted-foreground/60 uppercase tracking-[0.12em] sm:tracking-[0.16em]">
+          {t('hud.avgCpu')}
+        </span>
+        <span className={cn('font-metric tracking-normal normal-case', cpuTone)}>
+          {avgCpu.toFixed(0)}%
+        </span>
+      </div>
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 min-w-0">
+        <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+          <ArrowUp className="h-3 w-3 text-success/80 shrink-0" aria-hidden />
+          <span className="hidden lg:inline text-muted-foreground/60 uppercase tracking-[0.12em]">
+            {upLabel}
+          </span>
+          <span className="font-metric text-success tracking-normal normal-case">
+            {formatSpeed(totalUp)}
+          </span>
+        </div>
+        <span className="text-muted-foreground/25 sm:hidden" aria-hidden>·</span>
+        <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+          <ArrowDown className="h-3 w-3 text-primary/80 shrink-0" aria-hidden />
+          <span className="hidden lg:inline text-muted-foreground/60 uppercase tracking-[0.12em]">
+            {downLabel}
+          </span>
+          <span className="font-metric text-primary tracking-normal normal-case">
+            {formatSpeed(totalDown)}
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -972,6 +1066,8 @@ function App() {
   const fleetSummary = useMemo(() => {
     let totalUp = 0;
     let totalDown = 0;
+    let cpuSum = 0;
+    let cpuSampled = 0;
     const onlineUuids: string[] = [];
     let hasCriticalNode = false;
 
@@ -982,6 +1078,11 @@ function App() {
         totalDown += node.stats.network.down || 0;
       }
 
+      if (node.status === 'online' && node.stats) {
+        cpuSum += node.stats.cpu.usage;
+        cpuSampled++;
+      }
+
       if (!hasCriticalNode && node.status === 'online' && node.stats) {
         hasCriticalNode = node.stats.cpu.usage > 90 || (node.stats.ram.used / node.stats.ram.total) > 0.95;
       }
@@ -989,14 +1090,17 @@ function App() {
 
     return {
       networkStats: { totalUp, totalDown },
+      avgCpu: cpuSampled > 0 ? cpuSum / cpuSampled : 0,
+      cpuSampled,
       onlineUuids,
       hasCriticalNode,
     };
   }, [nodes]);
 
   const isDashboard = location.pathname === '/';
-  const { networkStats, onlineUuids, hasCriticalNode } = fleetSummary;
+  const { networkStats, avgCpu, cpuSampled, onlineUuids, hasCriticalNode } = fleetSummary;
   const shouldFetchSparklines = isDashboard && (viewMode === 'grid' || viewMode === 'table') && appConfig.isLoggedIn;
+  const showFooterMetaOnMobile = Boolean(appConfig.isLoggedIn && version);
 
   const viewButtons = useMemo<ViewTab<ViewMode>[]>(() => {
     const all: ViewTab<ViewMode>[] = [
@@ -1200,18 +1304,29 @@ function App() {
           {/* ═══ Footer ═══ */}
           <footer className="sticky bottom-0 z-40 border-t border-border/50 bg-background/85 backdrop-blur-xl relative pb-safe">
             <div className="footer-neon-line" />
-            <div className="container mx-auto px-3 sm:px-4 h-9 flex items-center justify-between text-xs font-mono text-muted-foreground">
-              <div className="flex items-center gap-3">
-                <WebSocketStatus />
-                <span className="hidden sm:inline text-muted-foreground/30">|</span>
-                <FooterUtcClock />
-                <span className="hidden sm:inline text-muted-foreground/30">|</span>
-                <div className="hidden sm:flex items-center gap-2 font-metric tabular-nums">
-                  <span>↑ {formatSpeed(networkStats.totalUp)}</span>
-                  <span>↓ {formatSpeed(networkStats.totalDown)}</span>
+            <div className="container mx-auto px-3 sm:px-4 py-1.5 sm:py-2 min-h-9">
+              <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-4 sm:gap-y-1 text-xxs sm:text-xs font-mono text-muted-foreground">
+                {/* Telemetry rail: WS → local time → fleet KPIs */}
+                <div className="flex flex-wrap items-center gap-x-2 sm:gap-x-3 gap-y-1 min-w-0 w-full sm:w-auto sm:flex-1">
+                  <WebSocketStatus />
+                  <FooterSep />
+                  <FooterLocalClock />
+                  {cpuSampled > 0 && (
+                    <>
+                      <FooterSep />
+                      <FooterFleetMetrics
+                        avgCpu={avgCpu}
+                        totalUp={networkStats.totalUp}
+                        totalDown={networkStats.totalDown}
+                      />
+                    </>
+                  )}
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
+                {/* Meta rail: attribution, version (admin), theme credit */}
+                <div className={cn(
+                  'flex flex-wrap items-center gap-x-2 gap-y-0.5 shrink-0 w-full sm:w-auto justify-between sm:justify-end',
+                  !showFooterMetaOnMobile && 'hidden sm:flex',
+                )}>
                 {customBody ? (
                   <span className="hidden sm:inline" dangerouslySetInnerHTML={{ __html: customBody }} />
                 ) : (
@@ -1227,8 +1342,11 @@ function App() {
                         Komari Monitor
                       </a>
                     </span>
-                    {version && (
-                      <span className="text-muted-foreground/60">{version}</span>
+                    {appConfig.isLoggedIn && version && (
+                      <>
+                        <span className="hidden sm:inline text-muted-foreground/40">|</span>
+                        <span className="font-metric tabular-nums text-muted-foreground/60">{version}</span>
+                      </>
                     )}
                     <span className="hidden sm:inline text-muted-foreground/40">|</span>
                     <span className="hidden sm:inline">
@@ -1250,6 +1368,7 @@ function App() {
                     <span className="hidden sm:inline text-muted-foreground/60">{themeConfig.custom_footer}</span>
                   </>
                 )}
+                </div>
               </div>
             </div>
           </footer>

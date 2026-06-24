@@ -7,8 +7,8 @@ import type { NodeWithStatus } from '@/services/api';
  * Single-Slot Telemetry Ticker
  * ─────────────────────────────
  * The bottom feed is a *narrative pulse*, not a verdict surface.
- *  - Verdict lives in the top KPI strip (avg CPU, alert tally) and the
- *    right-hand sidebar fleet status. This bar must NOT duplicate them.
+ *  - Verdict lives in the site footer (avg CPU) + top strip (alert tally)
+ *    and the right-hand sidebar fleet status. This bar must NOT duplicate them.
  *  - At any moment, exactly ONE event is visible. It enters from the right,
  *    holds for ~3.5s, then leaves to the left while the next one rides in.
  *  - Idle queue → a calm "TELEMETRY STREAM IDLE" placeholder breathes.

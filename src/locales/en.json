@@ -255,6 +255,7 @@
     "bwidthNominal": "BWIDTH: NOMINAL",
     "missionOps": "Mission Ops",
     "utc": "UTC",
+    "local": "Local",
     "fleet": "Fleet",
     "online": "Online",
     "flow": "Flow",

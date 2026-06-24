@@ -1,12 +1,14 @@
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Radio, Cpu, AlertTriangle, ShieldCheck, ArrowDown, ArrowUp, MapPinned } from 'lucide-react';
+import { Radio, AlertTriangle, ShieldCheck, MapPinned, Pause, Play } from 'lucide-react';
 import type { NodeWithStatus } from '@/services/api';
-import { extractRegionEmoji, formatSpeed } from '@/lib/utils';
-import { getCoords } from '@/data/regionCoords';
+import { computeGlobeFleetStats } from '@/lib/globeFleetStats';
 
 interface GlobeTopStripProps {
   nodes: NodeWithStatus[];
+  autoRotate: boolean;
+  onStartRotation: () => void;
+  onStopRotation: () => void;
 }
 
 /**
@@ -15,42 +17,18 @@ interface GlobeTopStripProps {
  * Collapses gracefully on narrow viewports.
  *
  * Note on omissions (intentional — avoid duplicate signals already shown elsewhere):
- *  - FLOW (aggregate IN/OUT) → covered by the bottom telemetry feed (per-node rates).
- *  - FLEET (online/total)    → covered by the right sidebar status block.
- *  This strip focuses on Globe-local telemetry: fleet CPU pressure,
- *  aggregate flow, mapped region count, plus a critical-alert tally.
+ *  - FLOW (aggregate IN/OUT) + fleet CPU → covered by the site footer.
+ *  - FLEET (online/total)                → covered by the right sidebar status block.
+ *  This strip focuses on rotation control, mapped region count, and alert tally.
  */
-export const GlobeTopStrip = memo(function GlobeTopStrip({ nodes }: GlobeTopStripProps) {
+export const GlobeTopStrip = memo(function GlobeTopStrip({
+  nodes,
+  autoRotate,
+  onStartRotation,
+  onStopRotation,
+}: GlobeTopStripProps) {
   const { t } = useTranslation();
-
-  const stats = useMemo(() => {
-    let cpuSum = 0;
-    let cpuCount = 0;
-    let critical = 0;
-    let totalUp = 0;
-    let totalDown = 0;
-    const zones = new Set<string>();
-
-    for (const n of nodes) {
-      const emoji = extractRegionEmoji(n.region);
-      if (emoji && getCoords(emoji)) zones.add(emoji);
-
-      if (n.status === 'online' && n.stats) {
-        cpuSum += n.stats.cpu.usage;
-        cpuCount++;
-        totalUp += n.stats.network.up;
-        totalDown += n.stats.network.down;
-        const ramPct = n.stats.ram.total > 0 ? (n.stats.ram.used / n.stats.ram.total) * 100 : 0;
-        if (n.stats.cpu.usage > 90 || ramPct > 95) critical++;
-      }
-    }
-
-    const avgCpu = cpuCount > 0 ? cpuSum / cpuCount : 0;
-    return { avgCpu, critical, sampled: cpuCount, totalUp, totalDown, regionCount: zones.size };
-  }, [nodes]);
-
-  const cpuTone =
-    stats.avgCpu < 60 ? 'text-success' : stats.avgCpu < 85 ? 'text-warning' : 'text-destructive';
+  const stats = useMemo(() => computeGlobeFleetStats(nodes), [nodes]);
 
   return (
     <div className="globe-top-strip relative w-full px-3 sm:px-4 py-2 flex items-center gap-3 sm:gap-4 text-xs font-mono uppercase tracking-[0.18em] overflow-hidden">
@@ -62,36 +40,6 @@ export const GlobeTopStrip = memo(function GlobeTopStrip({ nodes }: GlobeTopStri
         </span>
         <span className="text-primary/80 font-display">{t('hud.missionOps')}</span>
       </div>
-
-      <Sep />
-
-      <Sep className="hidden sm:block" />
-
-      {/* Avg CPU */}
-      {stats.sampled > 0 && (
-        <div className="hidden sm:flex items-center gap-2 shrink-0">
-          <Cpu className={`h-3 w-3 ${cpuTone} opacity-70`} />
-          <span className="text-muted-foreground/60">{t('hud.avgCpu')}</span>
-          <span className={`font-metric tracking-normal ${cpuTone}`}>
-            {stats.avgCpu.toFixed(0)}%
-          </span>
-        </div>
-      )}
-
-      {stats.sampled > 0 && (
-        <div className="hidden md:flex items-center gap-2 shrink-0">
-          <ArrowUp className="h-3 w-3 text-success/80" />
-          <span className="text-muted-foreground/60">{t('label.netUp')}</span>
-          <span className="font-metric text-success tracking-normal normal-case">
-            {formatSpeed(stats.totalUp)}
-          </span>
-          <ArrowDown className="ml-1 h-3 w-3 text-primary/80" />
-          <span className="text-muted-foreground/60">{t('label.netDown')}</span>
-          <span className="font-metric text-primary tracking-normal normal-case">
-            {formatSpeed(stats.totalDown)}
-          </span>
-        </div>
-      )}
 
       {/* Spacer */}
       <div className="flex-1 min-w-0" />
@@ -120,6 +68,31 @@ export const GlobeTopStrip = memo(function GlobeTopStrip({ nodes }: GlobeTopStri
           <ShieldCheck className="h-3 w-3 text-success" />
           <span className="text-success/80">{t('hud.nominal')}</span>
         </div>
+      )}
+
+      <Sep className="hidden sm:inline" />
+
+      {/* Rotation control — far right of Mission Ops row */}
+      {autoRotate ? (
+        <button
+          type="button"
+          onClick={onStopRotation}
+          className="globe-rotation-btn shrink-0"
+          aria-label={t('hud.stopRotation')}
+        >
+          <Pause className="size-3" aria-hidden />
+          <span>{t('hud.stopRotation')}</span>
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={onStartRotation}
+          className="globe-rotation-btn shrink-0"
+          aria-label={t('hud.startRotation')}
+        >
+          <Play className="size-3" aria-hidden />
+          <span>{t('hud.startRotation')}</span>
+        </button>
       )}
     </div>
   );

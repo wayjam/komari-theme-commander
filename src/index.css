@@ -2989,8 +2989,8 @@
     }
   }
 
-  /* Globe stage rotation control — matches mission-control chrome (sector
-     label, frame counter): mono, uppercase, low-contrast until hovered. */
+  /* Globe rotation control — Mission Ops row + former stage placement share
+     the same chrome token. Mono, uppercase, low-contrast until hovered. */
   .globe-rotation-btn {
     display: inline-flex;
     align-items: center;

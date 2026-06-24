@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback, memo } from 'react';
 // Note: useState retained for selectedNodeId; useRef now used by FrameCounter for direct DOM writes.
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import { Pause, Play } from 'lucide-react';
 import { Globe } from '@/components/Globe';
 import { Sidebar } from '@/components/Sidebar';
 import { MobileFleetSheet } from '@/components/MobileFleetSheet';
@@ -106,7 +105,12 @@ export function GlobeView({ nodes, loading = false, onViewCharts, hubNodeUuid = 
         <span className="corner-bottom" />
 
         {/* ① Top KPI Strip */}
-        <GlobeTopStrip nodes={nodes} />
+        <GlobeTopStrip
+          nodes={nodes}
+          autoRotate={autoRotate}
+          onStartRotation={startRotation}
+          onStopRotation={stopRotation}
+        />
 
         {/* ② Stage (globe + ambient layers) */}
         <div
@@ -182,31 +186,6 @@ export function GlobeView({ nodes, loading = false, onViewCharts, hubNodeUuid = 
             </div>
           )}
 
-          {/* Rotation control — bottom-left, mirrors frame counter on the right */}
-          <div className="absolute bottom-3 left-3 z-20">
-            {autoRotate ? (
-              <button
-                type="button"
-                onClick={stopRotation}
-                className="globe-rotation-btn"
-                aria-label={t('hud.stopRotation')}
-              >
-                <Pause className="size-3" aria-hidden />
-                <span>{t('hud.stopRotation')}</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={startRotation}
-                className="globe-rotation-btn"
-                aria-label={t('hud.startRotation')}
-              >
-                <Play className="size-3" aria-hidden />
-                <span>{t('hud.startRotation')}</span>
-              </button>
-            )}
-          </div>
-
           {/* Loading overlay — letterspacing matches the rest of the stage
               chrome (sector label, threats, frame counter all at 0.22em) so
               the loading state doesn't read as a different typographic
@@ -224,7 +203,7 @@ export function GlobeView({ nodes, loading = false, onViewCharts, hubNodeUuid = 
         {/* ③ Bottom Telemetry Feed — hidden on mobile so the bottom-sheet
              handle isn't competing with another small chrome strip for the
              user's eye. Desktop keeps the feed for ambience. */}
-        <div className="hidden lg:block">
+        <div className="hidden lg:block shrink-0">
           <GlobeTelemetryFeed nodes={nodes} enabled={showFeed} />
         </div>
       </div>

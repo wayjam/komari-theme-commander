@@ -255,6 +255,7 @@
     "bwidthNominal": "带宽：正常",
     "missionOps": "指挥中心",
     "utc": "UTC",
+    "local": "本地",
     "fleet": "舰队",
     "online": "在线",
     "flow": "流量",
