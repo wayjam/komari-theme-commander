@@ -56,7 +56,7 @@ export function WebSocketStatus() {
       <button
         type="button"
         disabled
-        className="flex items-center gap-1.5 text-warning font-mono text-xs cursor-default opacity-90"
+        className="flex items-center gap-1.5 text-warning font-mono text-inherit leading-none cursor-default opacity-90"
         aria-busy="true"
       >
         <HudSpinner size="sm" className="text-warning" />
@@ -67,7 +67,7 @@ export function WebSocketStatus() {
 
   if (isConnected) {
     return (
-      <div className="flex items-center gap-1.5 text-success font-mono text-xs" role="status" aria-live="polite">
+      <div className="flex items-center gap-1.5 text-success font-mono text-inherit leading-none" role="status" aria-live="polite">
         <span className="relative flex h-2 w-2" aria-hidden>
           <span className="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-success/70 opacity-75" />
           <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
@@ -82,7 +82,7 @@ export function WebSocketStatus() {
   // full timestamp so the relative label can stay terse.
   const stale = formatStaleness(lastUpdated);
   return (
-    <div className="flex items-center gap-2 font-mono text-xs">
+    <div className="flex items-center gap-2 font-mono text-inherit leading-none">
       <button
         type="button"
         onClick={handleReconnect}

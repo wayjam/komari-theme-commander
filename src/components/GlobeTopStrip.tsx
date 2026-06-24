@@ -31,7 +31,7 @@ export const GlobeTopStrip = memo(function GlobeTopStrip({
   const stats = useMemo(() => computeGlobeFleetStats(nodes), [nodes]);
 
   return (
-    <div className="globe-top-strip relative w-full px-3 sm:px-4 py-2 flex items-center gap-3 sm:gap-4 text-xs font-mono uppercase tracking-[0.18em] overflow-hidden">
+    <div className="globe-top-strip relative w-full px-3 sm:px-4 py-1 flex items-center gap-3 sm:gap-4 text-xs font-mono uppercase tracking-[0.18em] overflow-hidden">
       {/* Brand segment — always visible */}
       <div className="flex items-center gap-2 shrink-0">
         <span className="relative inline-flex items-center justify-center">

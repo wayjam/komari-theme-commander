@@ -815,7 +815,7 @@
     translate: -50% -50%;
     aspect-ratio: 1 / 1;
     border-radius: 50%;
-    border: 1px solid color-mix(in oklch, var(--primary) 7%, transparent);
+    border: 1px solid color-mix(in oklch, var(--primary) 10%, transparent);
     pointer-events: none;
   }
 
@@ -839,7 +839,7 @@
       transparent 360deg
     );
     border-radius: 50%;
-    opacity: 0.05;
+    opacity: 0.075;
     pointer-events: none;
     animation: radar-rotate 4s linear infinite;
     will-change: transform;
@@ -847,7 +847,7 @@
   }
 
   [data-theme="deepspace"] .globe-radar-layer .radar-scan {
-    opacity: 0.11;
+    opacity: 0.145;
     background: conic-gradient(
       from 0deg,
       var(--primary) 0deg,
