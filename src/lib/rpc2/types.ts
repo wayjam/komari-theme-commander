@@ -211,6 +211,19 @@ export interface RPC2NodeStatus {
   online: boolean;
   uptime?: number;
   message?: string;
+  /** Per-task ping stats (last ~1 h), keyed by task id string */
+  ping?: Record<string, RPC2PingStat>;
+}
+
+/** Embedded ping summary on common:getNodesLatestStatus */
+export interface RPC2PingStat {
+  name: string;
+  latest: number;
+  avg: number;
+  tail: number;
+  loss: number;
+  min: number;
+  max: number;
 }
 
 /**

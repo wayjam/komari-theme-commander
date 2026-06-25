@@ -1,9 +1,10 @@
-import { Suspense, useState, useEffect } from 'react';
+import { Suspense, useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft } from 'lucide-react';
 import { NodeInfoPanel } from '@/components/NodeInfoPanel';
 import { RegionFlag } from '@/components/RegionFlag';
+import { ChartTimeRangeBar } from '@/components/ChartTimeRangeBar';
 import { ChartsRouteFallback } from '@/components/ViewLoadingFallback';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
@@ -11,6 +12,8 @@ import { useNodesContext } from '@/contexts/NodesContext';
 import { useAppConfig } from '@/hooks/useAppConfig';
 import { usePrivacyMode } from '@/hooks/usePrivacyMode';
 import { NodeCharts } from '@/lib/lazyViews';
+import { useAdaptiveLoadTimeRange } from '@/hooks/useAdaptiveLoadTimeRange';
+import { buildLoadChartTimeRanges } from '@/lib/chart-time-ranges';
 import { cn } from '@/lib/utils';
 import { apiService } from '@/services/api';
 
@@ -23,6 +26,20 @@ export function NodeDetailPage() {
   const { maskName } = usePrivacyMode();
   const node = nodes.find(n => n.uuid === uuid);
   const [nodeName, setNodeName] = useState('');
+  const [timeRange, setTimeRange] = useAdaptiveLoadTimeRange(
+    node ? node.status === 'online' : undefined,
+    appConfig.recordPreserveTime,
+  );
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const loadTimeRangeOptions = useMemo(
+    () => buildLoadChartTimeRanges(appConfig.recordPreserveTime),
+    [appConfig.recordPreserveTime],
+  );
+
+  const handleRefresh = useCallback(() => {
+    setRefreshKey(k => k + 1);
+  }, []);
 
   useEffect(() => {
     if (node) {
@@ -138,8 +155,20 @@ export function NodeDetailPage() {
 
       {node && <NodeInfoPanel node={node} />}
 
+      <ChartTimeRangeBar
+        value={timeRange}
+        onChange={setTimeRange}
+        onRefresh={handleRefresh}
+        options={loadTimeRangeOptions}
+      />
+
       <Suspense fallback={<ChartsRouteFallback />}>
-        <NodeCharts nodeUuid={uuid} nodeName={displayName} />
+        <NodeCharts
+          nodeUuid={uuid}
+          nodeName={displayName}
+          timeRange={timeRange}
+          refreshKey={refreshKey}
+        />
       </Suspense>
     </div>
   );

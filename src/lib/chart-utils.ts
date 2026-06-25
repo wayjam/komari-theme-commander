@@ -3,6 +3,8 @@
  * Used by metric chart components (`src/components/metric-charts/`) and consumers
  */
 
+import type { NodeStats } from '@/services/api';
+
 /** A single row of chart data — `time` is always present, other keys are numeric task/metric values */
 export type ChartDataRow = { time: string; [key: string]: string | number | null };
 
@@ -74,6 +76,32 @@ export interface ChartDataPoint {
   connections_udp: number;
   network_in: number;
   network_out: number;
+}
+
+/** Convert nested NodeStats (WS / recent API) into flat LoadRecord for charts */
+export function nodeStatsToLoadRecord(stats: NodeStats): LoadRecord {
+  return {
+    time: stats.updated_at,
+    cpu: stats.cpu.usage,
+    ram: stats.ram.used,
+    ram_total: stats.ram.total,
+    swap: stats.swap.used,
+    swap_total: stats.swap.total,
+    disk: stats.disk.used,
+    disk_total: stats.disk.total,
+    load: stats.load.load1,
+    process: stats.process,
+    connections: stats.connections.tcp,
+    connections_udp: stats.connections.udp,
+    net_in: stats.network.up,
+    net_out: stats.network.down,
+  };
+}
+
+export function nodeStatsToLoadRecords(statsList: NodeStats[]): LoadRecord[] {
+  return statsList
+    .map(nodeStatsToLoadRecord)
+    .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
 }
 
 /** Transform raw load records into chart-ready data */

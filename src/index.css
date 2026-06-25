@@ -2219,6 +2219,55 @@
     border-top-color: var(--color-border);
   }
 
+  /* Node detail — frosted action dock (scroll fade removed: action bar sits
+     outside the scroll area, so a bottom overlay only tinted uptime/traffic) */
+  .sidebar-detail-action-bar {
+    position: relative;
+    z-index: 20;
+    flex-shrink: 0;
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.625rem 0.75rem 0.75rem;
+    border-top: 1px solid color-mix(in oklch, var(--border) 50%, transparent);
+    background: color-mix(in oklch, var(--card) 76%, transparent);
+    backdrop-filter: blur(16px) saturate(1.4);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    box-shadow: inset 0 1px 0 color-mix(in oklch, var(--primary) 14%, transparent);
+  }
+
+  [data-theme="deepspace"] .sidebar-detail-action-bar {
+    background: color-mix(in oklch, var(--card) 68%, transparent);
+    border-top-color: color-mix(in oklch, var(--primary) 24%, transparent);
+    box-shadow: inset 0 1px 0 color-mix(in oklch, var(--primary) 32%, transparent);
+  }
+
+  [data-theme="clean"] .sidebar-detail-action-bar {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--card);
+    box-shadow: none;
+    border-top-color: var(--border);
+  }
+
+  /* Fleet detail: flat telemetry — parent sidebar-fleet-panel already owns
+     border, radius, and bg-card/80; inner telemetry-panel chrome reads as
+     a nested card and caused the bottom background banding. */
+  .sidebar-fleet-panel .sidebar-detail-telemetry {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  [data-theme="deepspace"] .sidebar-fleet-panel .sidebar-detail-telemetry.network-stats-panel {
+    box-shadow: none;
+  }
+
+  /* Fleet detail panel: skip stat-section hover washes — too tight for radial glow */
+  .sidebar-detail-telemetry .stat-section[data-accent]::after {
+    display: none;
+  }
+
   /* Clean: hide inline HUD decorative elements */
   [data-theme="clean"] .console-header-decoration {
     display: none;

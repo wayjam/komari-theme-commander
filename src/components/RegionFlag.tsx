@@ -1,18 +1,8 @@
-import { getRegionEnglishName } from '@/data/regionCoords';
-import { extractRegionEmoji, extractRegionText, cn } from '@/lib/utils';
+import { extractRegionEmoji, extractRegionText, getRegionDisplayName, cn } from '@/lib/utils';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 
 type RegionFlagSize = 'sm' | 'md' | 'lg';
 type RegionFlagTooltipSide = 'top' | 'right' | 'bottom' | 'left';
-
-function getRegionDisplayName(region?: string): string {
-  if (!region) return '';
-  const text = extractRegionText(region);
-  if (text) return text;
-
-  const emoji = extractRegionEmoji(region);
-  return emoji ? getRegionEnglishName(emoji) : region.trim();
-}
 
 /**
  * RegionFlag — compact geographic identity badge.

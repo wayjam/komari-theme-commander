@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { apiService, wsService } from '../services/api';
+import { apiService, wsService, type PingStat } from '../services/api';
 import type { NodeWithStatus, NodeStats, WsMessage } from '../services/api';
 
 /**
@@ -12,6 +12,24 @@ import type { NodeWithStatus, NodeStats, WsMessage } from '../services/api';
  * sent — fall back to 0 / '' so the comparison mirrors the normalisation
  * logic in the caller exactly.
  */
+function pingStatsEqual(
+  prev?: Record<string, PingStat>,
+  next?: Record<string, PingStat>,
+): boolean {
+  if (!prev && !next) return true;
+  if (!prev || !next) return false;
+  const prevKeys = Object.keys(prev);
+  const nextKeys = Object.keys(next);
+  if (prevKeys.length !== nextKeys.length) return false;
+  for (const key of prevKeys) {
+    const a = prev[key];
+    const b = next[key];
+    if (!b) return false;
+    if (a.latest !== b.latest || a.avg !== b.avg || a.loss !== b.loss) return false;
+  }
+  return true;
+}
+
 function rawStatsEqual(
   prev: NodeStats | undefined,
   raw: NodeStats | undefined,
@@ -37,7 +55,8 @@ function rawStatsEqual(
     prev.process === (raw.process || 0) &&
     prev.connections.tcp === (raw.connections?.tcp || 0) &&
     prev.connections.udp === (raw.connections?.udp || 0) &&
-    prev.updated_at === (raw.updated_at || prev.updated_at)
+    prev.updated_at === (raw.updated_at || prev.updated_at) &&
+    pingStatsEqual(prev.ping, raw.ping)
   );
 }
 
@@ -79,6 +98,13 @@ export function useNodes() {
   useEffect(() => {
     fetchNodes();
   }, [fetchNodes]);
+
+  // Subset status polling to known nodes once the list is loaded
+  useEffect(() => {
+    if (nodes.length > 0) {
+      wsService.setPollUuids(nodes.map(node => node.uuid));
+    }
+  }, [nodes]);
 
   // Set up WebSocket listener
   useEffect(() => {
@@ -122,6 +148,7 @@ export function useNodes() {
             connections: { tcp: rawStats.connections?.tcp || 0, udp: rawStats.connections?.udp || 0 },
             message: rawStats.message || '',
             updated_at: rawStats.updated_at || new Date().toISOString(),
+            ping: rawStats.ping,
           } : undefined;
 
           changed = true;
@@ -150,9 +177,7 @@ export function useNodes() {
     // connected and the next `send('get')` will deliver fresh stats.
     const intervalId = setInterval(() => {
       if (document.hidden) return;
-      if (wsService.getOnlineNodes().length > 0) {
-        wsService.send('get');
-      }
+      wsService.send('get');
     }, 2000);
 
     // Cleanup function

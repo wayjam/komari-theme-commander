@@ -9,6 +9,7 @@ import type {
   RPC2PingRecord,
   RPC2BasicInfo,
   RPC2PingTask,
+  RPC2PingStat,
 } from '@/lib/rpc2';
 
 export interface NodeData {
@@ -54,6 +55,16 @@ export interface UserInfo {
   sso_type: string;
 }
 
+export interface PingStat {
+  name: string;
+  latest: number;
+  avg: number;
+  tail: number;
+  loss: number;
+  min: number;
+  max: number;
+}
+
 export interface NodeStats {
   cpu: { usage: number };
   ram: { total: number; used: number };
@@ -66,6 +77,12 @@ export interface NodeStats {
   connections: { tcp: number; udp: number };
   message: string;
   updated_at: string;
+  ping?: Record<string, PingStat>;
+}
+
+export interface LoadHistoryOptions {
+  /** Narrow payload to one metric family (common:getRecords load_type) */
+  loadType?: string;
 }
 
 export interface NodeWithStatus extends NodeData {
@@ -92,6 +109,85 @@ function dedup<T>(key: string, fn: () => Promise<T>): Promise<T> {
   const promise = fn().finally(() => pendingCalls.delete(key));
   pendingCalls.set(key, promise);
   return promise;
+}
+
+const PUBLIC_NS_CACHE_KEY = 'komari.supportsPublicNamespace';
+
+function isRpcMethodNotFound(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return error.message.includes('RPC Error -32601') || error.message.includes('method not found');
+}
+
+function loadMaxCountForHours(hours: number): number {
+  if (hours <= 1) return 2000;
+  if (hours <= 6) return 3000;
+  return 4000;
+}
+
+function flattenLoadRecords(rawRecords: unknown): RPC2StatusRecord[] {
+  if (Array.isArray(rawRecords)) return rawRecords as RPC2StatusRecord[];
+  if (rawRecords && typeof rawRecords === 'object') {
+    return (Object.values(rawRecords) as RPC2StatusRecord[][]).flat();
+  }
+  return [];
+}
+
+/** Narrow load_type projection → full StatusRecord shape for chart adapters */
+function adaptFlatLoadRecord(rec: Partial<RPC2StatusRecord> & { time: string; client?: string }): RPC2StatusRecord {
+  return {
+    client: rec.client || '',
+    time: rec.time,
+    cpu: rec.cpu ?? 0,
+    gpu: rec.gpu ?? 0,
+    ram: rec.ram ?? 0,
+    ram_total: rec.ram_total ?? 0,
+    swap: rec.swap ?? 0,
+    swap_total: rec.swap_total ?? 0,
+    load: rec.load ?? 0,
+    load5: rec.load5 ?? 0,
+    load15: rec.load15 ?? 0,
+    temp: rec.temp ?? 0,
+    disk: rec.disk ?? 0,
+    disk_total: rec.disk_total ?? 0,
+    net_in: rec.net_in ?? 0,
+    net_out: rec.net_out ?? 0,
+    net_total_up: rec.net_total_up ?? 0,
+    net_total_down: rec.net_total_down ?? 0,
+    process: rec.process ?? 0,
+    connections: rec.connections ?? 0,
+    connections_udp: rec.connections_udp ?? 0,
+    uptime: rec.uptime,
+    message: rec.message,
+  };
+}
+
+function adaptPingStats(ping?: Record<string, RPC2PingStat>): Record<string, PingStat> | undefined {
+  if (!ping || Object.keys(ping).length === 0) return undefined;
+  const out: Record<string, PingStat> = {};
+  for (const [key, stat] of Object.entries(ping)) {
+    out[key] = {
+      name: stat.name,
+      latest: stat.latest,
+      avg: stat.avg,
+      tail: stat.tail,
+      loss: stat.loss,
+      min: stat.min,
+      max: stat.max,
+    };
+  }
+  return out;
+}
+
+/** Best non-loss latest latency across embedded ping tasks, or null when unavailable */
+export function getBestPingLatency(ping?: Record<string, PingStat>): number | null {
+  if (!ping) return null;
+  let best: number | null = null;
+  for (const stat of Object.values(ping)) {
+    if (stat.latest >= 0 && (best === null || stat.latest < best)) {
+      best = stat.latest;
+    }
+  }
+  return best;
 }
 
 // ============================================================
@@ -175,6 +271,7 @@ function adaptNodeStatus(status: RPC2NodeStatus): NodeStats {
     connections: { tcp: status.connections || 0, udp: status.connections_udp || 0 },
     message: status.message || '',
     updated_at: status.time || new Date().toISOString(),
+    ping: adaptPingStats(status.ping),
   };
 }
 
@@ -230,28 +327,43 @@ class ApiService {
   }
 
   // Fetch load history records
-  async getLoadHistory(uuid: string, hours: number = 24): Promise<{ count: number; records: RPC2StatusRecord[] } | null> {
-    return dedup(`getLoadHistory:${uuid}:${hours}`, async () => {
+  async getLoadHistory(
+    uuid: string,
+    hours: number = 24,
+    options?: LoadHistoryOptions,
+  ): Promise<{ count: number; records: RPC2StatusRecord[] } | null> {
+    const loadType = options?.loadType;
+    const dedupKey = `getLoadHistory:${uuid}:${hours}:${loadType ?? 'all'}`;
+    return dedup(dedupKey, async () => {
       try {
+        const params: {
+          type: string;
+          uuid: string;
+          hours: number;
+          maxCount: number;
+          load_type?: string;
+        } = {
+          type: 'load',
+          uuid,
+          hours,
+          maxCount: loadMaxCountForHours(hours),
+        };
+        if (loadType) params.load_type = loadType;
+
         const result = await rpc2Client.call<
-          { type: string; uuid: string; hours: number },
-          { count: number; records: RPC2StatusRecord[]; from: string; to: string }
+          typeof params,
+          { count: number; records: RPC2StatusRecord[] | Record<string, RPC2StatusRecord[]>; from: string; to: string }
         >(
           'common:getRecords',
-          { type: 'load', uuid, hours }
+          params
         );
         if (!result) return null;
-        // RPC2 may return records as { [uuid]: StatusRecord[] } object map; flatten to array
-        const rawRecords = result.records;
-        let records: RPC2StatusRecord[];
-        if (Array.isArray(rawRecords)) {
-          records = rawRecords;
-        } else if (rawRecords && typeof rawRecords === 'object') {
-          // { uuid: StatusRecord[] } → extract all values and flatten
-          records = (Object.values(rawRecords) as RPC2StatusRecord[][]).flat();
-        } else {
-          records = [];
-        }
+
+        const rawRecords = flattenLoadRecords(result.records);
+        const records = loadType
+          ? rawRecords.map(r => adaptFlatLoadRecord(r))
+          : rawRecords;
+
         return {
           count: result.count,
           records,
@@ -331,11 +443,32 @@ class ApiService {
     });
   }
 
-  // Fetch public settings
+  // Fetch public settings (public:* on 1.2.5+, fallback to common:getPublicInfo)
   async getPublicSettings(): Promise<Record<string, unknown> | null> {
     return dedup('getPublicSettings', async () => {
+      const fetchCommon = () =>
+        rpc2Client.call<undefined, Record<string, unknown>>('common:getPublicInfo');
+
       try {
-        const result = await rpc2Client.call<undefined, Record<string, unknown>>('common:getPublicInfo');
+        let result: Record<string, unknown> | undefined;
+        const cachedSupport = sessionStorage.getItem(PUBLIC_NS_CACHE_KEY);
+
+        if (cachedSupport !== 'false') {
+          try {
+            result = await rpc2Client.call<undefined, Record<string, unknown>>('public:getPublicSettings');
+            sessionStorage.setItem(PUBLIC_NS_CACHE_KEY, 'true');
+          } catch (error) {
+            if (isRpcMethodNotFound(error)) {
+              sessionStorage.setItem(PUBLIC_NS_CACHE_KEY, 'false');
+              result = await fetchCommon();
+            } else {
+              throw error;
+            }
+          }
+        } else {
+          result = await fetchCommon();
+        }
+
         if (result && Object.keys(result).length > 0) {
           offlineCache.setPublicInfo(result);
           return result;
@@ -393,6 +526,10 @@ export class WebSocketService {
   private onlineNodes: Set<string> = new Set();
   private nodeData: Map<string, NodeStats> = new Map();
   private pollingInterval: ReturnType<typeof setInterval> | null = null;
+  /** Visible node UUIDs for subset polling; null = fetch all */
+  private pollUuids: string[] | null = null;
+  /** When subset polling misbehaves, stick to full polls for the session */
+  private preferFullPoll = false;
   /** True once we've delivered at least one *fresh* snapshot from the
    *  backend. Used to decide whether an offline-cache replay is still
    *  useful (we don't want to overwrite live data with stale data). */
@@ -400,6 +537,12 @@ export class WebSocketService {
   /** ms epoch of the most recent successful fetch, or 0 when we've only
    *  ever served from the offline cache. Exposed for "stale data" UI. */
   private lastUpdatedAt = 0;
+
+  /** Limit status polls to known visible nodes (merged into existing state). */
+  setPollUuids(uuids: string[] | null) {
+    this.pollUuids = uuids && uuids.length > 0 ? uuids : null;
+    this.preferFullPoll = false;
+  }
 
   connect() {
     // Ensure RPC2 client is connected
@@ -420,26 +563,49 @@ export class WebSocketService {
   }
 
   /** Fetch latest node status via RPC2 */
-  private async fetchLatestStatus() {
+  private async fetchLatestStatus(forceFull = false): Promise<void> {
+    const useSubset = !forceFull && !this.preferFullPoll && !!this.pollUuids?.length;
+    const params = useSubset ? { uuids: this.pollUuids! } : undefined;
+
     try {
-      const result = await rpc2Client.call<undefined, Record<string, RPC2NodeStatus>>(
-        'common:getNodesLatestStatus'
+      const result = await rpc2Client.call<
+        { uuids: string[] } | undefined,
+        Record<string, RPC2NodeStatus>
+      >(
+        'common:getNodesLatestStatus',
+        params
       );
       if (!result) {
-        // Backend returned nothing — keep whatever we already have
-        // (either a cache replay or a previous fresh snapshot).
         return;
       }
 
-      // Extract online node list
-      const onlineList: string[] = [];
-      const dataMap: Record<string, NodeStats> = {};
-
-      for (const [uuid, status] of Object.entries(result)) {
-        if (status.online) {
-          onlineList.push(uuid);
+      if (useSubset && this.pollUuids) {
+        const returned = Object.keys(result).length;
+        if (returned === 0) {
+          this.preferFullPoll = true;
+          return this.fetchLatestStatus(true);
         }
-        dataMap[uuid] = adaptNodeStatus(status);
+      }
+
+      let onlineList: string[];
+      const dataMap: Record<string, NodeStats> = useSubset
+        ? Object.fromEntries(this.nodeData)
+        : {};
+
+      if (useSubset) {
+        const onlineSet = new Set(this.onlineNodes);
+        for (const [uuid, status] of Object.entries(result)) {
+          if (status.online) onlineSet.add(uuid);
+          else onlineSet.delete(uuid);
+          dataMap[uuid] = adaptNodeStatus(status);
+        }
+        onlineList = Array.from(onlineSet);
+      } else {
+        onlineList = [];
+        for (const [uuid, status] of Object.entries(result)) {
+          if (status.online) onlineList.push(uuid);
+          dataMap[uuid] = adaptNodeStatus(status);
+        }
       }
 
       this.onlineNodes = new Set(onlineList);
@@ -447,20 +613,18 @@ export class WebSocketService {
       this.hasFreshSnapshot = true;
       this.lastUpdatedAt = Date.now();
 
-      // Persist for next cold load (throttled internally to avoid
-      // serialising on every 2 s tick).
       offlineCache.setStatuses(onlineList, dataMap);
 
-      // Notify all listeners (format compatible with original WebSocket)
       this.listeners.forEach(listener => listener({
         online: onlineList,
         data: dataMap,
       }));
     } catch (error) {
+      if (useSubset && !forceFull) {
+        this.preferFullPoll = true;
+        return this.fetchLatestStatus(true);
+      }
       console.error('RPC2 fetchLatestStatus failed:', error);
-      // Surface the cached snapshot if we never got a fresh one this
-      // session — gives the user "last known" data instead of an empty
-      // dashboard while the backend is unreachable.
       if (!this.hasFreshSnapshot) this.replayFromCache();
     }
   }

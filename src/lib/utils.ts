@@ -3,6 +3,7 @@ import { extendTailwindMerge } from "tailwind-merge"
 import prettyBytes from "pretty-bytes"
 import dayjs from "dayjs"
 import duration from "dayjs/plugin/duration"
+import { getRegionEnglishName } from '@/data/regionCoords'
 
 dayjs.extend(duration)
 
@@ -44,6 +45,15 @@ export function extractRegionText(region: string): string {
   const emoji = extractRegionEmoji(region);
   if (!emoji) return region.trim();
   return region.slice(emoji.length).trim();
+}
+
+/** Human-readable region label: text after flag, or English name from emoji, or raw string. */
+export function getRegionDisplayName(region?: string): string {
+  if (!region) return '';
+  const text = extractRegionText(region);
+  if (text) return text;
+  const emoji = extractRegionEmoji(region);
+  return emoji ? getRegionEnglishName(emoji) : region.trim();
 }
 
 /** Format network speed */

@@ -407,7 +407,7 @@ const LazyNodeRow = memo(function LazyNodeRow({
           fetchHours = Math.ceil(deltaMs / 3600_000) + 1;
         }
 
-        const data = await apiService.getLoadHistory(node.uuid, fetchHours);
+        const data = await apiService.getLoadHistory(node.uuid, fetchHours, { loadType: 'cpu' });
         if (cancelled) return;
 
         const newRecords = (data?.records ?? []) as unknown as LoadRecord[];
@@ -461,7 +461,7 @@ const LazyNodeRow = memo(function LazyNodeRow({
       try {
         const deltaMs = Date.now() - cached.fetchedAt;
         const deltaHours = Math.ceil(deltaMs / 3600_000) + 1;
-        const data = await apiService.getLoadHistory(node.uuid, deltaHours);
+        const data = await apiService.getLoadHistory(node.uuid, deltaHours, { loadType: 'cpu' });
         const newRecords = (data?.records ?? []) as unknown as LoadRecord[];
         const merged = mergeRecords(cached.records, newRecords, rangeHours);
         const result = computeUptime(merged, rangeHours);

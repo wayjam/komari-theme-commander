@@ -19,6 +19,7 @@ export type {
   RPC2PingRecord,
   RPC2PingTask,
   RPC2BasicInfo,
+  RPC2PingStat,
 } from "./types";
 
 import { RPC2Client } from "./client";

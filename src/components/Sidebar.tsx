@@ -3,12 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { ArrowLeft, Cpu, HardDrive, MemoryStick, Network, BarChart3, ExternalLink, Server, Layers, Search, X, Activity, MapPin, Terminal } from 'lucide-react';
+import { ArrowLeft, Cpu, HardDrive, MemoryStick, Network, BarChart3, ExternalLink, Server, Layers, Search, X, Activity, MapPin, Terminal, Clock, Gauge } from 'lucide-react';
 import { SystemIcon } from '@/lib/systemIcon';
 import type { NodeWithStatus } from '@/services/api';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { cn, extractRegionEmoji, formatSpeed, formatBytes, formatUptime, getUsageStatus, calcTrafficUsage, formatTrafficType, getExpiryStatus, formatExpiry } from '@/lib/utils';
+import { cn, extractRegionEmoji, getRegionDisplayName, formatSpeed, formatBytes, formatUptime, getUsageStatus, calcTrafficUsage, formatTrafficType, getExpiryStatus, formatExpiry } from '@/lib/utils';
 import type { TrafficLimitType } from '@/lib/utils';
 import { useAppConfig } from '@/hooks/useAppConfig';
 import dayjs from 'dayjs';
@@ -64,6 +64,7 @@ function NodeRowContentInner({
     ? `↑${formatSpeed(stats.network.up)} ↓${formatSpeed(stats.network.down)}`
     : '';
   const emoji = extractRegionEmoji(node.region);
+  const regionName = getRegionDisplayName(node.region);
 
   const tagList = parseTagList(node.tags);
   const maxVisibleTags = 3;
@@ -101,9 +102,17 @@ function NodeRowContentInner({
             )}
           </div>
         </div>
-        {emoji && (
-          <span className="text-base flex-shrink-0 leading-none bg-muted/30 rounded-sm px-1 py-0.5 border border-border/20">
-            {emoji}
+        {node.region && (
+          <span
+            className="inline-flex max-w-[5.5rem] flex-shrink-0 items-center gap-1 rounded-sm border border-border/20 bg-muted/30 px-1 py-0.5 leading-none"
+            title={regionName || node.region}
+          >
+            {emoji && <span className="text-base">{emoji}</span>}
+            {regionName && (
+              <span className="truncate text-xxs font-mono text-muted-foreground/85">
+                {regionName}
+              </span>
+            )}
           </span>
         )}
       </div>
@@ -578,6 +587,12 @@ function NodeDetailView({
   const cpuStatus = getUsageStatus(cpuUsage, { warning: 60, critical: 80 });
   const ramStatus = getUsageStatus(ramUsage, { warning: 70, critical: 85 });
   const diskStatus = getUsageStatus(diskUsage, { warning: 75, critical: 90 });
+  const cores = node.cpu_cores || 1;
+  const loadRatio = stats ? stats.load.load1 / cores : 0;
+  const loadStatusTone =
+    loadRatio >= 1.5 ? 'text-destructive' : loadRatio >= 1 ? 'text-warning' : 'text-foreground';
+  const regionEmoji = extractRegionEmoji(node.region);
+  const regionName = getRegionDisplayName(node.region);
 
   return (
     <div className="flex flex-col h-full">
@@ -690,272 +705,290 @@ function NodeDetailView({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto relative">
-        <div className="p-3 pb-16 space-y-4">
+      <div className="flex-1 overflow-y-auto relative min-h-0">
+        <div className="p-3 pb-3 space-y-4">
         {!isOnline ? (
           <div className="flex items-center justify-center h-24 text-muted-foreground text-xs leading-relaxed px-2 text-center">
             {t('telemetry.nodeOfflineShort')}
           </div>
         ) : stats ? (
           <>
-            {/* System Info Panel */}
-            <div className="flex flex-col gap-2 p-2.5 rounded-md bg-muted/20 border border-border/30">
-              <div className="flex items-center gap-1.5">
-                <Server className="h-3 w-3 text-primary" />
-                <span className="type-hud-label">{t('info.system')}</span>
-              </div>
-              <div className="grid grid-cols-[12px_auto_1fr] gap-x-2 gap-y-1.5 text-xs font-mono items-center">
-                <SystemIcon kind="cpu" value={node.cpu_name} className="h-3 w-3 text-muted-foreground/70" />
-                <span className="text-muted-foreground/70 uppercase tracking-wide text-xxs whitespace-nowrap">{t('label.cpu')}</span>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="truncate cursor-default">{node.cpu_name || '-'} ({node.cpu_cores}C)</span>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="max-w-xs text-xs font-mono">{node.cpu_name || '-'} ({node.cpu_cores}C)</TooltipContent>
-                </Tooltip>
-                <SystemIcon kind="arch" value={node.arch} className="h-3 w-3 text-muted-foreground/70" />
-                <span className="text-muted-foreground/70 uppercase tracking-wide text-xxs whitespace-nowrap">{t('label.arch')}</span>
-                <span className="truncate">{node.arch || '-'}</span>
-                <SystemIcon kind="os" value={node.os} className="h-3 w-3 text-muted-foreground/70" />
-                <span className="text-muted-foreground/70 uppercase tracking-wide text-xxs whitespace-nowrap">{t('label.os')}</span>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="truncate cursor-default">{node.os || '-'}</span>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="max-w-xs text-xs font-mono">{node.os || '-'}</TooltipContent>
-                </Tooltip>
-                <SystemIcon kind="virt" value={node.virtualization} className="h-3 w-3 text-muted-foreground/70" />
-                <span className="text-muted-foreground/70 uppercase tracking-wide text-xxs whitespace-nowrap">{t('label.virt')}</span>
-                <span className="truncate">{node.virtualization || '-'}</span>
-                <MapPin className="h-3 w-3 text-muted-foreground/70" />
-                <span className="text-muted-foreground/70 uppercase tracking-wide text-xxs whitespace-nowrap">{t('label.region')}</span>
-                <span className="truncate">{node.region || '-'}</span>
-                {node.kernel_version && (
-                  <>
-                    <Terminal className="h-3 w-3 text-muted-foreground/70" />
-                    <span className="text-muted-foreground/70 uppercase tracking-wide text-xxs whitespace-nowrap">{t('label.kernel')}</span>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="truncate cursor-default">{node.kernel_version}</span>
-                      </TooltipTrigger>
-                      <TooltipContent side="right" className="max-w-xs text-xs font-mono">{node.kernel_version}</TooltipContent>
-                    </Tooltip>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Resource Gauges */}
-            <div className="space-y-2.5">
-              {/* CPU */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <Cpu className="h-3.5 w-3.5 text-primary" />
-                    <span className="text-xs font-mono font-bold">{t('label.cpu')}</span>
-                  </div>
-                  <span className={cn('text-xs font-metric font-bold', {
-                    'text-destructive': cpuStatus === 'critical',
-                    'text-warning': cpuStatus === 'warning',
-                  })}>
-                    {cpuUsage.toFixed(1)}%
-                  </span>
+            {/* Telemetry sections — flat inside sidebar-fleet-panel (no nested instrument chrome) */}
+            <div className="sidebar-detail-telemetry">
+              {/* System spec — no nested card border */}
+              <div className="stat-section p-2.5">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="stat-chip stat-chip--system"><Server className="h-3 w-3" /></span>
+                  <span className="type-hud-label">{t('info.system')}</span>
                 </div>
-                <Progress value={cpuUsage} className="h-1.5" indicatorClassName={statusColorMap[cpuStatus]} />
-              </div>
-
-              {/* RAM */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <MemoryStick className="h-3.5 w-3.5 text-primary" />
-                    <span className="text-xs font-mono font-bold">{t('label.ram')}</span>
-                    <span className="text-xs text-muted-foreground font-metric">
-                      {formatBytes(stats.ram.used)}/{formatBytes(stats.ram.total)}
-                    </span>
-                  </div>
-                  <span className={cn('text-xs font-metric font-bold', {
-                    'text-destructive': ramStatus === 'critical',
-                    'text-warning': ramStatus === 'warning',
-                  })}>
-                    {ramUsage.toFixed(1)}%
+                <div className="grid grid-cols-[12px_auto_1fr] gap-x-2 gap-y-1.5 text-xs font-mono items-center">
+                  <SystemIcon kind="cpu" value={node.cpu_name} className="h-3 w-3 text-muted-foreground/70" />
+                  <span className="type-hud-label-sm whitespace-nowrap">{t('label.cpu')}</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="truncate cursor-default type-spec-value font-mono text-xs">{node.cpu_name || '-'} ({node.cpu_cores}C)</span>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-xs text-xs font-mono">{node.cpu_name || '-'} ({node.cpu_cores}C)</TooltipContent>
+                  </Tooltip>
+                  <SystemIcon kind="arch" value={node.arch} className="h-3 w-3 text-muted-foreground/70" />
+                  <span className="type-hud-label-sm whitespace-nowrap">{t('label.arch')}</span>
+                  <span className="truncate type-spec-value font-mono text-xs">{node.arch || '-'}</span>
+                  <SystemIcon kind="os" value={node.os} className="h-3 w-3 text-muted-foreground/70" />
+                  <span className="type-hud-label-sm whitespace-nowrap">{t('label.os')}</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="truncate cursor-default type-spec-value font-mono text-xs">{node.os || '-'}</span>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-xs text-xs font-mono">{node.os || '-'}</TooltipContent>
+                  </Tooltip>
+                  <SystemIcon kind="virt" value={node.virtualization} className="h-3 w-3 text-muted-foreground/70" />
+                  <span className="type-hud-label-sm whitespace-nowrap">{t('label.virt')}</span>
+                  <span className="truncate type-spec-value font-mono text-xs">{node.virtualization || '-'}</span>
+                  <MapPin className="h-3 w-3 text-muted-foreground/70" />
+                  <span className="type-hud-label-sm whitespace-nowrap">{t('label.region')}</span>
+                  <span className="inline-flex min-w-0 items-center gap-1 truncate type-spec-value font-mono text-xs">
+                    {node.region ? (
+                      <>
+                        {regionEmoji && <span className="shrink-0">{regionEmoji}</span>}
+                        <span className="truncate">{regionName || node.region}</span>
+                      </>
+                    ) : (
+                      '-'
+                    )}
                   </span>
+                  {node.kernel_version && (
+                    <>
+                      <Terminal className="h-3 w-3 text-muted-foreground/70" />
+                      <span className="type-hud-label-sm whitespace-nowrap">{t('label.kernel')}</span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="truncate cursor-default type-spec-value font-mono text-xs">{node.kernel_version}</span>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="max-w-xs text-xs font-mono">{node.kernel_version}</TooltipContent>
+                      </Tooltip>
+                    </>
+                  )}
                 </div>
-                <Progress value={ramUsage} className="h-1.5" indicatorClassName={statusColorMap[ramStatus]} />
               </div>
 
-              {/* SWAP */}
-              {stats.swap.total > 0 && (
+              {/* Resource gauges */}
+              <div className="stat-section border-t border-border/20 p-2.5 space-y-2.5">
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
-                      <Layers className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-xs font-mono font-bold">{t('label.swap')}</span>
-                    <span className="text-xs text-muted-foreground font-metric">
-                        {formatBytes(stats.swap.used)}/{formatBytes(stats.swap.total)}
-                    </span>
+                      <span className="stat-chip stat-chip--cpu"><Cpu className="h-3 w-3" /></span>
+                      <span className="type-hud-label">{t('label.cpu')}</span>
                     </div>
-                    <span className="text-xs font-metric font-bold">
-                      {swapUsage.toFixed(1)}%
+                    <span className={cn('type-metric-md', {
+                      'text-destructive': cpuStatus === 'critical',
+                      'text-warning': cpuStatus === 'warning',
+                    })}>
+                      {cpuUsage.toFixed(1)}%
                     </span>
                   </div>
-                  <Progress value={swapUsage} className="h-1.5" />
+                  <Progress value={cpuUsage} className="h-1.5" indicatorClassName={statusColorMap[cpuStatus]} />
                 </div>
-              )}
 
-              {/* Disk */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <HardDrive className="h-3.5 w-3.5 text-primary" />
-                    <span className="text-xs font-mono font-bold">{t('label.disk')}</span>
-                    <span className="text-xs text-muted-foreground font-metric">
-                      {formatBytes(stats.disk.used)}/{formatBytes(stats.disk.total)}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <span className="stat-chip stat-chip--ram"><MemoryStick className="h-3 w-3" /></span>
+                      <span className="type-hud-label shrink-0">{t('label.ram')}</span>
+                      <span className="truncate text-xxs text-muted-foreground font-metric tabular-nums">
+                        {formatBytes(stats.ram.used)}/{formatBytes(stats.ram.total)}
+                      </span>
+                    </div>
+                    <span className={cn('type-metric-md shrink-0', {
+                      'text-destructive': ramStatus === 'critical',
+                      'text-warning': ramStatus === 'warning',
+                    })}>
+                      {ramUsage.toFixed(1)}%
                     </span>
                   </div>
-                  <span className={cn('text-xs font-metric font-bold', {
-                    'text-destructive': diskStatus === 'critical',
-                    'text-warning': diskStatus === 'warning',
-                  })}>
-                    {diskUsage.toFixed(1)}%
-                  </span>
+                  <Progress value={ramUsage} className="h-1.5" indicatorClassName={statusColorMap[ramStatus]} />
                 </div>
-                <Progress value={diskUsage} className="h-1.5" indicatorClassName={statusColorMap[diskStatus]} />
-              </div>
-            </div>
 
-            {/* Load */}
-            <div className="p-2.5 rounded-md bg-muted/20 border border-border/30 space-y-2">
-              <div className="flex items-center gap-1.5">
-                <Activity className="h-3.5 w-3.5 text-primary" />
-                <span className="type-hud-label">{t('label.load')}</span>
-              </div>
-              <div className="grid grid-cols-3 gap-1.5">
-                <div className="text-center">
-                  <div className="text-xs font-mono text-muted-foreground">{t('label.load1m')}</div>
-                  <div className="text-sm font-metric font-bold">{stats.load.load1.toFixed(2)}</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xs font-mono text-muted-foreground">{t('label.load5m')}</div>
-                  <div className="text-sm font-metric font-bold">{stats.load.load5.toFixed(2)}</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xs font-mono text-muted-foreground">{t('label.load15m')}</div>
-                  <div className="text-sm font-metric font-bold">{stats.load.load15.toFixed(2)}</div>
-                </div>
-              </div>
-            </div>
+                {stats.swap.total > 0 && (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <span className="stat-chip stat-chip--ram"><Layers className="h-3 w-3" /></span>
+                        <span className="type-hud-label shrink-0">{t('label.swap')}</span>
+                        <span className="truncate text-xxs text-muted-foreground font-metric tabular-nums">
+                          {formatBytes(stats.swap.used)}/{formatBytes(stats.swap.total)}
+                        </span>
+                      </div>
+                      <span className="type-metric-md shrink-0">{swapUsage.toFixed(1)}%</span>
+                    </div>
+                    <Progress value={swapUsage} className="h-1.5" />
+                  </div>
+                )}
 
-            {/* Network */}
-            <div className="relative p-2.5 rounded-md bg-muted/25 border border-border/40 border-t-primary/40 space-y-2 sidebar-network-card">
-              <div className="flex items-center gap-1.5">
-                <Network className="h-3.5 w-3.5 text-primary" />
-                <span className="type-hud-label text-foreground/85">{t('label.network')}</span>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <span className="stat-chip stat-chip--disk"><HardDrive className="h-3 w-3" /></span>
+                      <span className="type-hud-label shrink-0">{t('label.disk')}</span>
+                      <span className="truncate text-xxs text-muted-foreground font-metric tabular-nums">
+                        {formatBytes(stats.disk.used)}/{formatBytes(stats.disk.total)}
+                      </span>
+                    </div>
+                    <span className={cn('type-metric-md shrink-0', {
+                      'text-destructive': diskStatus === 'critical',
+                      'text-warning': diskStatus === 'warning',
+                    })}>
+                      {diskUsage.toFixed(1)}%
+                    </span>
+                  </div>
+                  <Progress value={diskUsage} className="h-1.5" indicatorClassName={statusColorMap[diskStatus]} />
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <div className="text-xs font-mono text-muted-foreground">{t('label.upload')}</div>
-                  <div className="text-sm font-metric font-bold">{formatSpeed(stats.network.up)}</div>
+
+              {/* Load */}
+              <div className="stat-section border-t border-border/20 p-2.5 flex flex-col gap-1.5" data-accent="load">
+                <div className="flex items-center gap-1.5">
+                  <span className="stat-chip stat-chip--load"><Activity className="h-3 w-3" /></span>
+                  <span className="type-hud-label">{t('label.load')}</span>
                 </div>
-                <div className="text-right">
-                  <div className="text-xs font-mono text-muted-foreground">{t('label.download')}</div>
-                  <div className="text-sm font-metric font-bold">{formatSpeed(stats.network.down)}</div>
+                <div className={cn('type-metric-hero tabular-nums', loadStatusTone)}>
+                  {stats.load.load1.toFixed(2)}
                 </div>
-                <div>
-                  <div className="text-xs font-mono text-muted-foreground">{t('label.totalUp')}</div>
-                  <div className="text-sm font-metric font-bold">
-                    {stats.network.totalUp ? formatBytes(stats.network.totalUp) : t('label.na')}
+                <div className="grid grid-cols-3 gap-1 pt-1.5 border-t border-border/15">
+                  <div>
+                    <div className="type-hud-label-sm">{t('label.load1m')}</div>
+                    <div className="type-metric-md tabular-nums">{stats.load.load1.toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <div className="type-hud-label-sm">{t('label.load5m')}</div>
+                    <div className="type-metric-md tabular-nums text-foreground/85">{stats.load.load5.toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <div className="type-hud-label-sm">{t('label.load15m')}</div>
+                    <div className="type-metric-md tabular-nums text-foreground/65">{stats.load.load15.toFixed(2)}</div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-xs font-mono text-muted-foreground">{t('label.totalDown')}</div>
-                  <div className="text-sm font-metric font-bold">
-                    {stats.network.totalDown ? formatBytes(stats.network.totalDown) : t('label.na')}
+              </div>
+
+              {/* Network */}
+              <div className="stat-section border-t border-border/20 p-2.5 flex flex-col gap-2" data-accent="network">
+                <div className="flex items-center gap-1.5">
+                  <span className="stat-chip stat-chip--network"><Network className="h-3 w-3" /></span>
+                  <span className="type-hud-label">{t('label.network')}</span>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-baseline justify-between gap-3 tabular-nums">
+                    <div className="flex min-w-0 items-baseline gap-2">
+                      <span className="type-hud-label-sm shrink-0">{t('label.totalUp')}</span>
+                      <span className="type-metric-md">
+                        {stats.network.totalUp ? formatBytes(stats.network.totalUp) : t('label.na')}
+                      </span>
+                    </div>
+                    <span className="type-metric-md shrink-0 text-chart-7">{formatSpeed(stats.network.up)}</span>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-3 tabular-nums">
+                    <div className="flex min-w-0 items-baseline gap-2">
+                      <span className="type-hud-label-sm shrink-0">{t('label.totalDown')}</span>
+                      <span className="type-metric-md">
+                        {stats.network.totalDown ? formatBytes(stats.network.totalDown) : t('label.na')}
+                      </span>
+                    </div>
+                    <span className="type-metric-md shrink-0 text-chart-8">{formatSpeed(stats.network.down)}</span>
                   </div>
                 </div>
                 {isLoggedIn && (
-                  <>
-                    <div>
-                      <div className="text-xs font-mono text-muted-foreground">{t('label.tcp')}</div>
-                      <div className="text-sm font-metric font-bold">{stats.connections.tcp}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs font-mono text-muted-foreground">{t('label.udp')}</div>
-                      <div className="text-sm font-metric font-bold">{stats.connections.udp}</div>
-                    </div>
-                  </>
+                  <div className="flex items-center gap-2 pt-1.5 border-t border-border/15">
+                    <span className="type-hud-label-sm">{t('label.tcp')}</span>
+                    <span className="text-xxs font-metric font-bold tabular-nums text-chart-5">{stats.connections.tcp}</span>
+                    <span className="text-xxs text-muted-foreground/20">|</span>
+                    <span className="type-hud-label-sm">{t('label.udp')}</span>
+                    <span className="text-xxs font-metric font-bold tabular-nums text-chart-6">{stats.connections.udp}</span>
+                  </div>
                 )}
               </div>
-            </div>
 
-            {/* Bottom row: process + uptime */}
-            <div className={cn('grid gap-1.5', isLoggedIn ? 'grid-cols-2' : 'grid-cols-1')}>
-              {isLoggedIn && (
-                <div className="p-2 rounded-md bg-muted/20 border border-border/30 text-center">
-                  <div className="text-xs font-mono text-muted-foreground">{t('label.proc')}</div>
-                  <div className="text-sm font-metric font-bold">{stats.process}</div>
+              {/* Uptime + process — single-line readout, no hero metric */}
+              <div className="stat-section border-t border-border/20 p-2.5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="stat-chip stat-chip--uptime"><Clock className="h-3 w-3" /></span>
+                    <span className="type-hud-label">{t('label.uptime')}</span>
+                  </div>
+                  <span className="type-metric-md tabular-nums shrink-0">{formatUptime(stats.uptime)}</span>
+                </div>
+                {isLoggedIn && stats.process > 0 && (
+                  <div className="flex items-baseline justify-between gap-3 pt-1.5 mt-1.5 border-t border-border/15 tabular-nums">
+                    <span className="type-hud-label-sm">{t('label.proc')}</span>
+                    <span className="type-metric-md">{stats.process}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Traffic limit */}
+              {!!(node.traffic_limit && node.traffic_limit > 0 && node.traffic_limit_type && node.traffic_limit_type !== 'no_limit') && (
+                <div className="stat-section border-t border-border/20 p-2.5 flex flex-col gap-1.5">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="stat-chip stat-chip--traffic shrink-0"><Gauge className="h-3 w-3" /></span>
+                    <span className="type-hud-label truncate">
+                      {t('label.traffic')} <span className="text-muted-foreground/60 normal-case">({formatTrafficType(node.traffic_limit_type as TrafficLimitType)})</span>
+                    </span>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-2 tabular-nums">
+                    <span className={cn(
+                      'type-metric-md',
+                      (() => {
+                        const used = calcTrafficUsage(stats.network.totalUp, stats.network.totalDown, node.traffic_limit_type as TrafficLimitType);
+                        const pct = (used / node.traffic_limit!) * 100;
+                        return pct >= 90 ? 'text-destructive' : pct >= 70 ? 'text-warning' : '';
+                      })()
+                    )}>
+                      {formatBytes(calcTrafficUsage(stats.network.totalUp, stats.network.totalDown, node.traffic_limit_type as TrafficLimitType))}
+                      <span className="text-muted-foreground/60 mx-0.5">/</span>
+                      {formatBytes(node.traffic_limit)}
+                    </span>
+                  </div>
+                  <Progress
+                    value={Math.min((calcTrafficUsage(stats.network.totalUp, stats.network.totalDown, node.traffic_limit_type as TrafficLimitType) / node.traffic_limit) * 100, 100)}
+                    className="h-1.5"
+                    indicatorClassName={(() => {
+                      const pct = (calcTrafficUsage(stats.network.totalUp, stats.network.totalDown, node.traffic_limit_type as TrafficLimitType) / node.traffic_limit) * 100;
+                      return pct >= 90 ? 'bg-destructive' : pct >= 70 ? 'bg-warning' : '';
+                    })()}
+                  />
                 </div>
               )}
-              <div className="p-2 rounded-md bg-muted/20 border border-border/30 text-center">
-                <div className="text-xs font-mono text-muted-foreground">{t('label.uptime')}</div>
-                <div className="text-sm font-metric font-bold">{formatUptime(stats.uptime)}</div>
-              </div>
-            </div>
 
-            {/* Traffic limit */}
-            {!!(node.traffic_limit && node.traffic_limit > 0 && node.traffic_limit_type && node.traffic_limit_type !== 'no_limit') && (
-              <div className="p-2.5 rounded-md bg-muted/20 border border-border/30 space-y-1">
-                <div className="flex items-center justify-between text-xs font-mono">
-                  <span className="text-muted-foreground">{t('label.traffic')} ({formatTrafficType(node.traffic_limit_type as TrafficLimitType)})</span>
-                  <span className={cn(
-                    'font-metric font-bold',
-                    (() => {
-                      const used = calcTrafficUsage(stats.network.totalUp, stats.network.totalDown, node.traffic_limit_type as TrafficLimitType);
-                      const pct = (used / node.traffic_limit!) * 100;
-                      return pct >= 90 ? 'text-destructive' : pct >= 70 ? 'text-warning' : '';
-                    })()
-                  )}>
-                    {formatBytes(calcTrafficUsage(stats.network.totalUp, stats.network.totalDown, node.traffic_limit_type as TrafficLimitType))} / {formatBytes(node.traffic_limit)}
-                  </span>
+              {/* Remark — inline annotation, same panel rhythm */}
+              {node.public_remark && (
+                <div className="stat-section border-t border-border/20 px-2.5 py-2">
+                  <RemarkNote text={node.public_remark} variant="public" layout="inline" />
                 </div>
-                <Progress
-                  value={Math.min((calcTrafficUsage(stats.network.totalUp, stats.network.totalDown, node.traffic_limit_type as TrafficLimitType) / node.traffic_limit) * 100, 100)}
-                  className="h-1.5"
-                  indicatorClassName={(() => {
-                    const pct = (calcTrafficUsage(stats.network.totalUp, stats.network.totalDown, node.traffic_limit_type as TrafficLimitType) / node.traffic_limit) * 100;
-                    return pct >= 90 ? 'bg-destructive' : pct >= 70 ? 'bg-warning' : '';
-                  })()}
-                />
-              </div>
-            )}
-
-            {/* Remark */}
-            <RemarkNote text={node.public_remark} variant="public" />
+              )}
+            </div>
           </>
         ) : null}
+        </div>
+      </div>
 
-        {/* Action buttons — Charts hidden on mobile (modal too small), Detail always visible */}
-        <div className="sticky bottom-0 -mx-3 px-3 pt-3 pb-3 mt-2 flex gap-2 bg-gradient-to-t from-card via-card/95 to-card/0 backdrop-blur-sm">
-          <Button
-            variant="outline"
-            size="sm"
-            className="hidden sm:flex flex-1 text-xs font-mono border-primary/30 hover:bg-primary/15 hover:text-primary"
-            onClick={() => onViewCharts(node.uuid, node.name)}
-          >
-            <BarChart3 className="h-3 w-3 mr-1.5" />
-            {t('action.charts')}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1 text-xs font-mono border-primary/30 hover:bg-primary/15 hover:text-primary"
-            onClick={() => navigate(`/node/${node.uuid}`)}
-          >
-            <ExternalLink className="h-3 w-3 mr-1.5" />
-            {t('action.detail')}
-          </Button>
-        </div>
-        </div>
+      {/* Action buttons — Charts hidden on mobile (modal too small), Detail always visible */}
+      <div className="sidebar-detail-action-bar">
+        <Button
+          variant="outline"
+          size="sm"
+          className="hidden sm:flex flex-1 text-xs font-mono border-primary/30 bg-card/40 backdrop-blur-sm hover:bg-primary/15 hover:text-primary"
+          onClick={() => onViewCharts(node.uuid, node.name)}
+        >
+          <BarChart3 className="h-3 w-3 mr-1.5" />
+          {t('action.charts')}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="flex-1 text-xs font-mono border-primary/30 bg-card/40 backdrop-blur-sm hover:bg-primary/15 hover:text-primary"
+          onClick={() => navigate(`/node/${node.uuid}`)}
+        >
+          <ExternalLink className="h-3 w-3 mr-1.5" />
+          {t('action.detail')}
+        </Button>
       </div>
     </div>
   );

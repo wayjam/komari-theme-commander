@@ -6,14 +6,23 @@ import { Button } from './ui/button';
 import { Progress } from './ui/progress';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Sparkline } from './Sparkline';
-import { ArrowLeft, Network, Signal, ArrowUp, ArrowDown, ArrowUpDown, Gauge, Unplug, ChevronDown, ChevronRight, Info, Clock, AlertTriangle, RotateCw } from 'lucide-react';
+import { ChartTimeRangeBar } from './ChartTimeRangeBar';
+import { PingCurveModeToggle } from './PingCurveModeToggle';
+import { ArrowLeft, Network, Signal, ArrowUp, ArrowDown, ArrowUpDown, Gauge, Unplug, ChevronDown, ChevronRight, Info, AlertTriangle, RotateCw } from 'lucide-react';
 import { HudSpinner } from './HudSpinner';
-import { apiService } from '../services/api';
+import { apiService, type NodeWithStatus } from '../services/api';
 import { useAppConfig } from '@/hooks/useAppConfig';
 import { usePrivacyMode } from '@/hooks/usePrivacyMode';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { formatSpeed, formatBytes, cn, calcTrafficUsage, type TrafficLimitType } from '@/lib/utils';
-import type { NodeWithStatus } from '@/services/api';
+import { useAdaptiveLoadTimeRange } from '@/hooks/useAdaptiveLoadTimeRange';
+import { useNodeRealtimeLoadRecords } from '@/hooks/useNodeRealtimeLoadRecords';
+import {
+  buildLoadChartTimeRanges,
+  buildPingChartTimeRanges,
+  defaultPingTimeRange,
+  type PingTimeRangeId,
+} from '@/lib/chart-time-ranges';
 import {
   ConnectionsLineChart,
   NetworkTrafficAreaChart,
@@ -44,15 +53,26 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
   const navigate = useNavigate();
   const nodeUuid = propUuid || params.uuid || '';
   const [nodeName, setNodeName] = useState(propName || '');
-  const { recordPreserveTime, isLoggedIn } = useAppConfig();
+  const { recordPreserveTime, pingRecordPreserveTime, isLoggedIn } = useAppConfig();
   const { maskName } = usePrivacyMode();
 
-  const [loadData, setLoadData] = useState<LoadRecord[] | null>(null);
+  const [loadTimeRange, setLoadTimeRange] = useAdaptiveLoadTimeRange(
+    propNode ? propNode.status === 'online' : undefined,
+    recordPreserveTime,
+  );
+  const [pingTimeRange, setPingTimeRange] = useState<PingTimeRangeId>(() =>
+    defaultPingTimeRange(pingRecordPreserveTime),
+  );
+  const [loadRefreshKey, setLoadRefreshKey] = useState(0);
+  const [pingRefreshKey, setPingRefreshKey] = useState(0);
+  const isLoadRealtime = loadTimeRange === 'realtime';
+
+  const [historicalLoadData, setHistoricalLoadData] = useState<LoadRecord[] | null>(null);
+  const [historicalLoadLoading, setHistoricalLoadLoading] = useState(false);
+  const [historicalLoadError, setHistoricalLoadError] = useState<string | null>(null);
   const [pingData, setPingData] = useState<PingRecord[] | null>(null);
   const [tasks, setTasks] = useState<TaskInfo[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [timeRange, setTimeRange] = useState(1);
+  const [pingLoading, setPingLoading] = useState(false);
   const [hiddenLines, setHiddenLines] = useState<Record<string, boolean>>({});
   const [smooth, setSmooth] = useState(false);
   const [latencyCollapsed, setLatencyCollapsed] = useState(false);
@@ -84,17 +104,21 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
     setDownHistory(h => [...h.slice(-(SPARK_CAP - 1)), down]);
   }, [stats]);
 
-  const timeRanges = useMemo(() => {
-    const candidates = [
-      { value: 1, label: '1H' },
-      { value: 6, label: '6H' },
-      { value: 24, label: '24H' },
-      { value: 168, label: '7D' },
-      { value: 720, label: '30D' },
-    ];
-    const limit = recordPreserveTime > 0 ? recordPreserveTime : 720;
-    return candidates.filter(r => r.value <= limit);
-  }, [recordPreserveTime]);
+  const loadTimeRangeOptions = useMemo(
+    () => buildLoadChartTimeRanges(recordPreserveTime),
+    [recordPreserveTime],
+  );
+  const pingTimeRangeOptions = useMemo(
+    () => buildPingChartTimeRanges(pingRecordPreserveTime),
+    [pingRecordPreserveTime],
+  );
+
+  const {
+    records: realtimeLoadRecords,
+    loading: realtimeLoadLoading,
+    error: realtimeLoadError,
+    refresh: refreshRealtimeLoad,
+  } = useNodeRealtimeLoadRecords(nodeUuid, isLoadRealtime);
 
   useEffect(() => {
     if (!nodeName && nodeUuid) {
@@ -105,50 +129,62 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
     }
   }, [nodeUuid, nodeName, maskName]);
 
-  // Fetch ping data independently (not tied to timeRange)
   const fetchPingData = useCallback(() => {
     if (!nodeUuid) return;
-    apiService.getPingHistory(nodeUuid, 1)
+    setPingLoading(true);
+    apiService.getPingHistory(nodeUuid, pingTimeRange)
       .then((pingHistory) => {
         if (pingHistory?.records) {
           const records = (pingHistory.records || []) as PingRecord[];
           records.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
           setPingData(records);
           setTasks(pingHistory.tasks || []);
+        } else {
+          setPingData([]);
         }
+        setPingLoading(false);
       })
-      .catch(() => {});
-  }, [nodeUuid]);
+      .catch(() => {
+        setPingLoading(false);
+      });
+  }, [nodeUuid, pingTimeRange]);
 
-  // Fetch load/chart data (tied to timeRange)
-  const fetchLoadData = useCallback(() => {
-    if (!nodeUuid) return;
-    setLoading(true);
-    setError(null);
-    apiService.getLoadHistory(nodeUuid, timeRange)
+  const fetchHistoricalLoad = useCallback(() => {
+    if (!nodeUuid || isLoadRealtime || typeof loadTimeRange !== 'number') return;
+    setHistoricalLoadLoading(true);
+    setHistoricalLoadError(null);
+    apiService.getLoadHistory(nodeUuid, loadTimeRange)
       .then((loadHistory) => {
         if (loadHistory?.records) {
           const records = (loadHistory.records || []) as LoadRecord[];
           records.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
-          setLoadData(records);
+          setHistoricalLoadData(records);
+        } else {
+          setHistoricalLoadData([]);
         }
-        setLoading(false);
+        setHistoricalLoadLoading(false);
       })
       .catch((err) => {
-        setError(err.message || "Error");
-        setLoading(false);
+        setHistoricalLoadError(err.message || "Error");
+        setHistoricalLoadLoading(false);
       });
-  }, [nodeUuid, timeRange]);
+  }, [nodeUuid, loadTimeRange, isLoadRealtime]);
 
-  const fetchData = useCallback(() => {
-    fetchLoadData();
-    fetchPingData();
-  }, [fetchLoadData, fetchPingData]);
+  useEffect(() => { fetchPingData(); }, [fetchPingData, pingRefreshKey]);
+  useEffect(() => {
+    if (isLoadRealtime) return;
+    fetchHistoricalLoad();
+  }, [fetchHistoricalLoad, isLoadRealtime, loadRefreshKey]);
 
-  // Ping data: fetch once on mount
-  useEffect(() => { fetchPingData(); }, [fetchPingData]);
-  // Load data: fetch when timeRange changes
-  useEffect(() => { fetchLoadData(); }, [fetchLoadData]);
+  useEffect(() => {
+    if (isLoadRealtime && loadRefreshKey > 0) {
+      refreshRealtimeLoad();
+    }
+  }, [isLoadRealtime, loadRefreshKey, refreshRealtimeLoad]);
+
+  const loadData = isLoadRealtime ? realtimeLoadRecords : historicalLoadData;
+  const loadLoading = isLoadRealtime ? realtimeLoadLoading : historicalLoadLoading;
+  const loadError = isLoadRealtime ? realtimeLoadError : historicalLoadError;
 
   const chartData = useMemo(() => {
     const data = loadData || [];
@@ -160,13 +196,13 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
     const data = pingData || [];
     if (!data.length) return [];
     const taskKeys = tasks.map(t => String(t.id));
-    let processed = processPingRecords(data, tasks, timeRange);
+    let processed = processPingRecords(data, tasks, pingTimeRange);
     processed = interpolatePingNulls(processed, taskKeys);
     if (smooth) {
       processed = ewmaSmooth(processed, taskKeys, 0.3);
     }
     return processed;
-  }, [pingData, tasks, timeRange, smooth]);
+  }, [pingData, tasks, pingTimeRange, smooth]);
 
   // Latency summary — uses backend stats when available, falls back to local calculation
   const latencySummary = useMemo(() => {
@@ -275,24 +311,7 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
     }
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <HudSpinner size="lg" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-3 h-64 rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl">
-        <div className="text-sm text-destructive">{error}</div>
-        <button onClick={fetchData} className="px-3 py-1.5 text-xs font-mono rounded border border-primary/30 text-primary hover:bg-primary/15 transition-colors cursor-pointer">
-          {t('action.retry')}
-        </button>
-      </div>
-    );
-  }
+  if (!nodeUuid) return null;
 
   return (
     <div className="w-full space-y-5 overflow-hidden">
@@ -315,44 +334,6 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
             <span className="text-muted-foreground/70"> · {t('label.network')}</span>
           </span>
         </span>
-      </div>
-
-      {/* 与 NodeCharts 同一时间范围条样式与位置（在实时面板与图表区之前） */}
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/40 bg-card/60 backdrop-blur-xl px-3 py-2 commander-corners commander-corners-soft relative overflow-hidden">
-        <span className="corner-bottom" />
-        <div className="flex items-center gap-2">
-          <Clock className="h-3.5 w-3.5 text-primary" aria-hidden />
-          <span className="type-console-title">
-            {t('chart.timeRange')}
-          </span>
-        </div>
-        <div className="flex items-center gap-0.5 rounded-md border border-border/40 bg-background/40 p-0.5 overflow-x-auto scrollbar-none max-w-full">
-          {timeRanges.map(tr => (
-            <button
-              key={tr.value}
-              type="button"
-              onClick={() => setTimeRange(tr.value)}
-              aria-pressed={timeRange === tr.value}
-              className={cn(
-                'cursor-pointer rounded h-9 sm:h-6 min-w-9 sm:min-w-0 px-2.5 font-mono text-xs tabular-nums transition-all duration-150 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
-                timeRange === tr.value
-                  ? 'bg-primary/15 text-primary shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_30%,transparent)]'
-                  : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground',
-              )}
-            >
-              {tr.label}
-            </button>
-          ))}
-          <div className="mx-0.5 h-4 w-px bg-border/40 shrink-0" />
-          <button
-            type="button"
-            onClick={fetchData}
-            aria-label={t('action.retry')}
-            className="cursor-pointer rounded h-9 w-9 sm:h-6 sm:w-6 inline-flex items-center justify-center text-muted-foreground transition-colors hover:bg-primary/15 hover:text-primary shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-          >
-            <RotateCw className="h-3 w-3" aria-hidden />
-          </button>
-        </div>
       </div>
 
       {/* Network Info Panel — 实时速率与累计流量分层，避免 lg 三列栅格错位 */}
@@ -739,7 +720,37 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
         </div>
       )}
 
-      {/* 与节点详情页中图表顺序一致：连接数 → 网络流量 → Ping（独占一行） */}
+      {/* Load charts — time range aligned with node detail page */}
+      <ChartTimeRangeBar
+        value={loadTimeRange}
+        onChange={setLoadTimeRange}
+        onRefresh={() => setLoadRefreshKey(k => k + 1)}
+        options={loadTimeRangeOptions}
+        loading={loadLoading}
+      />
+
+      {loadLoading && (
+        <div className="flex h-48 items-center justify-center rounded-lg border border-border/50 bg-card/40 backdrop-blur-xl">
+          <HudSpinner size="lg" />
+        </div>
+      )}
+
+      {loadError && !loadLoading && (
+        <div className="flex flex-col items-center justify-center gap-3 h-48 rounded-lg border border-destructive/40 bg-card/80 backdrop-blur-xl px-4">
+          <AlertTriangle className="h-5 w-5 text-destructive/80" aria-hidden />
+          <div className="text-sm text-destructive text-center">{loadError}</div>
+          <button
+            type="button"
+            onClick={isLoadRealtime ? refreshRealtimeLoad : fetchHistoricalLoad}
+            className="px-3 py-1.5 text-xs font-mono rounded border border-primary/30 text-primary hover:bg-primary/15 transition-colors cursor-pointer inline-flex items-center gap-1.5"
+          >
+            <RotateCw className="h-3 w-3" aria-hidden />
+            {t('action.retry')}
+          </button>
+        </div>
+      )}
+
+      {!loadLoading && !loadError && (
       <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-2">
         <Card className={chartCardClass}>
           <CardHeader className="px-4 pt-3 pb-2">
@@ -776,6 +787,15 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
         </Card>
 
         {pingChartData.length > 0 && (
+          <>
+            <ChartTimeRangeBar
+              value={pingTimeRange}
+              onChange={setPingTimeRange}
+              onRefresh={() => setPingRefreshKey(k => k + 1)}
+              options={pingTimeRangeOptions}
+              loading={pingLoading}
+              className="lg:col-span-2"
+            />
           <Card className={`${chartCardClass} lg:col-span-2`}>
             <CardHeader className="px-4 pt-3 pb-2">
               <CardTitle className="flex items-center justify-between text-sm font-semibold">
@@ -783,26 +803,10 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
                   <Signal className="h-4 w-4 text-chart-2" />
                   {t('chart.pingLatency')}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setSmooth(s => !s)}
-                  aria-label={t('chart.ewmaTooltip')}
-                  aria-pressed={smooth}
-                  className={`flex h-9 sm:h-7 cursor-pointer items-center gap-1 rounded px-3 sm:px-1.5 font-mono text-xs tracking-widest transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
-                    smooth
-                      ? 'bg-primary/10 text-primary/80'
-                      : 'text-muted-foreground/40 hover:text-muted-foreground/60'
-                  }`}
-                >
-                  <span
-                    className={`h-1.5 w-1.5 rounded-full transition-all duration-300 ${
-                      smooth
-                        ? 'bg-primary shadow-[0_0_4px_var(--color-primary)]'
-                        : 'bg-muted-foreground/20'
-                    }`}
-                  />
-                  <span>{smooth ? t('chart.smooth') : t('chart.raw')}</span>
-                </button>
+                <PingCurveModeToggle
+                  value={smooth ? 'smooth' : 'raw'}
+                  onChange={mode => setSmooth(mode === 'smooth')}
+                />
               </CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-3">
@@ -818,8 +822,10 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
               />
             </CardContent>
           </Card>
+          </>
         )}
       </div>
+      )}
     </div>
   );
 }

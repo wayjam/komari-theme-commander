@@ -192,27 +192,22 @@ export function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
 
             <div className="grid grid-cols-1 divide-y divide-border/20 border-t border-border/20 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
               <div className="stat-section flex flex-col gap-1.5 p-3 sm:p-4" data-accent="network">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="stat-chip stat-chip--network"><Network className="h-3 w-3" /></span>
-                    <span className="type-hud-label">{t('label.network')}</span>
-                  </div>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Link
-                        to={`/node/${node.uuid}/network`}
-                        aria-label={t('label.networkDetailHint')}
-                        className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-xxs font-mono font-bold uppercase tracking-wider text-primary ring-1 ring-primary/25 transition-colors hover:bg-primary/18 hover:ring-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-                      >
-                        {t('label.networkDetail')}
-                        <ExternalLink className="h-2.5 w-2.5" aria-hidden />
-                      </Link>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-xs text-xs">
-                      {t('label.networkDetailHint')}
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      to={`/node/${node.uuid}/network`}
+                      aria-label={t('label.networkDetailHint')}
+                      className="group inline-flex w-fit max-w-full items-center gap-1.5 rounded-md -ml-1 px-1 py-0.5 transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                    >
+                      <span className="stat-chip stat-chip--network"><Network className="h-3 w-3" /></span>
+                      <span className="type-hud-label transition-colors group-hover:text-primary">{t('label.network')}</span>
+                      <ExternalLink className="h-2.5 w-2.5 shrink-0 text-primary/50 transition-colors group-hover:text-primary" aria-hidden />
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-xs text-xs">
+                    {t('label.networkDetailHint')}
+                  </TooltipContent>
+                </Tooltip>
                 <div className="flex flex-col gap-0.5">
                   <div className="flex items-center gap-1.5 type-metric-md tabular-nums">
                     <ArrowUp className="h-3 w-3 shrink-0 text-chart-7" aria-hidden />

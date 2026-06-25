@@ -2,9 +2,10 @@ import { Sparkline } from './Sparkline';
 import { useMemo, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, ArrowUp, ArrowDown, Activity, Clock, Network } from 'lucide-react';
+import { AlertTriangle, ArrowUp, ArrowDown, Activity, Clock, Network, Signal } from 'lucide-react';
 import { SystemIcon } from '@/lib/systemIcon';
 import type { NodeWithStatus } from '@/services/api';
+import { getBestPingLatency } from '@/services/api';
 import { useRecentStats } from '@/hooks/useRecentStats';
 import { formatBytes, formatSpeed, formatUptime, getUsageStatus, calcTrafficUsage, formatTrafficType, getExpiryStatus, formatExpiry, cn } from '@/lib/utils';
 import type { TrafficLimitType } from '@/lib/utils';
@@ -320,6 +321,7 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
   const diskStatus = getUsageStatus(diskUsage, { warning: 75, critical: 90 });
   const loadRatio = stats ? stats.load.load1 / (node.cpu_cores || 1) : 0;
   const loadStatus = getUsageStatus(loadRatio * 100, { warning: 100, critical: 150 });
+  const pingLatency = getBestPingLatency(stats?.ping);
   const expiryStatus = getExpiryStatus(node.expired_at);
   const priceLabel =
     node.price === -1 ? t('label.free') : node.price === 0 ? t('label.notSet') : `${node.currency}${node.price}`;
@@ -502,11 +504,19 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
                 value={stats.load.load1.toFixed(2)}
                 tone={loadStatus === 'critical' ? 'text-destructive' : loadStatus === 'warning' ? 'text-warning' : undefined}
               />
-              <MobileTelemetryTile
-                icon={Clock}
-                label={t('label.uptime')}
-                value={formatUptime(stats.uptime)}
-              />
+              {pingLatency !== null ? (
+                <MobileTelemetryTile
+                  icon={Signal}
+                  label={t('label.viewPingLatency')}
+                  value={`${Math.round(pingLatency)} ms`}
+                />
+              ) : (
+                <MobileTelemetryTile
+                  icon={Clock}
+                  label={t('label.uptime')}
+                  value={formatUptime(stats.uptime)}
+                />
+              )}
               <MobileNetworkTile
                 up={stats.network.up}
                 down={stats.network.down}
@@ -520,13 +530,23 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
             </div>
 
             {/* Desktop/tablet HUD metric strip */}
-            <div className="hidden sm:grid grid-cols-4 gap-1.5 pt-1">
+            <div className={cn(
+              'hidden sm:grid gap-1.5 pt-1',
+              pingLatency !== null ? 'grid-cols-5' : 'grid-cols-4',
+            )}>
               <CompactMetric
                 icon={Activity}
                 label={t('label.load')}
                 value={stats.load.load1.toFixed(2)}
                 tone={loadStatus === 'critical' ? 'text-destructive' : loadStatus === 'warning' ? 'text-warning' : undefined}
               />
+              {pingLatency !== null && (
+                <CompactMetric
+                  icon={Signal}
+                  label={t('label.viewPingLatency')}
+                  value={`${Math.round(pingLatency)} ms`}
+                />
+              )}
               <CompactMetric
                 icon={ArrowUp}
                 label={t('label.uploadShort')}

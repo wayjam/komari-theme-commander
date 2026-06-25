@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
+import { PingCurveModeToggle } from './PingCurveModeToggle';
 import { HudSpinner } from './HudSpinner';
 import { motion, useReducedMotion } from 'motion/react';
 import { apiService } from '@/services/api';
@@ -257,21 +258,10 @@ export function ChartModal({ nodeUuid, nodeName, onClose }: ChartModalProps) {
               ))}
             </div>
             {activeChart === 'ping' && (
-              <button
-                type="button"
-                onClick={() => setSmooth(s => !s)}
-                title={t('chart.ewmaTooltip')}
-                className={`flex shrink-0 cursor-pointer items-center gap-1 rounded px-2 h-9 sm:h-7 font-mono text-xs tracking-widest transition-all duration-200 ${
-                  smooth ? 'bg-primary/10 text-primary/80' : 'text-muted-foreground/40 hover:text-muted-foreground/60'
-                }`}
-              >
-                <span
-                  className={`h-1.5 w-1.5 rounded-full transition-all duration-300 ${
-                    smooth ? 'bg-primary shadow-[0_0_4px_var(--color-primary)]' : 'bg-muted-foreground/20'
-                  }`}
-                />
-                <span>{smooth ? t('chart.smooth') : t('chart.raw')}</span>
-              </button>
+              <PingCurveModeToggle
+                value={smooth ? 'smooth' : 'raw'}
+                onChange={mode => setSmooth(mode === 'smooth')}
+              />
             )}
           </div>
           <div className="pointer-events-none absolute top-0 right-0 bottom-0 w-6 bg-gradient-to-l from-card/95 to-transparent sm:hidden" />
