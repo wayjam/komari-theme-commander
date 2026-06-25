@@ -64,7 +64,6 @@ function NodeRowContentInner({
     ? `↑${formatSpeed(stats.network.up)} ↓${formatSpeed(stats.network.down)}`
     : '';
   const emoji = extractRegionEmoji(node.region);
-  const regionName = getRegionDisplayName(node.region);
 
   const tagList = parseTagList(node.tags);
   const maxVisibleTags = 3;
@@ -102,17 +101,9 @@ function NodeRowContentInner({
             )}
           </div>
         </div>
-        {node.region && (
-          <span
-            className="inline-flex max-w-[5.5rem] flex-shrink-0 items-center gap-1 rounded-sm border border-border/20 bg-muted/30 px-1 py-0.5 leading-none"
-            title={regionName || node.region}
-          >
-            {emoji && <span className="text-base">{emoji}</span>}
-            {regionName && (
-              <span className="truncate text-xxs font-mono text-muted-foreground/85">
-                {regionName}
-              </span>
-            )}
+        {emoji && (
+          <span className="text-base flex-shrink-0 leading-none bg-muted/30 rounded-sm px-1 py-0.5 border border-border/20">
+            {emoji}
           </span>
         )}
       </div>
