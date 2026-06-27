@@ -1911,6 +1911,74 @@
     display: none;
   }
 
+  /* Site footer — single-row bar with container-query priority hiding.
+     Lower pri-* numbers drop first as the bar narrows (Globe + sidebar,
+     tablet landscape, long i18n strings). WebSocket + mobile clock stay. */
+  .site-footer-bar {
+    container-type: inline-size;
+    container-name: site-footer;
+  }
+
+  @container site-footer (min-width: 52rem) {
+    .footer-clock-full {
+      display: inline;
+    }
+  }
+
+  @container site-footer (max-width: 56rem) {
+    .footer-pri-1 {
+      display: none;
+    }
+  }
+
+  @container site-footer (max-width: 48rem) {
+    .footer-pri-2 {
+      display: none;
+    }
+  }
+
+  @container site-footer (max-width: 42rem) {
+    .footer-pri-3 {
+      display: none;
+    }
+  }
+
+  @container site-footer (max-width: 36rem) {
+    .footer-pri-4 {
+      display: none;
+    }
+  }
+
+  @container site-footer (max-width: 34rem) {
+    .footer-pri-5 {
+      display: none;
+    }
+  }
+
+  @container site-footer (max-width: 30rem) {
+    .footer-pri-6 {
+      display: none;
+    }
+  }
+
+  @container site-footer (max-width: 27rem) {
+    .footer-pri-7 {
+      display: none;
+    }
+  }
+
+  @container site-footer (max-width: 24rem) {
+    .footer-pri-8 {
+      display: none;
+    }
+  }
+
+  @container site-footer (max-width: 22rem) {
+    .footer-pri-9 {
+      display: none;
+    }
+  }
+
   /* ════════════════════════════════════════════════════════════
      View Tabs — Sliding-indicator segmented control
      ════════════════════════════════════════════════════════════ */

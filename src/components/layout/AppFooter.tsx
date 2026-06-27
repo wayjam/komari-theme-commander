@@ -88,19 +88,19 @@ function FooterLocalClock() {
         <span ref={mobileRef} className="text-foreground/75 leading-none" />
       </div>
       <div
-        className="hidden md:flex items-center gap-1.5 font-metric tabular-nums text-muted-foreground/80 shrink-0 leading-none"
+        className="hidden md:flex items-center gap-1.5 font-metric tabular-nums text-muted-foreground/80 shrink-0 leading-none footer-pri-9"
         aria-live="polite"
         aria-atomic="true"
       >
         <Clock className="h-3 w-3 shrink-0 text-muted-foreground/55" aria-hidden />
         <span
           ref={tzRef}
-          className="font-mono uppercase tracking-wider text-muted-foreground/55 leading-none"
+          className="font-mono uppercase tracking-wider text-muted-foreground/55 leading-none footer-pri-3"
         >
           {t('hud.local')}
         </span>
-        <span ref={timeRef} className="lg:hidden text-foreground/75 leading-none" />
-        <span ref={fullRef} className="hidden lg:inline text-foreground/75 leading-none" />
+        <span ref={timeRef} className="text-foreground/75 leading-none" />
+        <span ref={fullRef} className="hidden footer-pri-4 footer-clock-full text-foreground/75 leading-none" />
       </div>
     </>
   );
@@ -110,9 +110,10 @@ interface FooterFleetMetricsProps {
   avgCpu: number;
   totalUp: number;
   totalDown: number;
+  className?: string;
 }
 
-function FooterFleetMetrics({ avgCpu, totalUp, totalDown }: FooterFleetMetricsProps) {
+function FooterFleetMetrics({ avgCpu, totalUp, totalDown, className }: FooterFleetMetricsProps) {
   const { t } = useTranslation();
   const cpuTone =
     avgCpu < 60 ? 'text-success' : avgCpu < 85 ? 'text-warning' : 'text-destructive';
@@ -121,38 +122,38 @@ function FooterFleetMetrics({ avgCpu, totalUp, totalDown }: FooterFleetMetricsPr
 
   return (
     <div
-      className="flex flex-wrap items-center gap-x-2 gap-y-0.5 sm:gap-x-3 min-w-0 leading-none"
+      className={cn(
+        'flex items-center gap-x-2 sm:gap-x-3 min-w-0 flex-nowrap leading-none',
+        className,
+      )}
       aria-label={`${t('hud.avgCpu')} ${avgCpu.toFixed(0)}%, ${upLabel} ${formatSpeed(totalUp)}, ${downLabel} ${formatSpeed(totalDown)}`}
     >
       <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
         <Cpu className={cn('h-3 w-3 shrink-0 opacity-70', cpuTone)} aria-hidden />
-        <span className="hidden sm:inline text-muted-foreground/60 uppercase tracking-[0.12em] sm:tracking-[0.16em]">
+        <span className="footer-pri-5 text-muted-foreground/60 uppercase tracking-[0.12em] sm:tracking-[0.16em]">
           {t('hud.avgCpu')}
         </span>
         <span className={cn('font-metric tracking-normal normal-case', cpuTone)}>
           {avgCpu.toFixed(0)}%
         </span>
       </div>
-      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 min-w-0">
-        <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
-          <ArrowUp className="h-3 w-3 text-success/80 shrink-0" aria-hidden />
-          <span className="hidden lg:inline text-muted-foreground/60 uppercase tracking-[0.12em]">
-            {upLabel}
-          </span>
-          <span className="font-metric text-success tracking-normal normal-case">
-            {formatSpeed(totalUp)}
-          </span>
-        </div>
-        <span className="text-muted-foreground/25 sm:hidden" aria-hidden>·</span>
-        <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
-          <ArrowDown className="h-3 w-3 text-primary/80 shrink-0" aria-hidden />
-          <span className="hidden lg:inline text-muted-foreground/60 uppercase tracking-[0.12em]">
-            {downLabel}
-          </span>
-          <span className="font-metric text-primary tracking-normal normal-case">
-            {formatSpeed(totalDown)}
-          </span>
-        </div>
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 min-w-0 footer-pri-7">
+        <ArrowUp className="h-3 w-3 text-success/80 shrink-0" aria-hidden />
+        <span className="footer-pri-5 text-muted-foreground/60 uppercase tracking-[0.12em]">
+          {upLabel}
+        </span>
+        <span className="font-metric text-success tracking-normal normal-case">
+          {formatSpeed(totalUp)}
+        </span>
+      </div>
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 min-w-0 footer-pri-6">
+        <ArrowDown className="h-3 w-3 text-primary/80 shrink-0" aria-hidden />
+        <span className="footer-pri-5 text-muted-foreground/60 uppercase tracking-[0.12em]">
+          {downLabel}
+        </span>
+        <span className="font-metric text-primary tracking-normal normal-case">
+          {formatSpeed(totalDown)}
+        </span>
       </div>
     </div>
   );
@@ -185,16 +186,17 @@ export function AppFooter({
   return (
     <footer className="sticky bottom-0 z-40 border-t border-border/50 bg-background/85 backdrop-blur-xl relative pb-safe">
       <div className="footer-neon-line" />
-      <div className="container mx-auto flex min-h-9 items-center px-3 sm:px-4 py-1.5 sm:py-2">
-        <div className="flex w-full flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-4 sm:gap-y-1 text-xxs sm:text-xs font-mono leading-none text-muted-foreground">
-          <div className="flex min-h-[1.125rem] flex-wrap items-center gap-x-2 sm:gap-x-3 gap-y-1 min-w-0 w-full sm:w-auto sm:flex-1">
+      <div className="site-footer-bar container mx-auto px-3 sm:px-4 py-1.5 sm:py-2">
+        <div className="flex min-h-9 w-full items-center justify-between gap-x-3 flex-nowrap overflow-hidden text-xxs sm:text-xs font-mono leading-none text-muted-foreground">
+          <div className="flex min-w-0 flex-1 items-center gap-x-2 sm:gap-x-3 flex-nowrap overflow-hidden">
             <WebSocketStatus />
             <FooterSep />
             <FooterLocalClock />
             {cpuSampled > 0 && (
               <>
-                <FooterSep />
+                <FooterSep className="footer-pri-8" />
                 <FooterFleetMetrics
+                  className="footer-pri-8 min-w-0 overflow-hidden"
                   avgCpu={avgCpu}
                   totalUp={totalUp}
                   totalDown={totalDown}
@@ -202,51 +204,55 @@ export function AppFooter({
               </>
             )}
           </div>
-          <div className={cn(
-            'flex min-h-[1.125rem] flex-wrap items-center gap-x-2 gap-y-0.5 shrink-0 w-full sm:w-auto justify-between sm:justify-end',
-            !showFooterMetaOnMobile && 'hidden sm:flex',
-          )}>
-          {customBody ? (
-            <span className="hidden sm:inline leading-none" dangerouslySetInnerHTML={{ __html: customBody }} />
-          ) : (
-            <>
-              <span className="hidden sm:inline leading-none">
-                {t('footer.poweredBy')}{' '}
-                <a
-                  href="https://github.com/komari-monitor/komari"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  Komari Monitor
-                </a>
-              </span>
-              {appConfig.isLoggedIn && version && (
-                <>
-                  <FooterSep className="hidden sm:inline-flex" />
-                  <span className="font-metric tabular-nums text-muted-foreground/60 leading-none">{version}</span>
-                </>
-              )}
-              <FooterSep className="hidden sm:inline-flex" />
-              <span className="hidden sm:inline leading-none">
-                {t('footer.theme')}{' '}
-                <a
-                  href="https://github.com/wayjam/komari-theme-commander"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  Commander
-                </a>
-              </span>
-            </>
-          )}
-          {customFooter && (
-            <>
-              <FooterSep className="hidden sm:inline-flex" />
-              <span className="hidden sm:inline text-muted-foreground/60 leading-none">{customFooter}</span>
-            </>
-          )}
+          <div
+            className={cn(
+              'flex shrink-0 items-center gap-x-2 flex-nowrap overflow-hidden',
+              !showFooterMetaOnMobile && 'hidden sm:flex',
+            )}
+          >
+            {customBody ? (
+              <span className="footer-pri-2 leading-none" dangerouslySetInnerHTML={{ __html: customBody }} />
+            ) : (
+              <>
+                <span className="footer-pri-2 leading-none">
+                  {t('footer.poweredBy')}{' '}
+                  <a
+                    href="https://github.com/komari-monitor/komari"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    Komari Monitor
+                  </a>
+                </span>
+                {appConfig.isLoggedIn && version && (
+                  <>
+                    <FooterSep className="footer-pri-2" />
+                    <span className="footer-pri-2 font-metric tabular-nums text-muted-foreground/60 leading-none">
+                      {version}
+                    </span>
+                  </>
+                )}
+                <FooterSep className="footer-pri-1" />
+                <span className="footer-pri-1 leading-none">
+                  {t('footer.theme')}{' '}
+                  <a
+                    href="https://github.com/wayjam/komari-theme-commander"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    Commander
+                  </a>
+                </span>
+              </>
+            )}
+            {customFooter && (
+              <>
+                <FooterSep className="footer-pri-1" />
+                <span className="footer-pri-1 text-muted-foreground/60 leading-none">{customFooter}</span>
+              </>
+            )}
           </div>
         </div>
       </div>
