@@ -2769,24 +2769,28 @@
     background: transparent;
   }
 
-  /* ── Single-slot ticker: row crossfade + idle breathing ──────────── */
+  /* ── Single-slot ticker: vertical handoff + idle breathing ───────── */
   .globe-feed-row {
     will-change: transform, opacity;
+    transform-origin: center;
   }
   .globe-feed-row-enter {
-    animation: globe-feed-enter 600ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+    animation: globe-feed-enter 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
   }
   .globe-feed-row-leave {
-    animation: globe-feed-leave 600ms cubic-bezier(0.4, 0, 0.7, 0.3) both;
+    animation: globe-feed-leave 240ms cubic-bezier(0.4, 0, 0.7, 0.3) both;
   }
   @keyframes globe-feed-enter {
     0% {
       opacity: 0;
-      transform: translateX(14px);
+      transform: translateY(0.45rem);
+    }
+    72% {
+      opacity: 1;
     }
     100% {
       opacity: 1;
-      transform: translateX(0);
+      transform: translateY(0);
     }
   }
   @keyframes globe-feed-leave {
@@ -2796,7 +2800,7 @@
     }
     100% {
       opacity: 0;
-      transform: translateX(-14px);
+      transform: translateY(-0.45rem);
     }
   }
 
@@ -2816,21 +2820,20 @@
     50%      { opacity: 0.95; }
   }
 
-  /* Clean theme: keep the slot mechanic, drop the sci-fi flourishes —
-     no horizontal travel, no glow, slower breathing. */
+  /* Clean theme: same down-in/up-out model, with less travel and no glow. */
   [data-theme="clean"] .globe-feed-row-enter {
-    animation: globe-feed-enter-clean 500ms ease-out both;
+    animation: globe-feed-enter-clean 260ms ease-out both;
   }
   [data-theme="clean"] .globe-feed-row-leave {
-    animation: globe-feed-leave-clean 500ms ease-in both;
+    animation: globe-feed-leave-clean 200ms ease-in both;
   }
   @keyframes globe-feed-enter-clean {
-    0%   { opacity: 0; }
-    100% { opacity: 1; }
+    0%   { opacity: 0; transform: translateY(0.25rem); }
+    100% { opacity: 1; transform: translateY(0); }
   }
   @keyframes globe-feed-leave-clean {
-    0%   { opacity: 1; }
-    100% { opacity: 0; }
+    0%   { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-0.25rem); }
   }
   [data-theme="clean"] .globe-feed-idle-dot {
     box-shadow: none;
@@ -2865,7 +2868,7 @@
     background-size: 220% 100%;
     background-repeat: no-repeat;
     animation: globe-feed-scanline 4s linear infinite;
-    opacity: 0.6;
+    opacity: 0.38;
   }
   @keyframes globe-feed-scanline {
     0%   { background-position: -110% 0; }
@@ -2956,8 +2959,8 @@
     50%      { color: var(--destructive); }
   }
 
-  /* Entry sweep: a one-shot specular highlight that traverses a freshly
-     mounted row. Only attached to the entering peer, runs once. */
+  /* Entry sweep: retained for backward compatibility if markup re-enables it,
+     but kept off by default so feed changes stay light in every theme. */
   .globe-feed-row-sweep {
     position: absolute;
     inset: 0;
@@ -2972,6 +2975,7 @@
     background-repeat: no-repeat;
     animation: globe-feed-row-sweep 700ms cubic-bezier(0.25, 0.46, 0.45, 0.94) 1 forwards;
     mix-blend-mode: screen;
+    display: none;
   }
   @keyframes globe-feed-row-sweep {
     0%   { background-position: -60% 0; opacity: 0; }
@@ -2982,7 +2986,7 @@
   /* Clean theme dials these way down — keep liveness signal, lose the
      sci-fi character. */
   [data-theme="clean"] .globe-feed-scanline {
-    opacity: 0.3;
+    opacity: 0.18;
     background: linear-gradient(
       90deg,
       transparent 0%,
@@ -3038,10 +3042,10 @@
       background-color 220ms ease;
   }
   .globe-feed-queue-bar.is-lit {
-    opacity: 0.85;
+    opacity: 0.72;
     height: 100%;
-    box-shadow: 0 0 4px color-mix(in oklch, var(--primary) 50%, transparent);
-    animation: globe-feed-queue-bar 1.4s ease-in-out infinite;
+    box-shadow: 0 0 3px color-mix(in oklch, var(--primary) 34%, transparent);
+    animation: globe-feed-queue-bar 1.8s ease-in-out infinite;
   }
   @keyframes globe-feed-queue-bar {
     0%, 100% { transform: scaleY(0.55); opacity: 0.55; }
@@ -3052,8 +3056,8 @@
   /* Critical: red + faster cadence. */
   .globe-feed-queue-critical .globe-feed-queue-bar.is-lit {
     background: var(--destructive);
-    box-shadow: 0 0 5px color-mix(in oklch, var(--destructive) 65%, transparent);
-    animation-duration: 0.8s;
+    box-shadow: 0 0 4px color-mix(in oklch, var(--destructive) 48%, transparent);
+    animation-duration: 1s;
   }
 
   /* Clean theme: lose glow + scaleY animation, keep height + opacity
@@ -3084,11 +3088,11 @@
     [data-theme="clean"] .globe-feed-row-enter,
     [data-theme="clean"] .globe-feed-row-leave {
       animation-duration: 200ms;
-      animation-name: globe-feed-enter-clean;
+      animation-name: globe-feed-fade-in;
     }
     .globe-feed-row-leave,
     [data-theme="clean"] .globe-feed-row-leave {
-      animation-name: globe-feed-leave-clean;
+      animation-name: globe-feed-fade-out;
     }
     .globe-feed-idle,
     .globe-feed-scanline,
@@ -3104,6 +3108,14 @@
     .globe-feed-row-sweep {
       display: none;
     }
+  }
+  @keyframes globe-feed-fade-in {
+    0%   { opacity: 0; transform: none; }
+    100% { opacity: 1; transform: none; }
+  }
+  @keyframes globe-feed-fade-out {
+    0%   { opacity: 1; transform: none; }
+    100% { opacity: 0; transform: none; }
   }
 
   /* Globe rotation control — Mission Ops row + former stage placement share

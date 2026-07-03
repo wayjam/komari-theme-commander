@@ -20,7 +20,7 @@ import type { NodeWithStatus } from '@/services/api';
  */
 
 const HOLD_MS = 3500;            // normal per-item hold
-const TRANSIT_MS = 600;          // crossfade duration
+const TRANSIT_MS = 320;          // visual slot handoff duration
 const CRITICAL_HOLD_TAIL_MS = 1000; // current item's remaining hold collapses to this on pre-empt
 const QUEUE_LIMIT = 12;          // backpressure cap on pending items
 
@@ -326,8 +326,14 @@ export function GlobeTelemetryFeed({ nodes, enabled }: GlobeTelemetryFeedProps) 
       </span>
 
       {/* Single slot — uses a relatively positioned shell so leaving + entering
-          peers can stack without affecting layout height. */}
-      <div className="relative flex-1 min-w-0 h-5 flex items-center">
+          peers can stack without affecting layout height. New rows rise from
+          below while the old row exits upward. */}
+      <div
+        className="relative flex-1 min-w-0 h-5 flex items-center"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
         {isIdle && (
           <span className="globe-feed-idle inline-flex items-center gap-2 text-muted-foreground/55">
             <span className="globe-feed-idle-dot" aria-hidden />
@@ -415,10 +421,8 @@ const FeedRow = memo(function FeedRow({ item, phase, t }: FeedRowProps) {
       className={`globe-feed-row absolute inset-0 inline-flex items-center gap-1.5 whitespace-nowrap ${
         phase === 'enter' ? 'globe-feed-row-enter' : 'globe-feed-row-leave'
       } ${item.critical ? 'text-destructive/85' : 'text-foreground/65'}`}
+      aria-hidden={phase === 'leave'}
     >
-      {/* One-shot sweep highlight on entering rows — reads as "this is fresh".
-          Does nothing on leaving rows or in clean / reduced-motion. */}
-      {phase === 'enter' && <span className="globe-feed-row-sweep" aria-hidden />}
       <span className={item.critical ? 'text-destructive/55' : 'text-primary/40'}>
         [{item.ts}]
       </span>
