@@ -272,7 +272,7 @@ const MobileRow = memo(function MobileRow({ node, isLast, onOpen, t, isLoggedIn 
   return (
     <div
       className={cn(
-        'px-3 py-3 space-y-3 transition-colors even:bg-muted/[0.02] hover:bg-primary/8 relative',
+        'px-3 py-3 space-y-3 transition-colors even:bg-foreground/[0.015] hover:bg-primary/6 relative',
         !isLast && 'border-b border-border/20',
         !isOnline && 'opacity-45',
       )}
@@ -358,7 +358,7 @@ const MobileRow = memo(function MobileRow({ node, isLast, onOpen, t, isLoggedIn 
             <UsageCell value={ramUsage} status={ramStatus} channel="ram" sub={formatBytes(stats.ram.total)} />
             <UsageCell value={diskUsage} status={diskStatus} channel="disk" sub={formatBytes(stats.disk.total)} />
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 text-xs font-metric text-muted-foreground tabular-nums bg-muted/10 p-2 rounded-sm border border-border/10 hud-data-cell">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 text-xs font-metric text-muted-foreground tabular-nums bg-foreground/[0.025] p-2 rounded-sm border border-border/10 hud-data-cell">
             <div className="flex items-center gap-4">
               <span className="whitespace-nowrap flex items-center gap-1"><ArrowUp className="h-3 w-3 text-chart-7" aria-hidden />{formatSpeed(stats.network.up)}</span>
               <span className="whitespace-nowrap flex items-center gap-1"><ArrowDown className="h-3 w-3 text-chart-8" aria-hidden />{formatSpeed(stats.network.down)}</span>
@@ -702,12 +702,12 @@ export function NodeTable({ nodes }: NodeTableProps) {
     : 0;
 
   return (
-    <div className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-xl overflow-hidden commander-corners commander-corners-soft relative">
+    <div className="rounded-lg border border-border/45 bg-card/70 overflow-hidden commander-corners commander-corners-soft relative">
       <div className="commander-scanner-effect commander-scanner-soft" />
       <span className="corner-bottom" />
 
       {/* Console Header Decoration */}
-      <div className="console-header-decoration flex items-center justify-between px-3 py-1.5 border-b border-border/30 bg-muted/10 type-hud-label-sm tracking-widest text-muted-foreground/40 relative z-10">
+      <div className="console-header-decoration flex items-center justify-between px-3 py-1.5 border-b border-border/25 bg-foreground/[0.025] type-hud-label-sm tracking-widest text-muted-foreground/40 relative z-10">
         <div className="flex items-center gap-2">
           <div className="w-1.5 h-1.5 rounded-full bg-primary/30" />
           <span>{t('hud.tableMode')}</span>
@@ -724,7 +724,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
             <table className="w-full table-fixed">
               <thead>
                 {table.getHeaderGroups().map(headerGroup => (
-                  <tr key={headerGroup.id} className="sticky top-0 z-20 border-b border-border/40 bg-card/95 backdrop-blur-sm">
+                  <tr key={headerGroup.id} className="sticky top-0 z-20 border-b border-border/35 bg-card/90">
                     {headerGroup.headers.map((header, hIdx) => {
                       const isGroupStart = ['cpu', 'network', 'uptime'].includes(header.column.id);
 

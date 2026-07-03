@@ -757,10 +757,10 @@
   }
 
   .commander-scanner-soft::after {
-    opacity: 0.5;
+    opacity: 0.015;
   }
   [data-theme="deepspace"] .commander-scanner-soft::after {
-    opacity: 0.04;
+    opacity: 0.025;
   }
 
   /* Respect users who prefer reduced motion: stop the looping scanner / pulse
