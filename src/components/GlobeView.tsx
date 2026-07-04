@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, memo } from 'react';
 // Note: useState retained for selectedNodeId; useRef now used by FrameCounter for direct DOM writes.
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import { Globe } from '@/components/Globe';
+import { Globe, getGlobeAutoSpinFps } from '@/components/Globe';
 import { Sidebar } from '@/components/Sidebar';
 import { MobileFleetSheet } from '@/components/MobileFleetSheet';
 import { HudSpinner } from './HudSpinner';
@@ -53,6 +53,9 @@ export function GlobeView({ nodes, loading = false, onViewCharts, hubNodeUuid = 
   const autoRotate = configLoaded
     ? (autoRotateOverride ?? (themeConfig.globe_mode !== 'static'))
     : false;
+  const globeAutoSpinFps = configLoaded && autoRotate
+    ? getGlobeAutoSpinFps(themeConfig.globe_marker_style)
+    : 0;
 
   const startRotation = useCallback(() => {
     setAutoRotateOverride(true);
@@ -124,7 +127,7 @@ export function GlobeView({ nodes, loading = false, onViewCharts, hubNodeUuid = 
               tick that mints a new `nodes` array doesn't cause React to
               re-evaluate ~15 div elements + className concat + style
               objects every 2s. They depend only on theme + locale. */}
-          <StageChrome theme={resolvedTheme} t={t} />
+          <StageChrome theme={resolvedTheme} t={t} autoSpinFps={globeAutoSpinFps} />
           </div>
 
           {/* Threats — top right (compact, single column).
@@ -250,9 +253,10 @@ export function GlobeView({ nodes, loading = false, onViewCharts, hubNodeUuid = 
 interface StageChromeProps {
   theme: VisualTheme;
   t: TFunction;
+  autoSpinFps: number;
 }
 
-const StageChrome = memo(function StageChrome({ theme, t }: StageChromeProps) {
+const StageChrome = memo(function StageChrome({ theme, t, autoSpinFps }: StageChromeProps) {
   return (
     <>
       {/* DeepSpace ambient */}
@@ -290,7 +294,7 @@ const StageChrome = memo(function StageChrome({ theme, t }: StageChromeProps) {
       <div className="absolute top-3 left-3 z-20 pointer-events-none text-xs font-mono text-primary/45 uppercase tracking-[0.22em]">
         ▌{t('hud.sector')} ALPHA
       </div>
-      <FrameCounter />
+      <FrameCounter fps={autoSpinFps} />
     </>
   );
 });
@@ -322,14 +326,14 @@ const CardinalMarkers = memo(function CardinalMarkers() {
  * Updates 1×/s. Originally used setState which forced a per-second
  * re-render of GlobeView. Now writes directly into a span via ref so
  * the React tree is untouched on tick. Also pauses while page hidden. */
-const FrameCounter = memo(function FrameCounter() {
+const FrameCounter = memo(function FrameCounter({ fps }: { fps: number }) {
   const frameRef = useRef<HTMLSpanElement>(null);
   const startRef = useRef(Date.now());
   useEffect(() => {
     const tick = () => {
       const el = frameRef.current;
       if (!el) return;
-      const frame = Math.floor((Date.now() - startRef.current) / 1000) * 24;
+      const frame = Math.floor((Date.now() - startRef.current) / 1000) * fps;
       el.textContent = `FRAME ${String(frame).padStart(6, '0')}`;
     };
     tick();
@@ -347,12 +351,12 @@ const FrameCounter = memo(function FrameCounter() {
     if (!document.hidden) start();
     document.addEventListener('visibilitychange', onVis);
     return () => { stop(); document.removeEventListener('visibilitychange', onVis); };
-  }, []);
+  }, [fps]);
   return (
     <div className="absolute bottom-3 right-3 z-20 pointer-events-none text-right text-xxs font-mono text-primary/40 uppercase tracking-[0.22em]">
       <span ref={frameRef} className="font-metric tracking-normal normal-case">FRAME 000000</span>
       <span className="mx-1.5 text-primary/25">·</span>
-      <span className="font-metric tracking-normal normal-case">24FPS</span>
+      <span className="font-metric tracking-normal normal-case">{fps}FPS</span>
     </div>
   );
 });

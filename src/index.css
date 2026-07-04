@@ -614,6 +614,59 @@
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
+  /* ── Fleet table: "live" status dot ──────────────────────────────
+     The online indicator breathes by pulsing its glow halo outward,
+     not by fading opacity. Opacity-fading a coloured dot on the light
+     teal table surface desaturates it, so the "alive" signal muddies
+     (teal dot washing into teal surface). The core stays solid; the
+     halo expands and brightens on each inhale, reading as a steady
+     point emitting light. Glow leans brighter than --success so it
+     separates from the cool-lab table surface without abandoning the
+     teal "instrument OK" intent. */
+  .table-status-online {
+    background-color: var(--success);
+    animation: table-status-breathe 2.4s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+  }
+
+  @keyframes table-status-breathe {
+    0%, 100% {
+      box-shadow:
+        0 0 0 0 color-mix(in oklch, var(--success) 0%, transparent),
+        0 0 4px color-mix(in oklch, var(--success) 38%, transparent);
+    }
+    50% {
+      box-shadow:
+        0 0 0 2px color-mix(in oklch, var(--success) 12%, transparent),
+        0 0 8px color-mix(in oklch, var(--success) 70%, transparent);
+    }
+  }
+
+  /* DeepSpace: brighter mint on void — let the halo carry further */
+  [data-theme="deepspace"] .table-status-online {
+    animation: table-status-breathe-deep 2.4s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+  }
+  @keyframes table-status-breathe-deep {
+    0%, 100% {
+      box-shadow:
+        0 0 0 0 color-mix(in oklch, var(--success) 0%, transparent),
+        0 0 6px color-mix(in oklch, var(--success) 55%, transparent);
+    }
+    50% {
+      box-shadow:
+        0 0 0 3px color-mix(in oklch, var(--success) 18%, transparent),
+        0 0 12px color-mix(in oklch, var(--success) 85%, transparent);
+    }
+  }
+
+  /* Clean: drop the expanding ring, keep a quiet glow only */
+  [data-theme="clean"] .table-status-online {
+    animation: table-status-breathe-clean 3s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+  }
+  @keyframes table-status-breathe-clean {
+    0%, 100% { box-shadow: 0 0 3px color-mix(in oklch, var(--success) 30%, transparent); }
+    50%      { box-shadow: 0 0 6px color-mix(in oklch, var(--success) 55%, transparent); }
+  }
+
   /* ════════════════════════════════════════════════════════════
      Commander Elements
      ════════════════════════════════════════════════════════════ */
@@ -772,7 +825,8 @@
      !important > unlayered !important) and freeze the sweep. */
   @media (prefers-reduced-motion: reduce) {
     .commander-scanner-effect::after,
-    .animate-pulse-subtle {
+    .animate-pulse-subtle,
+    .table-status-online {
       animation: none !important;
     }
   }
@@ -841,7 +895,10 @@
     border-radius: 50%;
     opacity: 0.075;
     pointer-events: none;
-    animation: radar-rotate 4s linear infinite;
+    /* 8s ≈ 45°/s — a calm but still-lively sweep. The earlier 4s read as
+       "rushing" next to the slow globe auto-spin. Reduced-motion viewers
+       get 32s via the media-query override near the bottom of this file. */
+    animation: radar-rotate 16s linear infinite;
     will-change: transform;
     z-index: 1;
   }

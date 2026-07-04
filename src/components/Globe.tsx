@@ -190,15 +190,15 @@ function estimateRefreshHz(): number {
   return 60;
 }
 
-/** Auto-spin fps aligned to vsync — 45fps on 60Hz causes visible judder. */
+/** Auto-spin fps: use refresh-rate divisors; interactions still run at 60fps. */
 function pickAutoSpinFps(refreshHz: number, markerStyle: GlobeMarkerStyle): number {
   const lowPower =
     markerStyle === 'lite' ||
     (typeof window !== 'undefined' && window.innerWidth < 640) ||
     ((typeof navigator !== 'undefined' ? navigator.hardwareConcurrency : 8) ?? 8) <= 4;
 
-  if (refreshHz >= 120) return 60;
-  if (refreshHz >= 60) return lowPower ? 30 : 60;
+  if (refreshHz >= 60) return lowPower ? 20 : 30;
+  if (refreshHz >= 38) return 20;
   return 30;
 }
 
@@ -233,15 +233,18 @@ interface GlobeRenderProfile {
   autoSpinFps: number;
 }
 
+export function getGlobeAutoSpinFps(markerStyle: GlobeMarkerStyle): number {
+  return pickAutoSpinFps(estimateRefreshHz(), markerStyle);
+}
+
 function getGlobeRenderProfile(
   canvasCssSize: number,
   markerStyle: GlobeMarkerStyle,
 ): GlobeRenderProfile {
-  const refreshHz = estimateRefreshHz();
   return {
     devicePixelRatio: getGlobeDpr(canvasCssSize),
     mapSamples: getMapSamples(canvasCssSize, markerStyle),
-    autoSpinFps: pickAutoSpinFps(refreshHz, markerStyle),
+    autoSpinFps: getGlobeAutoSpinFps(markerStyle),
   };
 }
 
@@ -314,6 +317,11 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
   }, []);
   /** Restart hook for the long-lived RAF loop (slerp / drag / auto-spin resume). */
   const loopControlRef = useRef<{ start: () => void } | null>(null);
+  /* Render-profile applier published by the globe-mount effect and consumed
+   * by the square-sizing layout effect, so a single ResizeObserver (on the
+   * slot) can both keep the host square and re-tune DPR / mapSamples — no
+   * need for a second observer on the host. Null until the globe exists. */
+  const applyRenderProfileRef = useRef<((cssSize: number) => void) | null>(null);
 
   const rotateToLocation = useCallback((lat: number, lng: number) => {
     const [phi, theta] = latLngToAngles(lat, lng);
@@ -537,6 +545,16 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
 
     let rafId = 0;
     let lastSize = 0;
+    let profileTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleProfileUpdate = (cssSize: number) => {
+      if (profileTimer) clearTimeout(profileTimer);
+      // Debounce so a live drag-resize doesn't redraw the globe at every
+      // intermediate size; only the settled size gets pushed.
+      profileTimer = setTimeout(() => {
+        profileTimer = null;
+        applyRenderProfileRef.current?.(cssSize);
+      }, 200);
+    };
     const applySquareSizeNow = () => {
       const rect = slot.getBoundingClientRect();
       const next = Math.floor(Math.max(0, Math.min(rect.width, rect.height)));
@@ -547,6 +565,10 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
       // in the same square coordinate system on every viewport.
       host.style.width = `${next}px`;
       host.style.height = `${next}px`;
+      // Size changed → backing buffer changed → re-tune DPR / mapSamples for
+      // the new bucket. The applier itself skips pushing mapSamples / DPR
+      // when the bucket didn't actually cross a threshold (see B).
+      scheduleProfileUpdate(next);
     };
     const scheduleSquareSize = () => {
       cancelAnimationFrame(rafId);
@@ -562,6 +584,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
 
     return () => {
       cancelAnimationFrame(rafId);
+      if (profileTimer) clearTimeout(profileTimer);
       resizeObserver.disconnect();
       window.removeEventListener('orientationchange', scheduleSquareSize);
     };
@@ -620,6 +643,11 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
       arcColor: initialConfig.arcColor,
       arcWidth: ARC_WIDTH,
       arcHeight: ARC_HEIGHT,
+      context: {
+        powerPreference: 'high-performance',
+        antialias: false,
+        desynchronized: true,
+      },
     });
     globeRef.current = globe;
 
@@ -642,14 +670,10 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
      * markers/theme/size each get their own dedicated useEffect so we don't
      * pay the per-frame cost of re-uploading data that hasn't changed.
      *
-     * Why we render at the display refresh rate (60/120Hz) for auto-spin:
-     *   An earlier revision throttled auto-spin to 30fps to halve cobe's
-     *   per-frame cost. On 60Hz monitors that produced a textbook judder
-     *   pattern — every other refresh shows the same frame, so a slow
-     *   continuous rotation reads as a step-step-step stutter instead of
-     *   smooth motion. Eyes are extremely sensitive to non-uniform motion
-     *   at low fps. The fix is the inverse: don't fight the display, just
-     *   skip whole-frame work when there's *truly* nothing to draw.
+     * Auto-spin is capped to a divisor of the display refresh rate. This keeps
+     * passive WebGL repaint work below the original 60fps path while avoiding
+     * uneven cadences like 24fps on a 60Hz display, which reads as dropped
+     * frames. Drag and selection slerp remain at 60fps for responsiveness.
      *
      * The CPU-saving behaviors that remain:
      *
@@ -709,8 +733,8 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
     let inViewport = true;
     let running = false;
 
-    /* Frame-rate cap — auto-spin fps is chosen to divide evenly into the
-     * display refresh (60→60/30, 120→60) so motion stays smooth. Drag /
+    /* Frame-rate cap — auto-spin fps is chosen to divide evenly into common
+     * display refresh buckets (60/120→30, low-power/40→20). Drag /
      * slerp stay at 60fps for responsiveness. */
     const INTERACTION_FPS = 60;
     const interactionInterval = 1000 / INTERACTION_FPS - 4;
@@ -850,39 +874,45 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
     );
     intersectionObserver.observe(host);
 
+    /* Re-tune DPR / mapSamples for a new backing-buffer size. Only pushes
+     * `mapSamples` / `devicePixelRatio` when the bucket actually changed
+     * since the last apply. `mapSamples` is a shader uniform in cobe v2, so
+     * duplicate values are cheap but still unnecessary update noise; `width`
+     * / `height` are always pushed because they genuinely moved. Published
+     * via `applyRenderProfileRef` so the square-sizing layout effect can call
+     * us from its single ResizeObserver (see E). */
+    let lastAppliedSamples = renderProfile.mapSamples;
+    let lastAppliedDpr = renderProfile.devicePixelRatio;
     const applyRenderProfile = (cssSize: number) => {
       const profile = getGlobeRenderProfile(cssSize, markerStyleRef.current);
       spinFpsRef.current = profile.autoSpinFps;
-      globe.update({
+      const patch: { width: number; height: number; devicePixelRatio?: number; mapSamples?: number } = {
         width: cssSize,
         height: cssSize,
-        devicePixelRatio: profile.devicePixelRatio,
-        mapSamples: profile.mapSamples,
-      });
+      };
+      if (profile.devicePixelRatio !== lastAppliedDpr) {
+        patch.devicePixelRatio = profile.devicePixelRatio;
+        lastAppliedDpr = profile.devicePixelRatio;
+      }
+      if (profile.mapSamples !== lastAppliedSamples) {
+        patch.mapSamples = profile.mapSamples;
+        lastAppliedSamples = profile.mapSamples;
+      }
+      globe.update(patch);
     };
+    applyRenderProfileRef.current = applyRenderProfile;
 
-    /* Resize — also re-tune DPR / mapSamples for the new backing-buffer size. */
-    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
-    let lastSize = size;
-    const resizeObserver = new ResizeObserver(() => {
-      const newSize = host.clientWidth;
-      if (newSize === lastSize || newSize === 0) return;
-      lastSize = newSize;
-      widthRef.current = newSize;
-      if (resizeTimer) clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => {
-        applyRenderProfile(newSize);
-      }, 200);
-    });
-    resizeObserver.observe(host);
+    /* Resize of the host is already covered by the square-sizing layout
+     * effect's ResizeObserver on the slot, which calls
+     * `applyRenderProfileRef.current` after writing the new square size.
+     * No second observer needed here. */
 
     cleanup = () => {
       stop();
       document.removeEventListener('visibilitychange', onVisibility);
       reduceMotionMQ?.removeEventListener?.('change', handleMotionChange);
       intersectionObserver.disconnect();
-      if (resizeTimer) clearTimeout(resizeTimer);
-      resizeObserver.disconnect();
+      applyRenderProfileRef.current = null;
       globe.destroy();
       globeRef.current = null;
       loopControlRef.current = null;
@@ -1085,8 +1115,8 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(function Globe(
             <RegionSpeedOverlay
               key={`speed-${region.id}`}
               regionId={region.id}
-              netUp={region.netUp}
-              netDown={region.netDown}
+              up={fmtSpeedCompact(region.netUp)}
+              down={fmtSpeedCompact(region.netDown)}
               isHub={region.id === hubRegionId}
             />,
             cobeWrapper
@@ -1210,8 +1240,19 @@ const RegionPulseOverlay = memo(function RegionPulseOverlay({
  */
 interface RegionSpeedOverlayProps {
   regionId: string;
-  netUp: number;
-  netDown: number;
+  /* Pre-formatted (already rounded to K/M/G) display strings, not raw bps.
+   *
+   * Why format in the parent instead of inside the memo'd child: the 2s
+   * WebSocket tick mints a fresh `nodes` array even when nothing structurally
+   * changed, so this overlay re-renders frequently. `memo()` shallow-compares
+   * props — if we passed raw `netUp`/`netDown`, a 1-byte jitter (invisible at
+   * K/M/G precision) would break the equality check and force a re-render +
+   * DOM text update for every pill every tick. By formatting before we hand
+   * the value down, memo sees `"1.2M" === "1.2M"` and bails for any region
+   * whose *displayed* value didn't change — which is most regions, most of
+   * the time. */
+  up: string;
+  down: string;
   /** Hub marker is visually larger (48px vs 34px), so its pill needs a
    *  bigger offset to stay clear of the southern crosshair tick. */
   isHub: boolean;
@@ -1229,17 +1270,14 @@ function fmtSpeedCompact(bps: number): string {
 
 const RegionSpeedOverlay = memo(function RegionSpeedOverlay({
   regionId,
-  netUp,
-  netDown,
+  up,
+  down,
   isHub,
 }: RegionSpeedOverlayProps) {
   const style = {
     positionAnchor: `--cobe-${regionId}`,
     ['--vis' as string]: `var(--cobe-visible-${regionId}, 0)`,
   } as React.CSSProperties;
-
-  const up = fmtSpeedCompact(netUp);
-  const down = fmtSpeedCompact(netDown);
 
   return (
     <div

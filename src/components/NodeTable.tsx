@@ -282,7 +282,7 @@ const MobileRow = memo(function MobileRow({ node, isLast, onOpen, t, isLoggedIn 
           <span className={cn(
             'w-2 h-2 rounded-full shrink-0',
             isOnline
-              ? 'bg-success shadow-[0_0_6px_color-mix(in_oklch,var(--success)_55%,transparent)]'
+              ? 'table-status-online'
               : 'bg-destructive/80',
           )} />
           <RegionFlag region={node.region} size="sm" />
@@ -433,7 +433,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
                   className={cn(
                     'inline-block w-2 h-2 rounded-full cursor-default',
                     isOnline
-                      ? 'bg-success shadow-[0_0_6px_color-mix(in_oklch,var(--success)_55%,transparent)] motion-safe:animate-pulse'
+                      ? 'table-status-online'
                       : 'bg-destructive/80',
                   )}
                   aria-label={isOnline ? t('status.on') : t('status.off')}
