@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseThemeConfigFromPublicSettings } from './useAppConfig';
+import { parseHistoryRetentionFromPublicSettings, parseThemeConfigFromPublicSettings } from './useAppConfig';
 
 const samplePublicInfo = {
   sitename: 'Commander Monitor',
@@ -94,5 +94,27 @@ describe('parseThemeConfigFromPublicSettings', () => {
     expect(tc.globe_marker_style).toBe('rich');
     expect(tc.default_view).toBe('globe');
     expect(tc.default_theme).toBe('clean');
+  });
+});
+
+describe('parseHistoryRetentionFromPublicSettings', () => {
+  it('prefers the Komari 1.2.6 metric retention setting for both histories', () => {
+    expect(parseHistoryRetentionFromPublicSettings({
+      metric_retention_days: 90,
+      record_preserve_time: 24,
+      ping_record_preserve_time: 48,
+    })).toEqual({ recordPreserveTime: 2160, pingRecordPreserveTime: 2160 });
+  });
+
+  it('falls back to the separate 1.2.5 retention settings', () => {
+    expect(parseHistoryRetentionFromPublicSettings({
+      record_preserve_time: '720',
+      ping_record_preserve_time: 48,
+    })).toEqual({ recordPreserveTime: 720, pingRecordPreserveTime: 48 });
+  });
+
+  it('uses safe defaults when no usable server setting is returned', () => {
+    expect(parseHistoryRetentionFromPublicSettings(null))
+      .toEqual({ recordPreserveTime: 720, pingRecordPreserveTime: 48 });
   });
 });

@@ -67,6 +67,26 @@ export function useAppConfig() {
   return useContext(AppConfigContext);
 }
 
+function positiveNumber(value: unknown): number | undefined {
+  const number = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(number) && number > 0 ? number : undefined;
+}
+
+/** Prefer Komari 1.2.6 metric-store retention, with 1.2.5 field fallbacks. */
+export function parseHistoryRetentionFromPublicSettings(publicSettings: Record<string, unknown> | null): Pick<AppConfig, 'recordPreserveTime' | 'pingRecordPreserveTime'> {
+  const metricRetentionDays = positiveNumber(publicSettings?.metric_retention_days);
+  const metricRetentionHours = metricRetentionDays ? metricRetentionDays * 24 : undefined;
+
+  return {
+    recordPreserveTime: metricRetentionHours
+      ?? positiveNumber(publicSettings?.record_preserve_time)
+      ?? defaultConfig.recordPreserveTime,
+    pingRecordPreserveTime: metricRetentionHours
+      ?? positiveNumber(publicSettings?.ping_record_preserve_time)
+      ?? defaultConfig.pingRecordPreserveTime,
+  };
+}
+
 /** Parse managed theme settings from `common:getPublicInfo` payload. */
 export function parseThemeConfigFromPublicSettings(
   publicSettings: Record<string, unknown> | null,
@@ -154,12 +174,12 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
     patch: Partial<Pick<AppConfig, 'isLoggedIn' | 'username'>> = {},
   ) => {
     const tc = parseThemeConfigFromPublicSettings(publicSettings);
+    const historyRetention = parseHistoryRetentionFromPublicSettings(publicSettings);
     setConfig(prev => ({
       ...prev,
       ...patch,
       themeConfig: tc,
-      recordPreserveTime: (publicSettings?.record_preserve_time as number) || prev.recordPreserveTime,
-      pingRecordPreserveTime: (publicSettings?.ping_record_preserve_time as number) || prev.pingRecordPreserveTime,
+      ...historyRetention,
       loaded: true,
     }));
   }, []);

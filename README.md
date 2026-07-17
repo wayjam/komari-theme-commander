@@ -5,7 +5,7 @@
 
 ![Commander Theme — DeepSpace + Lumina preview](https://raw.githubusercontent.com/wayjam/komari-theme-commander/main/preview.png)
 
-> 一个为 [Komari Monitor](https://github.com/komari-monitor/komari) 量身打造的现代化指挥官主题，融合赛博朋克美学与终端 HUD 风格，提供沉浸式的服务器监控体验。
+> 一个为 [Komari Monitor](https://github.com/komari-monitor/komari) 打造的现代化监控主题，提供清晰的多视图运维界面；DeepSpace 主题保留赛博朋克指挥台与终端 HUD 视觉，Lumina 与 Clean 则偏向明亮、克制的信息呈现。
 
 ## 🚀 Quick Start
 
@@ -18,7 +18,7 @@
 
 | Lumina（光明） | DeepSpace（深空） | Clean（简洁） |
 | :---: | :---: | :---: |
-| 清新明亮的浅色主题<br/>带极简扫描线与发光描边 | 赛博朋克风格的深色主题<br/>星空背景 + 终端 HUD 装饰 | 极简主义浅色主题<br/>无装饰，专注信息呈现 |
+| 清新明亮的浅色主题<br/>保留轻量扫描线与发光描边 | 赛博朋克深色主题<br/>星空背景、指挥框角与终端 HUD 装饰 | 极简主义浅色主题<br/>无装饰，专注信息呈现 |
 
 > 支持 **auto** 模式，自动跟随系统配色（light → Lumina，dark → DeepSpace）。
 

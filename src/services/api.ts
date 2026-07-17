@@ -11,6 +11,11 @@ import type {
   RPC2PingTask,
   RPC2PingStat,
 } from '@/lib/rpc2';
+import {
+  normalizeLoadRecords,
+  normalizeNodeEntries,
+  normalizePingRecords,
+} from '@/lib/komari-rpc-normalizers';
 
 export interface NodeData {
   uuid: string;
@@ -85,6 +90,13 @@ export interface LoadHistoryOptions {
   loadType?: string;
 }
 
+export interface HistoryWindow<T> {
+  count: number;
+  records: T[];
+  from?: string;
+  to?: string;
+}
+
 export interface NodeWithStatus extends NodeData {
   status: 'online' | 'offline';
   stats?: NodeStats;
@@ -122,14 +134,6 @@ function loadMaxCountForHours(hours: number): number {
   if (hours <= 1) return 2000;
   if (hours <= 6) return 3000;
   return 4000;
-}
-
-function flattenLoadRecords(rawRecords: unknown): RPC2StatusRecord[] {
-  if (Array.isArray(rawRecords)) return rawRecords as RPC2StatusRecord[];
-  if (rawRecords && typeof rawRecords === 'object') {
-    return (Object.values(rawRecords) as RPC2StatusRecord[][]).flat();
-  }
-  return [];
 }
 
 /** Narrow load_type projection → full StatusRecord shape for chart adapters */
@@ -293,7 +297,7 @@ class ApiService {
           const cached = offlineCache.getNodes();
           return cached?.data ?? [];
         }
-        const nodes = Object.entries(result).map(([uuid, client]) => adaptNodeData(uuid, client));
+        const nodes = normalizeNodeEntries(result).map(([uuid, client]) => adaptNodeData(uuid, client));
         if (nodes.length > 0) offlineCache.setNodes(nodes);
         return nodes;
       } catch (error) {
@@ -331,7 +335,7 @@ class ApiService {
     uuid: string,
     hours: number = 24,
     options?: LoadHistoryOptions,
-  ): Promise<{ count: number; records: RPC2StatusRecord[] } | null> {
+  ): Promise<HistoryWindow<RPC2StatusRecord> | null> {
     const loadType = options?.loadType;
     const dedupKey = `getLoadHistory:${uuid}:${hours}:${loadType ?? 'all'}`;
     return dedup(dedupKey, async () => {
@@ -359,7 +363,7 @@ class ApiService {
         );
         if (!result) return null;
 
-        const rawRecords = flattenLoadRecords(result.records);
+        const rawRecords = normalizeLoadRecords(result.records, uuid);
         const records = loadType
           ? rawRecords.map(r => adaptFlatLoadRecord(r))
           : rawRecords;
@@ -367,6 +371,8 @@ class ApiService {
         return {
           count: result.count,
           records,
+          from: result.from,
+          to: result.to,
         };
       } catch (error) {
         console.error('RPC2 getLoadHistory failed:', error);
@@ -376,25 +382,20 @@ class ApiService {
   }
 
   // Fetch ping history records
-  async getPingHistory(uuid: string, hours: number = 24): Promise<{ count: number; records: RPC2PingRecord[]; tasks: { id: number; name: string; interval: number; loss: number; type?: string; avg?: number; latest?: number; max?: number; min?: number; p50?: number; p99?: number; p99_p50_ratio?: number; total?: number }[] } | null> {
+  async getPingHistory(uuid: string, hours: number = 24): Promise<HistoryWindow<RPC2PingRecord> & { tasks: { id: number; name: string; interval: number; loss: number; type?: string; avg?: number; latest?: number; max?: number; min?: number; p50?: number; p99?: number; p99_p50_ratio?: number; total?: number }[] } | null> {
     return dedup(`getPingHistory:${uuid}:${hours}`, async () => {
       try {
         const result = await rpc2Client.call<
-          { type: string; uuid: string; hours: number },
+          { type: string; uuid: string; hours: number; maxCount: number },
           { count: number; records: RPC2PingRecord[]; basic_info: RPC2BasicInfo[]; tasks?: RPC2PingTask[]; from: string; to: string }
         >(
           'common:getRecords',
-          { type: 'ping', uuid, hours }
+          { type: 'ping', uuid, hours, maxCount: loadMaxCountForHours(hours) }
         );
         if (!result) return null;
 
         // RPC2 may return an object map instead of array; ensure records is always an array
-        const rawRecords = result.records;
-        const recordsArray: RPC2PingRecord[] = Array.isArray(rawRecords)
-          ? rawRecords
-          : rawRecords && typeof rawRecords === 'object'
-            ? Object.values(rawRecords) as RPC2PingRecord[]
-            : [];
+        const recordsArray = normalizePingRecords(result.records, uuid);
 
         // Use tasks from backend response if available; otherwise fallback to building from records
         let tasks: { id: number; name: string; interval: number; loss: number; type?: string; avg?: number; latest?: number; max?: number; min?: number; p50?: number; p99?: number; p99_p50_ratio?: number; total?: number }[];
@@ -435,6 +436,8 @@ class ApiService {
           count: result.count,
           records: recordsArray,
           tasks,
+          from: result.from,
+          to: result.to,
         };
       } catch (error) {
         console.error('RPC2 getPingHistory failed:', error);
