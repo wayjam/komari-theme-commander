@@ -19,7 +19,11 @@ export function normalizeRpcTimestamp(value: unknown): string | undefined {
 }
 
 /** Normalize a collection that may be an array or a UUID-keyed RPC map. */
-function flattenRecords<T extends RecordWithTime>(raw: unknown, requestedUuid: string): T[] {
+function flattenRecords<T extends RecordWithTime>(
+  raw: unknown,
+  requestedUuid: string,
+  getRecordKey: (record: T) => string = record => String(record.time),
+): T[] {
   const entries: T[] = [];
 
   const append = (value: unknown, fallbackClient?: string) => {
@@ -50,7 +54,7 @@ function flattenRecords<T extends RecordWithTime>(raw: unknown, requestedUuid: s
     if (record.client !== requestedUuid) continue;
     // Later entries win: this makes a fresh metric-store response take
     // precedence when a server returns duplicate buckets.
-    deduplicated.set(String(record.time), record);
+    deduplicated.set(getRecordKey(record), record);
   }
 
   return [...deduplicated.values()].sort(
@@ -63,7 +67,13 @@ export function normalizeLoadRecords(raw: unknown, uuid: string): RPC2StatusReco
 }
 
 export function normalizePingRecords(raw: unknown, uuid: string): RPC2PingRecord[] {
-  return flattenRecords<RPC2PingRecord>(raw, uuid);
+  // A node can have several ping tasks sampled at the exact same timestamp.
+  // Keep those series separate; using only `time` would drop all but one task.
+  return flattenRecords<RPC2PingRecord>(
+    raw,
+    uuid,
+    record => `${String(record.time)}|${String(record.task_id)}`,
+  );
 }
 
 /**

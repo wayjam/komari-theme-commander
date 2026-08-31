@@ -35,6 +35,20 @@ describe('Komari RPC normalizers', () => {
     expect(records.map(record => record.value)).toEqual([10, -1]);
   });
 
+  it('keeps different ping tasks sampled at the same timestamp', () => {
+    const records = normalizePingRecords([
+      { client: uuid, task_id: 1, time: '2026-07-01T00:01:00Z', value: 10 },
+      { client: uuid, task_id: 2, time: '2026-07-01T00:01:00Z', value: 20 },
+      { client: uuid, task_id: 1, time: '2026-07-01T00:01:00Z', value: 30 },
+    ], uuid);
+
+    expect(records).toHaveLength(2);
+    expect(records.map(record => [record.task_id, record.value])).toEqual([
+      [1, 30],
+      [2, 20],
+    ]);
+  });
+
   it('normalizes timestamp offsets before deduplicating records', () => {
     const records = normalizeLoadRecords([
       { client: uuid, time: '2026-07-01T08:00:00+08:00', cpu: 10 },
