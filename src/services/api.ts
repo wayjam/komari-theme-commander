@@ -15,6 +15,8 @@ import {
   normalizeLoadRecords,
   normalizeNodeEntries,
   normalizePingRecords,
+  normalizeRpcTimestamp,
+  splitReportedConnections,
 } from '@/lib/komari-rpc-normalizers';
 
 export interface NodeData {
@@ -49,6 +51,74 @@ export interface NodeData {
   ipv4?: string;
   ipv6?: string;
   remark?: string;
+}
+
+export interface MetricDefinition {
+  name: string;
+  description?: unknown;
+  type?: string;
+  unit?: string;
+  retention_days: number;
+  metadata?: Record<string, string>;
+  created_at?: string;
+  updated_at?: string;
+}
+
+function normalizeStringMetadata(value: unknown): Record<string, string> | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+
+  const metadata = Object.fromEntries(
+    Object.entries(value).filter(([, entry]) => typeof entry === 'string'),
+  );
+  return Object.keys(metadata).length > 0 ? metadata : undefined;
+}
+
+/**
+ * Normalize the public:listMetricDefinitions result across Komari versions.
+ *
+ * v1.2.6 and v1.4.3 return a bare array. A few reverse proxies/wrappers may
+ * expose the same RPC result under `definitions` or `data`, so accepting those
+ * envelopes keeps the theme harmlessly compatible with them as well.
+ */
+export function normalizeMetricDefinitionsResponse(result: unknown): MetricDefinition[] {
+  let rawDefinitions: unknown = result;
+  if (result && typeof result === 'object' && !Array.isArray(result)) {
+    const envelope = result as Record<string, unknown>;
+    if (Array.isArray(envelope.definitions)) {
+      rawDefinitions = envelope.definitions;
+    } else if (Array.isArray(envelope.data)) {
+      rawDefinitions = envelope.data;
+    }
+  }
+
+  if (!Array.isArray(rawDefinitions)) return [];
+
+  const definitions = rawDefinitions.flatMap(value => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
+    const raw = value as Record<string, unknown>;
+    const name = typeof raw.name === 'string' ? raw.name.trim() : '';
+    const retentionDays = Number(raw.retention_days);
+    if (!name || !Number.isFinite(retentionDays) || retentionDays < 0) return [];
+
+    return [{
+      name,
+      description: raw.description,
+      type: typeof raw.type === 'string' ? raw.type : undefined,
+      unit: typeof raw.unit === 'string' ? raw.unit : undefined,
+      retention_days: retentionDays,
+      metadata: normalizeStringMetadata(raw.metadata),
+      created_at: typeof raw.created_at === 'string' ? raw.created_at : undefined,
+      updated_at: typeof raw.updated_at === 'string' ? raw.updated_at : undefined,
+    } satisfies MetricDefinition];
+  });
+
+  // Definitions should be unique by name. Keep the first valid entry if an
+  // older wrapper accidentally concatenates the same list more than once.
+  const unique = new Map<string, MetricDefinition>();
+  for (const definition of definitions) {
+    if (!unique.has(definition.name)) unique.set(definition.name, definition);
+  }
+  return Array.from(unique.values());
 }
 
 export interface UserInfo {
@@ -236,6 +306,7 @@ function adaptNodeData(uuid: string, client: RPC2NodeData): NodeData {
 
 /** RPC2 flat StatusRecord → existing nested NodeStats format */
 function adaptStatusRecord(record: RPC2StatusRecord): NodeStats {
+  const connections = splitReportedConnections(record.connections, record.connections_udp);
   return {
     cpu: { usage: record.cpu || 0 },
     ram: { total: record.ram_total || 0, used: record.ram || 0 },
@@ -250,14 +321,15 @@ function adaptStatusRecord(record: RPC2StatusRecord): NodeStats {
     load: { load1: record.load || 0, load5: record.load5 || 0, load15: record.load15 || 0 },
     uptime: record.uptime || 0,
     process: record.process || 0,
-    connections: { tcp: record.connections || 0, udp: record.connections_udp || 0 },
+    connections,
     message: record.message || '',
-    updated_at: record.time || new Date().toISOString(),
+    updated_at: normalizeRpcTimestamp(record.time) || new Date().toISOString(),
   };
 }
 
 /** RPC2 flat NodeStatus → existing nested NodeStats format */
 function adaptNodeStatus(status: RPC2NodeStatus): NodeStats {
+  const connections = splitReportedConnections(status.connections, status.connections_udp);
   return {
     cpu: { usage: status.cpu || 0 },
     ram: { total: status.ram_total || 0, used: status.ram || 0 },
@@ -272,9 +344,9 @@ function adaptNodeStatus(status: RPC2NodeStatus): NodeStats {
     load: { load1: status.load || 0, load5: status.load5 || 0, load15: status.load15 || 0 },
     uptime: status.uptime || 0,
     process: status.process || 0,
-    connections: { tcp: status.connections || 0, udp: status.connections_udp || 0 },
+    connections,
     message: status.message || '',
-    updated_at: status.time || new Date().toISOString(),
+    updated_at: normalizeRpcTimestamp(status.time) || new Date().toISOString(),
     ping: adaptPingStats(status.ping),
   };
 }
@@ -312,16 +384,12 @@ class ApiService {
   async getNodeRecentStats(uuid: string): Promise<NodeStats[]> {
     return dedup(`getNodeRecentStats:${uuid}`, async () => {
       try {
-        const result = await rpc2Client.call<{ uuid: string }, { count: number; records: RPC2StatusRecord[] }>(
+        const result = await rpc2Client.call<{ uuid: string }, { count: number; records: unknown }>(
           'common:getNodeRecentStatus',
           { uuid }
         );
         if (!result?.records) return [];
-        const records = Array.isArray(result.records)
-          ? result.records
-          : typeof result.records === 'object'
-            ? Object.values(result.records) as RPC2StatusRecord[]
-            : [];
+        const records = normalizeLoadRecords(result.records, uuid);
         return records.map(adaptStatusRecord);
       } catch (error) {
         console.error('RPC2 getNodeRecentStats failed:', error);
@@ -356,7 +424,7 @@ class ApiService {
 
         const result = await rpc2Client.call<
           typeof params,
-          { count: number; records: RPC2StatusRecord[] | Record<string, RPC2StatusRecord[]>; from: string; to: string }
+          { count: number; records: unknown; from: string; to: string }
         >(
           'common:getRecords',
           params
@@ -369,7 +437,7 @@ class ApiService {
           : rawRecords;
 
         return {
-          count: result.count,
+          count: records.length,
           records,
           from: result.from,
           to: result.to,
@@ -387,7 +455,7 @@ class ApiService {
       try {
         const result = await rpc2Client.call<
           { type: string; uuid: string; hours: number; maxCount: number },
-          { count: number; records: RPC2PingRecord[]; basic_info: RPC2BasicInfo[]; tasks?: RPC2PingTask[]; from: string; to: string }
+          { count: number; records: unknown; basic_info: RPC2BasicInfo[]; tasks?: RPC2PingTask[]; from: string; to: string }
         >(
           'common:getRecords',
           { type: 'ping', uuid, hours, maxCount: loadMaxCountForHours(hours) }
@@ -433,7 +501,7 @@ class ApiService {
         }
 
         return {
-          count: result.count,
+          count: recordsArray.length,
           records: recordsArray,
           tasks,
           from: result.from,
@@ -480,6 +548,25 @@ class ApiService {
       } catch (error) {
         console.error('RPC2 getPublicSettings failed:', error);
         return offlineCache.getPublicInfo()?.data ?? null;
+      }
+    });
+  }
+
+  /**
+   * Fetch per-metric retention policies exposed by Komari 1.2.6+.
+   * v1.4.3 no longer exposes one global metric_retention_days value, so the
+   * app config uses this list to calculate safe load and ping windows.
+   */
+  async getMetricDefinitions(): Promise<MetricDefinition[]> {
+    return dedup('getMetricDefinitions', async () => {
+      try {
+        const result = await rpc2Client.call<undefined, unknown>('public:listMetricDefinitions');
+        return normalizeMetricDefinitionsResponse(result);
+      } catch (error) {
+        // Older compatible servers may not expose metric definitions. The
+        // caller will fall back to the legacy public retention fields.
+        console.warn('RPC2 listMetricDefinitions unavailable:', error);
+        return [];
       }
     });
   }

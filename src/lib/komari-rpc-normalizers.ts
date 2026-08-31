@@ -6,6 +6,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
+/**
+ * Komari 1.4.3 serializes time.Time as an RFC3339 string. Normalising all
+ * accepted timestamp strings to UTC also keeps legacy offset timestamps from
+ * creating duplicate buckets during deduplication.
+ */
+export function normalizeRpcTimestamp(value: unknown): string | undefined {
+  if (typeof value !== 'string' || value.trim() === '') return undefined;
+  const timestamp = new Date(value);
+  if (!Number.isFinite(timestamp.getTime())) return undefined;
+  return timestamp.toISOString();
+}
+
 /** Normalize a collection that may be an array or a UUID-keyed RPC map. */
 function flattenRecords<T extends RecordWithTime>(raw: unknown, requestedUuid: string): T[] {
   const entries: T[] = [];
@@ -15,7 +27,10 @@ function flattenRecords<T extends RecordWithTime>(raw: unknown, requestedUuid: s
     const record = { ...value } as T;
     if (!record.client && fallbackClient) record.client = fallbackClient;
     if (!record.client) record.client = requestedUuid;
-    if (typeof record.time === 'string') entries.push(record);
+    const timestamp = normalizeRpcTimestamp(record.time);
+    if (!timestamp) return;
+    record.time = timestamp;
+    entries.push(record);
   };
 
   if (Array.isArray(raw)) {
@@ -49,6 +64,22 @@ export function normalizeLoadRecords(raw: unknown, uuid: string): RPC2StatusReco
 
 export function normalizePingRecords(raw: unknown, uuid: string): RPC2PingRecord[] {
   return flattenRecords<RPC2PingRecord>(raw, uuid);
+}
+
+/**
+ * common:getNodesLatestStatus and common:getNodeRecentStatus expose
+ * `connections` as TCP+UDP and `connections_udp` as UDP. Keep the UI model
+ * explicit so callers do not accidentally label the total as TCP.
+ */
+export function splitReportedConnections(
+  connections: unknown,
+  connectionsUdp: unknown,
+): { tcp: number; udp: number } {
+  const total = typeof connections === 'number' ? connections : Number(connections);
+  const udp = typeof connectionsUdp === 'number' ? connectionsUdp : Number(connectionsUdp);
+  const safeTotal = Number.isFinite(total) && total > 0 ? total : 0;
+  const safeUdp = Number.isFinite(udp) && udp > 0 ? Math.min(udp, safeTotal) : 0;
+  return { tcp: Math.max(safeTotal - safeUdp, 0), udp: safeUdp };
 }
 
 /** common:getNodes is normally UUID-keyed, but older and single-node forms exist. */

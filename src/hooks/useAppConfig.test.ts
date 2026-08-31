@@ -113,6 +113,26 @@ describe('parseHistoryRetentionFromPublicSettings', () => {
     })).toEqual({ recordPreserveTime: 720, pingRecordPreserveTime: 48 });
   });
 
+  it('uses the shortest relevant v1.4.3 metric retention for each chart family', () => {
+    expect(parseHistoryRetentionFromPublicSettings({
+      record_preserve_time: 1440,
+      ping_record_preserve_time: 1440,
+    }, [
+      { name: 'cpu.usage', retention_days: 7 },
+      { name: 'memory.used', retention_days: 14 },
+      { name: 'ping.latency_ms', retention_days: 1 },
+      { name: 'ping.loss', retention_days: 3 },
+      { name: 'custom.metric', retention_days: 90 },
+    ])).toEqual({ recordPreserveTime: 168, pingRecordPreserveTime: 24 });
+  });
+
+  it('falls back to legacy settings when metric definitions are unavailable', () => {
+    expect(parseHistoryRetentionFromPublicSettings({
+      record_preserve_time: 720,
+      ping_record_preserve_time: 48,
+    }, [])).toEqual({ recordPreserveTime: 720, pingRecordPreserveTime: 48 });
+  });
+
   it('uses safe defaults when no usable server setting is returned', () => {
     expect(parseHistoryRetentionFromPublicSettings(null))
       .toEqual({ recordPreserveTime: 720, pingRecordPreserveTime: 48 });

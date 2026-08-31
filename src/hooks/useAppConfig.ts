@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
 import { createElement } from 'react';
-import { apiService } from '@/services/api';
+import { apiService, type MetricDefinition } from '@/services/api';
 
 export interface ThemeConfig {
   default_view: 'globe' | 'grid' | 'table' | 'uptime';
@@ -72,16 +72,70 @@ function positiveNumber(value: unknown): number | undefined {
   return Number.isFinite(number) && number > 0 ? number : undefined;
 }
 
-/** Prefer Komari 1.2.6 metric-store retention, with 1.2.5 field fallbacks. */
-export function parseHistoryRetentionFromPublicSettings(publicSettings: Record<string, unknown> | null): Pick<AppConfig, 'recordPreserveTime' | 'pingRecordPreserveTime'> {
+const LOAD_METRIC_KEYS = new Set([
+  'cpu.usage',
+  'gpu.usage',
+  'memory.used',
+  'swap.used',
+  'load.average',
+  'disk.used',
+  'net.in.rate',
+  'net.out.rate',
+  'net.total.up',
+  'net.total.down',
+  'traffic.up',
+  'traffic.down',
+  'process.count',
+  'connections.tcp',
+  'connections.udp',
+]);
+
+const PING_METRIC_KEYS = new Set(['ping.latency_ms', 'ping.loss']);
+
+/**
+ * Return a safe shared chart window for a group of metric definitions.
+ * A shared selector must not advertise a range longer than the shortest
+ * retained metric rendered by that selector.
+ */
+function getMetricRetentionHours(
+  definitions: MetricDefinition[] | null | undefined,
+  metricKeys: Set<string>,
+): number | undefined {
+  if (!definitions?.length) return undefined;
+
+  const relevant = definitions
+    .filter(definition => metricKeys.has(definition.name))
+    .map(definition => definition.retention_days)
+    .filter(value => Number.isFinite(value) && value >= 0);
+  if (!relevant.length) return undefined;
+
+  // A disabled metric has no usable history, but other panels may still have
+  // data. Use the shortest positive policy for the shared selector.
+  const positive = relevant.filter(value => value > 0);
+  if (!positive.length) return 0;
+  return Math.min(...positive) * 24;
+}
+
+/**
+ * Prefer v1.4.3 per-metric policies, with the legacy public settings as a
+ * fallback for older servers or when metric definitions are unavailable.
+ */
+export function parseHistoryRetentionFromPublicSettings(
+  publicSettings: Record<string, unknown> | null,
+  metricDefinitions?: MetricDefinition[] | null,
+): Pick<AppConfig, 'recordPreserveTime' | 'pingRecordPreserveTime'> {
   const metricRetentionDays = positiveNumber(publicSettings?.metric_retention_days);
   const metricRetentionHours = metricRetentionDays ? metricRetentionDays * 24 : undefined;
+  const loadMetricRetentionHours = getMetricRetentionHours(metricDefinitions, LOAD_METRIC_KEYS);
+  const pingMetricRetentionHours = getMetricRetentionHours(metricDefinitions, PING_METRIC_KEYS);
 
   return {
-    recordPreserveTime: metricRetentionHours
+    recordPreserveTime: loadMetricRetentionHours
+      ?? metricRetentionHours
       ?? positiveNumber(publicSettings?.record_preserve_time)
       ?? defaultConfig.recordPreserveTime,
-    pingRecordPreserveTime: metricRetentionHours
+    pingRecordPreserveTime: pingMetricRetentionHours
+      ?? metricRetentionHours
       ?? positiveNumber(publicSettings?.ping_record_preserve_time)
       ?? defaultConfig.pingRecordPreserveTime,
   };
@@ -171,10 +225,11 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
 
   const applyPublicSettings = useCallback((
     publicSettings: Record<string, unknown> | null,
+    metricDefinitions: MetricDefinition[] | null = null,
     patch: Partial<Pick<AppConfig, 'isLoggedIn' | 'username'>> = {},
   ) => {
     const tc = parseThemeConfigFromPublicSettings(publicSettings);
-    const historyRetention = parseHistoryRetentionFromPublicSettings(publicSettings);
+    const historyRetention = parseHistoryRetentionFromPublicSettings(publicSettings, metricDefinitions);
     setConfig(prev => ({
       ...prev,
       ...patch,
@@ -185,19 +240,23 @@ export function AppConfigProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshThemeConfig = useCallback(async () => {
-    const publicSettings = await apiService.getPublicSettings().catch(() => null);
+    const [publicSettings, metricDefinitions] = await Promise.all([
+      apiService.getPublicSettings().catch(() => null),
+      apiService.getMetricDefinitions().catch(() => []),
+    ]);
     if (!publicSettings) return;
-    applyPublicSettings(publicSettings);
+    applyPublicSettings(publicSettings, metricDefinitions);
   }, [applyPublicSettings]);
 
   useEffect(() => {
     const init = async () => {
       try {
-        const [userInfo, publicSettings] = await Promise.all([
+        const [userInfo, publicSettings, metricDefinitions] = await Promise.all([
           apiService.getUserInfo().catch(() => null),
           apiService.getPublicSettings().catch(() => null),
+          apiService.getMetricDefinitions().catch(() => []),
         ]);
-        applyPublicSettings(publicSettings, {
+        applyPublicSettings(publicSettings, metricDefinitions, {
           isLoggedIn: !!userInfo?.logged_in,
           username: userInfo?.username || '',
         });

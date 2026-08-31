@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeLoadRecords, normalizeNodeEntries, normalizePingRecords } from './komari-rpc-normalizers';
+import {
+  normalizeLoadRecords,
+  normalizeNodeEntries,
+  normalizePingRecords,
+  normalizeRpcTimestamp,
+  splitReportedConnections,
+} from './komari-rpc-normalizers';
 
 describe('Komari RPC normalizers', () => {
   const uuid = 'node-a';
@@ -29,6 +35,22 @@ describe('Komari RPC normalizers', () => {
     expect(records.map(record => record.value)).toEqual([10, -1]);
   });
 
+  it('normalizes timestamp offsets before deduplicating records', () => {
+    const records = normalizeLoadRecords([
+      { client: uuid, time: '2026-07-01T08:00:00+08:00', cpu: 10 },
+      { client: uuid, time: '2026-07-01T00:00:00Z', cpu: 20 },
+    ], uuid);
+
+    expect(records).toHaveLength(1);
+    expect(records[0].time).toBe('2026-07-01T00:00:00.000Z');
+    expect(records[0].cpu).toBe(20);
+  });
+
+  it('uses the same canonical timestamp for live and historical data', () => {
+    expect(normalizeRpcTimestamp('2026-07-01T00:00:00Z'))
+      .toBe('2026-07-01T00:00:00.000Z');
+  });
+
   it('returns no records for empty or malformed data', () => {
     expect(normalizeLoadRecords(null, uuid)).toEqual([]);
     expect(normalizePingRecords({ unexpected: 'value' }, uuid)).toEqual([]);
@@ -38,5 +60,10 @@ describe('Komari RPC normalizers', () => {
     expect(normalizeNodeEntries({ [uuid]: { uuid, name: 'A' } })).toHaveLength(1);
     expect(normalizeNodeEntries([{ uuid, name: 'A' }])).toHaveLength(1);
     expect(normalizeNodeEntries({ uuid, name: 'A' })).toEqual([[uuid, { uuid, name: 'A' }]]);
+  });
+
+  it('splits the latest-status connection total into TCP and UDP', () => {
+    expect(splitReportedConnections(17, 5)).toEqual({ tcp: 12, udp: 5 });
+    expect(splitReportedConnections(3, 8)).toEqual({ tcp: 0, udp: 3 });
   });
 });
