@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback, memo } from 'react';
 // Note: useState retained for selectedNodeId; useRef now used by FrameCounter for direct DOM writes.
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import { Globe, getGlobeAutoSpinFps } from '@/components/Globe';
+import { Globe } from '@/components/Globe';
+import { getGlobeAutoSpinFps } from '@/lib/globe-performance';
 import { Sidebar } from '@/components/Sidebar';
 import { MobileFleetSheet } from '@/components/MobileFleetSheet';
 import { HudSpinner } from './HudSpinner';

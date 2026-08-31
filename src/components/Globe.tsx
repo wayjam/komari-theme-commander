@@ -5,6 +5,9 @@ import type { NodeWithStatus } from '@/services/api';
 import { extractRegionEmoji, extractRegionText } from '@/lib/utils';
 import { getCoords } from '@/data/regionCoords';
 import type { VisualTheme } from '@/hooks/useTheme';
+import { getGlobeAutoSpinFps, type GlobeMarkerStyle } from '@/lib/globe-performance';
+
+export type { GlobeMarkerStyle } from '@/lib/globe-performance';
 
 interface GlobeProps {
   nodes: NodeWithStatus[];
@@ -34,8 +37,6 @@ interface GlobeProps {
    *  `lite`: WebGL dots only — no id, no HTML overlays, select via sidebar. */
   markerStyle?: 'rich' | 'calm' | 'lite';
 }
-
-export type GlobeMarkerStyle = NonNullable<GlobeProps['markerStyle']>;
 
 export interface GlobeHandle {
   rotateToLocation: (lat: number, lng: number) => void;
@@ -172,36 +173,6 @@ function latLngToAngles(lat: number, lng: number): [number, number] {
   ];
 }
 
-/** Snap measured/declared refresh rate to a common bucket. */
-function normalizeRefreshHz(hz: number): number {
-  if (hz >= 100) return 120;
-  if (hz >= 52) return 60;
-  if (hz >= 38) return 40;
-  return 30;
-}
-
-/** Best-effort display refresh rate (Chrome `screen.refreshRate`; else 60). */
-function estimateRefreshHz(): number {
-  if (typeof window === 'undefined') return 60;
-  const declared = (window.screen as Screen & { refreshRate?: number }).refreshRate;
-  if (typeof declared === 'number' && declared >= 30 && declared <= 240) {
-    return normalizeRefreshHz(declared);
-  }
-  return 60;
-}
-
-/** Auto-spin fps: use refresh-rate divisors; interactions still run at 60fps. */
-function pickAutoSpinFps(refreshHz: number, markerStyle: GlobeMarkerStyle): number {
-  const lowPower =
-    markerStyle === 'lite' ||
-    (typeof window !== 'undefined' && window.innerWidth < 640) ||
-    ((typeof navigator !== 'undefined' ? navigator.hardwareConcurrency : 8) ?? 8) <= 4;
-
-  if (refreshHz >= 60) return lowPower ? 20 : 30;
-  if (refreshHz >= 38) return 20;
-  return 30;
-}
-
 /** DPR cap — slightly higher on sharp Retina desktops when the globe is small. */
 function getGlobeDpr(canvasCssSize: number): number {
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
@@ -231,10 +202,6 @@ interface GlobeRenderProfile {
   devicePixelRatio: number;
   mapSamples: number;
   autoSpinFps: number;
-}
-
-export function getGlobeAutoSpinFps(markerStyle: GlobeMarkerStyle): number {
-  return pickAutoSpinFps(estimateRefreshHz(), markerStyle);
 }
 
 function getGlobeRenderProfile(
