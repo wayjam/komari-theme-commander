@@ -1,8 +1,10 @@
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Radio, AlertTriangle, ShieldCheck, MapPinned, Pause, Play } from 'lucide-react';
+import { Radio, AlertTriangle, ShieldCheck, MapPinned, Pause, Play, WifiOff } from 'lucide-react';
 import type { NodeWithStatus } from '@/services/api';
 import { computeGlobeFleetStats } from '@/lib/globeFleetStats';
+import { getCoords } from '@/data/regionCoords';
+import { extractRegionEmoji } from '@/lib/utils';
 
 interface GlobeTopStripProps {
   nodes: NodeWithStatus[];
@@ -19,7 +21,9 @@ interface GlobeTopStripProps {
  * Note on omissions (intentional — avoid duplicate signals already shown elsewhere):
  *  - FLOW (aggregate IN/OUT) + fleet CPU → covered by the site footer.
  *  - FLEET (online/total)                → covered by the right sidebar status block.
- *  This strip focuses on rotation control, mapped region count, and alert tally.
+ *  This strip focuses on rotation control, mapped region count, and fleet
+ *  exceptions. Offline nodes are surfaced here because they otherwise only
+ *  become obvious after opening the fleet sidebar.
  */
 export const GlobeTopStrip = memo(function GlobeTopStrip({
   nodes,
@@ -29,6 +33,12 @@ export const GlobeTopStrip = memo(function GlobeTopStrip({
 }: GlobeTopStripProps) {
   const { t } = useTranslation();
   const stats = useMemo(() => computeGlobeFleetStats(nodes), [nodes]);
+  const unmappedCount = useMemo(() => nodes.reduce((count, node) => {
+    const emoji = extractRegionEmoji(node.region);
+    if (!emoji) return count + 1;
+    const coords = getCoords(emoji);
+    return coords[0] === 0 && coords[1] === 0 ? count + 1 : count;
+  }, 0), [nodes]);
 
   return (
     <div className="globe-top-strip relative w-full px-3 sm:px-4 py-1 flex items-center gap-3 sm:gap-4 text-xs font-mono uppercase tracking-[0.18em] overflow-hidden">
@@ -54,8 +64,30 @@ export const GlobeTopStrip = memo(function GlobeTopStrip({
         </div>
       )}
 
-      {/* Critical counter — always shown when present */}
-      {stats.critical > 0 ? (
+      {unmappedCount > 0 && (
+        <div className="hidden sm:flex items-center gap-2 shrink-0 text-warning/80">
+          <MapPinned className="h-3 w-3" />
+          <span>{t('hud.unmapped')}</span>
+          <span className="font-metric tracking-normal">{unmappedCount}</span>
+        </div>
+      )}
+
+      {/* Exceptions — keep offline and live-metric alerts visible together. */}
+      {stats.offline > 0 && (
+        <div
+          className="globe-top-strip-offline flex items-center gap-2 shrink-0 text-destructive/85"
+          role="status"
+          aria-label={`${t('status.offline')} ${stats.offline}`}
+        >
+          <WifiOff className="h-3 w-3" aria-hidden />
+          <span className="hidden sm:inline">{t('status.offline')}</span>
+          <span className="font-metric tracking-normal text-destructive">
+            {String(stats.offline).padStart(2, '0')}
+          </span>
+        </div>
+      )}
+
+      {stats.critical > 0 && (
         <div className="flex items-center gap-2 shrink-0">
           <AlertTriangle className="h-3 w-3 text-destructive motion-safe:animate-pulse" />
           <span className="text-destructive/85">{t('hud.alert')}</span>
@@ -63,7 +95,9 @@ export const GlobeTopStrip = memo(function GlobeTopStrip({
             {String(stats.critical).padStart(2, '0')}
           </span>
         </div>
-      ) : (
+      )}
+
+      {stats.critical === 0 && stats.offline === 0 && (
         <div className="hidden sm:flex items-center gap-2 shrink-0">
           <ShieldCheck className="h-3 w-3 text-success" />
           <span className="text-success/80">{t('hud.nominal')}</span>

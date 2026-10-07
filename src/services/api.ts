@@ -169,7 +169,13 @@ export interface HistoryWindow<T> {
 
 export interface NodeWithStatus extends NodeData {
   status: 'online' | 'offline';
+  /** Live telemetry. Present only while the node is currently online. */
   stats?: NodeStats;
+  /** Most recent telemetry snapshot, retained so offline states can explain
+   * what was last known without presenting it as current data. */
+  lastStats?: NodeStats;
+  /** Timestamp of the most recent successful telemetry report. */
+  lastSeenAt?: string;
 }
 
 export interface ApiResponse<T> {

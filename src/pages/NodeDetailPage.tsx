@@ -54,7 +54,7 @@ export function NodeDetailPage() {
 
   const displayName = uuid ? maskName(uuid, nodeName) : nodeName;
   const isOnline = node?.status === 'online';
-  const lastReport = node?.stats?.updated_at;
+  const lastReport = node?.lastSeenAt ?? node?.stats?.updated_at;
   const nodeTitle = (
     <h1 className="text-sm sm:text-base font-display font-bold truncate max-w-[60vw] sm:max-w-md">
       {displayName || uuid}

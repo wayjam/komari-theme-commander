@@ -8,7 +8,8 @@ import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Sparkline } from './Sparkline';
 import { ChartTimeRangeBar } from './ChartTimeRangeBar';
 import { PingCurveModeToggle } from './PingCurveModeToggle';
-import { ArrowLeft, Network, Signal, ArrowUp, ArrowDown, ArrowUpDown, Gauge, Unplug, ChevronDown, ChevronRight, Info, AlertTriangle, RotateCw } from 'lucide-react';
+import { OfflineNodeState } from './OfflineNodeState';
+import { ArrowLeft, Network, Signal, WifiOff, ArrowUp, ArrowDown, ArrowUpDown, Gauge, Unplug, ChevronDown, ChevronRight, Info, AlertTriangle, RotateCw } from 'lucide-react';
 import { HudSpinner } from './HudSpinner';
 import { apiService, type NodeWithStatus } from '../services/api';
 import { useAppConfig } from '@/hooks/useAppConfig';
@@ -80,7 +81,8 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
   const isMobile = useIsMobile();
 
   // Accept node data from parent context if available
-  const stats = propNode?.stats;
+  const isOnline = propNode?.status === 'online';
+  const stats = isOnline ? propNode?.stats : undefined;
 
   // ──────────────────────────────────────────────────────────────
   // Rolling 60-sample sparkline buffer for realtime up/down speeds.
@@ -334,7 +336,40 @@ export function NodeNetwork({ nodeUuid: propUuid, nodeName: propName, node: prop
             <span className="text-muted-foreground/70"> · {t('label.network')}</span>
           </span>
         </span>
+        {propNode && (
+          <span
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xxs font-mono font-bold uppercase tracking-wider',
+              isOnline
+                ? 'border-success/25 bg-success/8 text-success'
+                : 'border-destructive/30 bg-destructive/8 text-destructive',
+            )}
+            aria-label={isOnline ? t('status.online') : t('status.offline')}
+          >
+            {isOnline ? (
+              <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
+            ) : (
+              <WifiOff className="h-3 w-3" aria-hidden />
+            )}
+            {isOnline ? t('status.online') : t('status.offline')}
+          </span>
+        )}
       </div>
+
+      {propNode && !isOnline && (
+        <div
+          className="border-y border-destructive/25 bg-destructive/[0.025] px-4 sm:px-5"
+          role="status"
+          aria-live="polite"
+        >
+          <OfflineNodeState
+            node={propNode}
+            lastStats={propNode.lastStats}
+            lastSeenAt={propNode.lastSeenAt}
+            variant="detail"
+          />
+        </div>
+      )}
 
       {/* Network Info Panel — 实时速率与累计流量分层，避免 lg 三列栅格错位 */}
       {stats && (

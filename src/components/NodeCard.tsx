@@ -13,6 +13,7 @@ import { useAppConfig } from '@/hooks/useAppConfig';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { RegionFlag } from './RegionFlag';
 import { TagPill } from './TagPill';
+import { OfflineNodeState } from './OfflineNodeState';
 import { parseTagList } from '@/lib/parseTags';
 import dayjs from 'dayjs';
 
@@ -302,7 +303,7 @@ function MobileNetworkTile({
 export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
   const { t } = useTranslation();
   const isOnline = node.status === 'online';
-  const stats = node.stats;
+  const stats = isOnline ? node.stats : undefined;
   const { getCpuSparkline } = useRecentStats();
   const { isLoggedIn } = useAppConfig();
   const cpuSparkline = isOnline ? getCpuSparkline(node.uuid) : null;
@@ -328,9 +329,9 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
 
   return (
     <div className={cn(
-      'node-card-commander group relative overflow-hidden rounded-lg border bg-card/80 backdrop-blur-xl transition-all duration-300',
+      'node-card-commander group relative flex h-full flex-col overflow-hidden rounded-lg border bg-card/80 backdrop-blur-xl transition-all duration-300',
       'hover:shadow-lg hover:shadow-primary/5 commander-corners',
-      isOnline ? 'border-border/50' : 'border-border/30 opacity-70 offline-card'
+      isOnline ? 'border-border/50' : 'border-destructive/25 offline-card'
     )}>
       <span className="corner-bottom" />
       
@@ -460,7 +461,7 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
       </div>
 
       {/* Content */}
-      <div className="px-3 pb-3 sm:px-4 relative z-10">
+      <div className="flex flex-1 flex-col px-3 pb-3 sm:px-4 relative z-10">
         {stats ? (
           <div className="space-y-2">
             {/* Mobile summary — compact scan-first layout for GRID view. */}
@@ -571,9 +572,13 @@ export const NodeCard = memo(function NodeCard({ node }: NodeCardProps) {
 
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-20 text-muted-foreground text-xs gap-1.5">
-            <span className="no-signal-pulse uppercase tracking-widest text-muted-foreground/60">{t('telemetry.noData')}</span>
-          </div>
+          <OfflineNodeState
+            node={node}
+            lastStats={node.lastStats}
+            lastSeenAt={node.lastSeenAt}
+            variant="card"
+            className="flex-1"
+          />
         )}
       </div>
     </div>

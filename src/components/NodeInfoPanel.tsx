@@ -2,6 +2,7 @@ import { CircularGauge } from '@/components/CircularGauge';
 import { OverflowTooltip } from '@/components/OverflowTooltip';
 import { RemarkNote } from '@/components/RemarkNote';
 import { TagPill } from '@/components/TagPill';
+import { OfflineNodeState } from '@/components/OfflineNodeState';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { useAppConfig } from '@/hooks/useAppConfig';
 import { parseTagList } from '@/lib/parseTags';
@@ -41,7 +42,7 @@ export function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
   const { t } = useTranslation();
   const appConfig = useAppConfig();
   const isOnline = node.status === 'online';
-  const stats = node.stats;
+  const stats = isOnline ? node.stats : undefined;
   const cpuUsage = stats?.cpu?.usage ?? 0;
   const ramUsage = stats ? (stats.ram.used / stats.ram.total) * 100 : 0;
   const diskUsage = stats ? (stats.disk.used / stats.disk.total) * 100 : 0;
@@ -391,9 +392,18 @@ export function NodeInfoPanel({ node }: { node: NodeWithStatus }) {
           )}
         </>
       ) : (
-        <div className="flex items-center justify-center min-h-[4.5rem] text-muted-foreground text-xs leading-relaxed px-2 text-center">
-          {isOnline ? t('telemetry.waiting') : t('telemetry.nodeOffline')}
-        </div>
+        isOnline ? (
+          <div className="flex items-center justify-center min-h-[4.5rem] text-muted-foreground text-xs leading-relaxed px-2 text-center">
+            {t('telemetry.waiting')}
+          </div>
+        ) : (
+          <OfflineNodeState
+            node={node}
+            lastStats={node.lastStats}
+            lastSeenAt={node.lastSeenAt}
+            variant="detail"
+          />
+        )
       )}
       </div>
     </div>

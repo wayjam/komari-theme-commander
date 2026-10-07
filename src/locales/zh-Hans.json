@@ -117,7 +117,13 @@
     "waiting": "正在等待实时指标…",
     "nodeOffline": "节点离线 — 暂无实时数据",
     "nodeOfflineShort": "节点离线 — 无数据",
-    "noData": "暂无指标数据"
+    "noData": "暂无指标数据",
+    "noLiveMetrics": "暂无实时指标",
+    "signalLost": "无信号",
+    "lastSnapshot": "最近快照",
+    "lastSeen": "最后上报",
+    "neverReported": "暂无上报记录",
+    "staticCapacity": "静态配置"
   },
   "chart": {
     "cpuUsage": "CPU 使用率",
@@ -293,6 +299,7 @@
     "flow": "流量",
     "avgCpu": "均CPU",
     "regions": "区域",
+    "unmapped": "未定位",
     "alert": "告警",
     "nominal": "全部正常",
     "sector": "扇区",

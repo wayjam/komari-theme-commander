@@ -5,6 +5,7 @@ import { getCoords } from '@/data/regionCoords';
 export interface GlobeFleetStats {
   avgCpu: number;
   critical: number;
+  offline: number;
   sampled: number;
   totalUp: number;
   totalDown: number;
@@ -15,13 +16,19 @@ export function computeGlobeFleetStats(nodes: NodeWithStatus[]): GlobeFleetStats
   let cpuSum = 0;
   let cpuCount = 0;
   let critical = 0;
+  let offline = 0;
   let totalUp = 0;
   let totalDown = 0;
   const zones = new Set<string>();
 
   for (const n of nodes) {
+    if (n.status === 'offline') offline++;
+
     const emoji = extractRegionEmoji(n.region);
-    if (emoji && getCoords(emoji)) zones.add(emoji);
+    if (emoji) {
+      const coords = getCoords(emoji);
+      if (coords[0] !== 0 || coords[1] !== 0) zones.add(emoji);
+    }
 
     if (n.status === 'online' && n.stats) {
       cpuSum += n.stats.cpu.usage;
@@ -36,6 +43,7 @@ export function computeGlobeFleetStats(nodes: NodeWithStatus[]): GlobeFleetStats
   return {
     avgCpu: cpuCount > 0 ? cpuSum / cpuCount : 0,
     critical,
+    offline,
     sampled: cpuCount,
     totalUp,
     totalDown,

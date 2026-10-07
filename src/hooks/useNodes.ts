@@ -60,6 +60,37 @@ function rawStatsEqual(
   );
 }
 
+/** Keep the UI model's live snapshot normalised in one place. Offline nodes
+ * deliberately do not receive this value as `stats`; their previous snapshot
+ * is retained separately as `lastStats` so it can never be mistaken for live
+ * telemetry. */
+function normalizeLiveStats(rawStats: NodeStats | undefined): NodeStats | undefined {
+  if (!rawStats) return undefined;
+  return {
+    cpu: { usage: rawStats.cpu?.usage || 0 },
+    ram: { total: rawStats.ram?.total || 0, used: rawStats.ram?.used || 0 },
+    swap: { total: rawStats.swap?.total || 0, used: rawStats.swap?.used || 0 },
+    disk: { total: rawStats.disk?.total || 0, used: rawStats.disk?.used || 0 },
+    network: {
+      up: rawStats.network?.up || 0,
+      down: rawStats.network?.down || 0,
+      totalUp: rawStats.network?.totalUp || 0,
+      totalDown: rawStats.network?.totalDown || 0,
+    },
+    load: {
+      load1: rawStats.load?.load1 || 0,
+      load5: rawStats.load?.load5 || 0,
+      load15: rawStats.load?.load15 || 0,
+    },
+    uptime: rawStats.uptime || 0,
+    process: rawStats.process || 0,
+    connections: { tcp: rawStats.connections?.tcp || 0, udp: rawStats.connections?.udp || 0 },
+    message: rawStats.message || '',
+    updated_at: rawStats.updated_at || new Date().toISOString(),
+    ping: rawStats.ping,
+  };
+}
+
 export function useNodes() {
   const [nodes, setNodes] = useState<NodeWithStatus[]>([]);
   const [loading, setLoading] = useState(false);
@@ -73,12 +104,22 @@ export function useNodes() {
     
     try {
       const nodeData = await apiService.getNodes();
-      
-      // Add status info for each node
-      const nodesWithStatus: NodeWithStatus[] = nodeData.map(node => ({
-        ...node,
-        status: 'offline' as const // Default to offline; WebSocket will update online status
-      }));
+
+      // Preserve the live snapshot while refreshing static node metadata. This
+      // avoids throwing away the last-known state before the next WS tick.
+      const previousByUuid = new Map(nodesRef.current.map(node => [node.uuid, node]));
+      const nodesWithStatus: NodeWithStatus[] = nodeData.map(node => {
+        const previous = previousByUuid.get(node.uuid);
+        const isOnline = previous?.status === 'online';
+        const lastStats = previous?.lastStats ?? (isOnline ? previous?.stats : undefined);
+        return {
+          ...node,
+          status: isOnline ? 'online' : 'offline',
+          stats: isOnline ? previous?.stats : undefined,
+          lastStats,
+          lastSeenAt: previous?.lastSeenAt ?? lastStats?.updated_at,
+        };
+      });
       
       nodesRef.current = nodesWithStatus;
       setNodes(nodesWithStatus);
@@ -127,32 +168,21 @@ export function useNodes() {
             return node;
           }
 
-          const newStats = rawStats ? {
-            cpu: { usage: rawStats.cpu?.usage || 0 },
-            ram: { total: rawStats.ram?.total || 0, used: rawStats.ram?.used || 0 },
-            swap: { total: rawStats.swap?.total || 0, used: rawStats.swap?.used || 0 },
-            disk: { total: rawStats.disk?.total || 0, used: rawStats.disk?.used || 0 },
-            network: {
-              up: rawStats.network?.up || 0,
-              down: rawStats.network?.down || 0,
-              totalUp: rawStats.network?.totalUp || 0,
-              totalDown: rawStats.network?.totalDown || 0,
-            },
-            load: {
-              load1: rawStats.load?.load1 || 0,
-              load5: rawStats.load?.load5 || 0,
-              load15: rawStats.load?.load15 || 0,
-            },
-            uptime: rawStats.uptime || 0,
-            process: rawStats.process || 0,
-            connections: { tcp: rawStats.connections?.tcp || 0, udp: rawStats.connections?.udp || 0 },
-            message: rawStats.message || '',
-            updated_at: rawStats.updated_at || new Date().toISOString(),
-            ping: rawStats.ping,
-          } : undefined;
+          const newStats = normalizeLiveStats(rawStats);
+          const previousLastStats = node.lastStats ?? (node.status === 'online' ? node.stats : undefined);
+          const nextLastStats = isOnline && newStats ? newStats : previousLastStats;
+          const nextLastSeenAt = isOnline && newStats
+            ? newStats.updated_at
+            : node.lastSeenAt ?? previousLastStats?.updated_at;
 
           changed = true;
-          return { ...node, status: newStatus, stats: newStats };
+          return {
+            ...node,
+            status: newStatus,
+            stats: isOnline ? newStats : undefined,
+            lastStats: nextLastStats,
+            lastSeenAt: nextLastSeenAt,
+          };
         });
 
         if (changed) {

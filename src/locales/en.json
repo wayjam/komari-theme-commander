@@ -117,7 +117,13 @@
     "waiting": "Waiting for live metrics…",
     "nodeOffline": "NODE OFFLINE — NO LIVE METRICS",
     "nodeOfflineShort": "NODE OFFLINE — NO DATA",
-    "noData": "NO METRICS YET"
+    "noData": "NO METRICS YET",
+    "noLiveMetrics": "NO LIVE METRICS",
+    "signalLost": "NO SIGNAL",
+    "lastSnapshot": "LAST SNAPSHOT",
+    "lastSeen": "LAST REPORT",
+    "neverReported": "NO REPORT YET",
+    "staticCapacity": "STATIC CAPACITY"
   },
   "chart": {
     "cpuUsage": "CPU USAGE",
@@ -293,6 +299,7 @@
     "flow": "Flow",
     "avgCpu": "Avg CPU",
     "regions": "Regions",
+    "unmapped": "UNMAPPED",
     "alert": "Alert",
     "nominal": "All Nominal",
     "sector": "Sector",

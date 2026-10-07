@@ -6,6 +6,8 @@ import { extractRegionEmoji, extractRegionText } from '@/lib/utils';
 import { getCoords } from '@/data/regionCoords';
 import type { VisualTheme } from '@/hooks/useTheme';
 import { getGlobeAutoSpinFps, type GlobeMarkerStyle } from '@/lib/globe-performance';
+import { useTranslation } from 'react-i18next';
+import { WifiOff } from 'lucide-react';
 
 export type { GlobeMarkerStyle } from '@/lib/globe-performance';
 
@@ -1298,6 +1300,7 @@ const SelectionOverlay = memo(function SelectionOverlay({
   nextNodeId,
   onSelectNode,
 }: SelectionOverlayProps) {
+  const { t } = useTranslation();
   // The CSS variable name is per-region, so we can't bake it into static
   // CSS. We bridge via `--vis` so the stylesheet can stay declarative.
   const style = {
@@ -1312,16 +1315,22 @@ const SelectionOverlay = memo(function SelectionOverlay({
       style={style}
       onClick={e => e.stopPropagation()}
     >
-      <div className="globe-selected-tether" />
-      <div className="globe-selected-label">
+      <div className="globe-selected-tether" data-status={nodeStatus} />
+      <div className="globe-selected-label" data-status={nodeStatus}>
         <div className="globe-selected-label-head">
           <span className="globe-selected-label-flag">{emoji}</span>
           {regionText && <span className="globe-selected-label-region">{regionText}</span>}
           <span className={`globe-selected-status globe-selected-status-${nodeStatus}`}>
-            {nodeStatus}
+            {nodeStatus === 'online' ? t('status.online') : t('status.offline')}
           </span>
         </div>
         <div className="globe-selected-label-node">{nodeName}</div>
+        {nodeStatus === 'offline' && (
+          <div className="globe-selected-label-offline">
+            <WifiOff className="h-3 w-3 shrink-0" aria-hidden />
+            <span>{t('telemetry.noLiveMetrics')}</span>
+          </div>
+        )}
         <div className="globe-selected-label-meta">
           <span>{onlineNodes}/{totalNodes} online</span>
           {hasMultipleNodes && (

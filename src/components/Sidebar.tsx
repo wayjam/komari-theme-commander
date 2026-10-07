@@ -15,6 +15,7 @@ import dayjs from 'dayjs';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { RemarkNote } from './RemarkNote';
 import { TagPill } from './TagPill';
+import { OfflineNodeState } from './OfflineNodeState';
 import { parseTagList } from '@/lib/parseTags';
 interface SidebarProps {
   nodes: NodeWithStatus[];
@@ -55,7 +56,7 @@ function NodeRowContentInner({
 }) {
   const { t } = useTranslation();
   const isOnline = node.status === 'online';
-  const stats = node.stats;
+  const stats = isOnline ? node.stats : undefined;
   const cpuUsage = stats?.cpu?.usage ?? 0;
   const ramUsage = stats ? (stats.ram.used / stats.ram.total) * 100 : 0;
   const sidebarCpuLine = `${t('label.cpu')} ${cpuUsage.toFixed(0)}%`;
@@ -555,6 +556,69 @@ function NodeListView({
   );
 }
 
+function NodeSystemInfo({ node }: { node: NodeWithStatus }) {
+  const { t } = useTranslation();
+  const regionEmoji = extractRegionEmoji(node.region);
+  const regionName = getRegionDisplayName(node.region);
+
+  return (
+    <div className="stat-section p-2.5">
+      <div className="flex items-center gap-1.5 mb-2">
+        <span className="stat-chip stat-chip--system"><Server className="h-3 w-3" /></span>
+        <span className="type-hud-label">{t('info.system')}</span>
+      </div>
+      <div className="grid grid-cols-[12px_auto_1fr] gap-x-2 gap-y-1.5 text-xs font-mono items-center">
+        <SystemIcon kind="cpu" value={node.cpu_name} className="h-3 w-3 text-muted-foreground/70" />
+        <span className="type-hud-label-sm whitespace-nowrap">{t('label.cpu')}</span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="truncate cursor-default type-spec-value font-mono text-xs">{node.cpu_name || '-'} ({node.cpu_cores}C)</span>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="max-w-xs text-xs font-mono">{node.cpu_name || '-'} ({node.cpu_cores}C)</TooltipContent>
+        </Tooltip>
+        <SystemIcon kind="arch" value={node.arch} className="h-3 w-3 text-muted-foreground/70" />
+        <span className="type-hud-label-sm whitespace-nowrap">{t('label.arch')}</span>
+        <span className="truncate type-spec-value font-mono text-xs">{node.arch || '-'}</span>
+        <SystemIcon kind="os" value={node.os} className="h-3 w-3 text-muted-foreground/70" />
+        <span className="type-hud-label-sm whitespace-nowrap">{t('label.os')}</span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="truncate cursor-default type-spec-value font-mono text-xs">{node.os || '-'}</span>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="max-w-xs text-xs font-mono">{node.os || '-'}</TooltipContent>
+        </Tooltip>
+        <SystemIcon kind="virt" value={node.virtualization} className="h-3 w-3 text-muted-foreground/70" />
+        <span className="type-hud-label-sm whitespace-nowrap">{t('label.virt')}</span>
+        <span className="truncate type-spec-value font-mono text-xs">{node.virtualization || '-'}</span>
+        <MapPin className="h-3 w-3 text-muted-foreground/70" />
+        <span className="type-hud-label-sm whitespace-nowrap">{t('label.region')}</span>
+        <span className="inline-flex min-w-0 items-center gap-1 truncate type-spec-value font-mono text-xs">
+          {node.region ? (
+            <>
+              {regionEmoji && <span className="shrink-0">{regionEmoji}</span>}
+              <span className="truncate">{regionName || node.region}</span>
+            </>
+          ) : (
+            '-'
+          )}
+        </span>
+        {node.kernel_version && (
+          <>
+            <Terminal className="h-3 w-3 text-muted-foreground/70" />
+            <span className="type-hud-label-sm whitespace-nowrap">{t('label.kernel')}</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="truncate cursor-default type-spec-value font-mono text-xs">{node.kernel_version}</span>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-xs text-xs font-mono">{node.kernel_version}</TooltipContent>
+            </Tooltip>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function NodeDetailView({
   node,
   onBack,
@@ -566,8 +630,8 @@ function NodeDetailView({
 }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const stats = node.stats;
   const isOnline = node.status === 'online';
+  const stats = isOnline ? node.stats : undefined;
   const { isLoggedIn } = useAppConfig();
 
   const cpuUsage = stats?.cpu?.usage ?? 0;
@@ -582,9 +646,6 @@ function NodeDetailView({
   const loadRatio = stats ? stats.load.load1 / cores : 0;
   const loadStatusTone =
     loadRatio >= 1.5 ? 'text-destructive' : loadRatio >= 1 ? 'text-warning' : 'text-foreground';
-  const regionEmoji = extractRegionEmoji(node.region);
-  const regionName = getRegionDisplayName(node.region);
-
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -698,70 +759,18 @@ function NodeDetailView({
       {/* Content */}
       <div className="flex-1 overflow-y-auto relative min-h-0">
         <div className="p-3 pb-3 space-y-4">
+        <NodeSystemInfo node={node} />
         {!isOnline ? (
-          <div className="flex items-center justify-center h-24 text-muted-foreground text-xs leading-relaxed px-2 text-center">
-            {t('telemetry.nodeOfflineShort')}
-          </div>
+          <OfflineNodeState
+            node={node}
+            lastStats={node.lastStats}
+            lastSeenAt={node.lastSeenAt}
+            variant="sidebar"
+          />
         ) : stats ? (
           <>
             {/* Telemetry sections — flat inside sidebar-fleet-panel (no nested instrument chrome) */}
             <div className="sidebar-detail-telemetry">
-              {/* System spec — no nested card border */}
-              <div className="stat-section p-2.5">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <span className="stat-chip stat-chip--system"><Server className="h-3 w-3" /></span>
-                  <span className="type-hud-label">{t('info.system')}</span>
-                </div>
-                <div className="grid grid-cols-[12px_auto_1fr] gap-x-2 gap-y-1.5 text-xs font-mono items-center">
-                  <SystemIcon kind="cpu" value={node.cpu_name} className="h-3 w-3 text-muted-foreground/70" />
-                  <span className="type-hud-label-sm whitespace-nowrap">{t('label.cpu')}</span>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="truncate cursor-default type-spec-value font-mono text-xs">{node.cpu_name || '-'} ({node.cpu_cores}C)</span>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="max-w-xs text-xs font-mono">{node.cpu_name || '-'} ({node.cpu_cores}C)</TooltipContent>
-                  </Tooltip>
-                  <SystemIcon kind="arch" value={node.arch} className="h-3 w-3 text-muted-foreground/70" />
-                  <span className="type-hud-label-sm whitespace-nowrap">{t('label.arch')}</span>
-                  <span className="truncate type-spec-value font-mono text-xs">{node.arch || '-'}</span>
-                  <SystemIcon kind="os" value={node.os} className="h-3 w-3 text-muted-foreground/70" />
-                  <span className="type-hud-label-sm whitespace-nowrap">{t('label.os')}</span>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="truncate cursor-default type-spec-value font-mono text-xs">{node.os || '-'}</span>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="max-w-xs text-xs font-mono">{node.os || '-'}</TooltipContent>
-                  </Tooltip>
-                  <SystemIcon kind="virt" value={node.virtualization} className="h-3 w-3 text-muted-foreground/70" />
-                  <span className="type-hud-label-sm whitespace-nowrap">{t('label.virt')}</span>
-                  <span className="truncate type-spec-value font-mono text-xs">{node.virtualization || '-'}</span>
-                  <MapPin className="h-3 w-3 text-muted-foreground/70" />
-                  <span className="type-hud-label-sm whitespace-nowrap">{t('label.region')}</span>
-                  <span className="inline-flex min-w-0 items-center gap-1 truncate type-spec-value font-mono text-xs">
-                    {node.region ? (
-                      <>
-                        {regionEmoji && <span className="shrink-0">{regionEmoji}</span>}
-                        <span className="truncate">{regionName || node.region}</span>
-                      </>
-                    ) : (
-                      '-'
-                    )}
-                  </span>
-                  {node.kernel_version && (
-                    <>
-                      <Terminal className="h-3 w-3 text-muted-foreground/70" />
-                      <span className="type-hud-label-sm whitespace-nowrap">{t('label.kernel')}</span>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="truncate cursor-default type-spec-value font-mono text-xs">{node.kernel_version}</span>
-                        </TooltipTrigger>
-                        <TooltipContent side="right" className="max-w-xs text-xs font-mono">{node.kernel_version}</TooltipContent>
-                      </Tooltip>
-                    </>
-                  )}
-                </div>
-              </div>
-
               {/* Resource gauges */}
               <div className="stat-section border-t border-border/20 p-2.5 space-y-2.5">
                 <div className="space-y-1">

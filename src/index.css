@@ -2241,12 +2241,12 @@
      ════════════════════════════════════════════════════════════ */
 
   .offline-card {
-    border-style: dashed !important;
-    border-color: oklch(0.5 0 0 / 20%) !important;
+    border-style: solid !important;
+    border-color: color-mix(in oklch, var(--destructive) 24%, var(--border)) !important;
   }
 
   [data-theme="deepspace"] .offline-card {
-    border-color: oklch(0.65 0.25 15 / 20%) !important;
+    border-color: color-mix(in oklch, var(--destructive) 30%, var(--border)) !important;
   }
 
   .no-signal-pulse {
@@ -2598,6 +2598,7 @@
 
   .hud-gauge[data-status="warning"]  { --gauge-color: var(--warning); }
   .hud-gauge[data-status="critical"] { --gauge-color: var(--destructive); }
+  .hud-gauge[data-status="offline"] { --gauge-color: var(--destructive); }
 
   /* Numeric readout — size comes from utilities; weight does the emphasis */
   .hud-gauge__value {
@@ -2647,6 +2648,34 @@
       inset 0 1px 0 0 var(--gauge-track-inset),
       inset 0 -1px 0 0 color-mix(in oklch, var(--background) 30%, transparent);
     overflow: hidden;
+  }
+
+  /* Offline tracks keep the resource rhythm without implying a live value. */
+  .hud-gauge[data-status="offline"] .hud-gauge__track {
+    background:
+      repeating-linear-gradient(
+        90deg,
+        transparent 0,
+        transparent 9px,
+        color-mix(in oklch, var(--destructive) 10%, transparent) 9px,
+        color-mix(in oklch, var(--destructive) 10%, transparent) 10px
+      ),
+      color-mix(in oklch, var(--destructive) 4%, var(--gauge-track));
+  }
+
+  .hud-gauge[data-status="offline"] .hud-gauge__ticks > span {
+    background: color-mix(in oklch, var(--destructive) 35%, transparent);
+  }
+
+  .offline-gauge__signal {
+    position: absolute;
+    top: 1px;
+    bottom: 1px;
+    left: 50%;
+    width: 3px;
+    transform: translateX(-50%);
+    background: color-mix(in oklch, var(--destructive) 55%, transparent);
+    opacity: 0.6;
   }
 
   /* Fill — gradient with directional flow */
@@ -3537,6 +3566,19 @@
     background: color-mix(in oklch, var(--background) 85%, transparent);
   }
 
+  .globe-selected-tether[data-status="offline"] {
+    background: linear-gradient(
+      to bottom,
+      color-mix(in oklch, var(--destructive) 76%, transparent),
+      transparent
+    );
+    box-shadow: 0 0 8px color-mix(in oklch, var(--destructive) 38%, transparent);
+  }
+
+  .globe-selected-tether[data-status="offline"]::after {
+    border-color: color-mix(in oklch, var(--destructive) 72%, transparent);
+  }
+
   .globe-selected-label {
     position: relative;
     display: grid;
@@ -3563,6 +3605,18 @@
       0 0 18px color-mix(in oklch, var(--primary) 16%, transparent);
     backdrop-filter: blur(8px);
     pointer-events: auto;
+  }
+
+  .globe-selected-label[data-status="offline"] {
+    /* Keep the online label's surface and geometry. Offline is communicated
+       by the status chip, tether and state row; the whole label should not
+       turn into a separate red alert card. */
+    border-bottom-color: color-mix(in oklch, var(--destructive) 55%, var(--primary));
+  }
+
+  .globe-selected-label[data-status="offline"]::before,
+  .globe-selected-label[data-status="offline"]::after {
+    border-color: color-mix(in oklch, var(--primary) 60%, transparent);
   }
 
   .globe-selected-label::before,
@@ -3626,6 +3680,16 @@
     font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: 0.02em;
+  }
+
+  .globe-selected-label-offline {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.3rem;
+    color: color-mix(in oklch, var(--destructive) 78%, var(--foreground));
+    font-size: 0.58rem;
+    letter-spacing: 0.04em;
   }
 
   .globe-selected-label-meta {

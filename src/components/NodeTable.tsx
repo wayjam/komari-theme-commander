@@ -23,6 +23,7 @@ import type { TrafficLimitType } from '@/lib/utils';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { RegionFlag } from './RegionFlag';
 import { TagPill } from './TagPill';
+import { OfflineNodeState, OfflineTableCell } from './OfflineNodeState';
 import { parseTagList } from '@/lib/parseTags';
 import dayjs from 'dayjs';
 
@@ -82,7 +83,7 @@ function UsageCell({ value, status, channel, sparkline, sub }: { value: number; 
 }
 
 function NetworkCell({ node, t }: { node: NodeWithStatus; t: (k: string, p?: Record<string, unknown>) => string }) {
-  const stats = node.stats;
+  const stats = node.status === 'online' ? node.stats : undefined;
   if (!stats) return <span className="text-sm font-metric text-muted-foreground/30">—</span>;
 
   const hasTraffic = !!(node.traffic_limit && node.traffic_limit > 0 && node.traffic_limit_type && node.traffic_limit_type !== 'no_limit');
@@ -193,7 +194,7 @@ interface DesktopRowProps {
 
 const DesktopRow = memo(function DesktopRow({ row, isLast }: DesktopRowProps) {
   const isOnline = row.original.status === 'online';
-  const stats = row.original.stats;
+  const stats = isOnline ? row.original.stats : undefined;
   const isCritical = !!stats && (
     (stats.cpu.usage > 80) ||
     (stats.ram.used / stats.ram.total > 0.85) ||
@@ -205,37 +206,60 @@ const DesktopRow = memo(function DesktopRow({ row, isLast }: DesktopRowProps) {
       className={cn(
         'group transition-colors hover:bg-primary/8 relative',
         !isLast && 'border-b border-border/15',
-        !isOnline && 'opacity-45',
+        !isOnline && 'bg-destructive/[0.025]',
         isCritical && 'bg-destructive/10',
       )}
       style={{ height: 60 }}
     >
-      {row.getVisibleCells().map((cell, cellIdx) => {
+      {isOnline ? row.getVisibleCells().map((cell, cellIdx) => {
         const isGroupStart = ['cpu', 'network', 'uptime'].includes(cell.column.id);
-        
+
         return (
-        <td
-          key={cell.id}
-          className={cn(
-            'py-3 align-middle relative overflow-hidden',
-            cellIdx === 0 ? 'px-1 text-center' : 'px-3',
-            isGroupStart && 'pl-5 lg:pl-8', // Spacer gutter
-            compactColumnClass(cell.column.id),
-          )}
-        >
-          {cellIdx === 0 && (
-            <div
-              className={cn(
-                'pointer-events-none absolute left-0 top-0 bottom-0 w-0.5 transition-colors',
-                isCritical
-                  ? 'bg-destructive shadow-[0_0_8px_color-mix(in_oklch,var(--destructive)_65%,transparent)] motion-safe:animate-pulse-subtle'
-                  : 'bg-transparent group-hover:bg-primary/40',
-              )}
-            />
-          )}
-          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-        </td>
-      )})}
+          <td
+            key={cell.id}
+            className={cn(
+              'py-3 align-middle relative overflow-hidden',
+              cellIdx === 0 ? 'px-1 text-center' : 'px-3',
+              isGroupStart && 'pl-5 lg:pl-8', // Spacer gutter
+              compactColumnClass(cell.column.id),
+            )}
+          >
+            {cellIdx === 0 && (
+              <div
+                className={cn(
+                  'pointer-events-none absolute left-0 top-0 bottom-0 w-0.5 transition-colors',
+                  isCritical
+                    ? 'bg-destructive shadow-[0_0_8px_color-mix(in_oklch,var(--destructive)_65%,transparent)] motion-safe:animate-pulse-subtle'
+                    : 'bg-transparent group-hover:bg-primary/40',
+                )}
+              />
+            )}
+            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+          </td>
+        );
+      }) : row.getVisibleCells().map((cell, cellIdx) => {
+        const isGroupStart = ['cpu', 'network', 'uptime'].includes(cell.column.id);
+        const isMetricColumn = ['cpu', 'ram', 'disk', 'load', 'network', 'uptime'].includes(cell.column.id);
+
+        return (
+          <td
+            key={cell.id}
+            className={cn(
+              'py-3 align-middle relative overflow-hidden',
+              cellIdx === 0 ? 'px-1 text-center' : 'px-3',
+              isGroupStart && 'pl-5 lg:pl-8',
+              compactColumnClass(cell.column.id),
+            )}
+          >
+            {cellIdx === 0 && (
+              <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-0.5 bg-destructive/40" />
+            )}
+            {isMetricColumn
+              ? <OfflineTableCell column={cell.column.id as 'cpu' | 'ram' | 'disk' | 'load' | 'network' | 'uptime'} node={row.original} />
+              : flexRender(cell.column.columnDef.cell, cell.getContext())}
+          </td>
+        );
+      })}
     </tr>
   );
 }, (prev, next) =>
@@ -254,7 +278,7 @@ interface MobileRowProps {
 
 const MobileRow = memo(function MobileRow({ node, isLast, onOpen, t, isLoggedIn }: MobileRowProps) {
   const isOnline = node.status === 'online';
-  const stats = node.stats;
+  const stats = isOnline ? node.stats : undefined;
   const cpuUsage = stats?.cpu?.usage ?? 0;
   const ramUsage = stats ? (stats.ram.used / stats.ram.total) * 100 : 0;
   const diskUsage = stats ? (stats.disk.used / stats.disk.total) * 100 : 0;
@@ -351,7 +375,7 @@ const MobileRow = memo(function MobileRow({ node, isLast, onOpen, t, isLoggedIn 
           </div>
         )}
       </div>
-      {stats && (
+      {stats ? (
         <div className="ml-0 sm:ml-4 space-y-2.5">
           <div className="grid grid-cols-3 gap-2">
             <UsageCell value={cpuUsage} status={cpuStatus} channel="cpu" sub={`${cores}C`} />
@@ -369,6 +393,14 @@ const MobileRow = memo(function MobileRow({ node, isLast, onOpen, t, isLoggedIn 
             </div>
           </div>
         </div>
+      ) : (
+        <OfflineNodeState
+          node={node}
+          lastStats={node.lastStats}
+          lastSeenAt={node.lastSeenAt}
+          variant="compact"
+          className="ml-0 sm:ml-4"
+        />
       )}
     </div>
   );
@@ -559,14 +591,14 @@ export function NodeTable({ nodes }: NodeTableProps) {
     }),
 
     columnHelper.accessor(
-      row => row.stats?.cpu?.usage ?? 0,
+      row => row.status === 'online' ? row.stats?.cpu?.usage ?? 0 : 0,
       {
         id: 'cpu',
         header: t('label.cpu'),
         size: 150,
         enableSorting: true,
         cell: ({ row }) => {
-          const stats = row.original.stats;
+          const stats = row.original.status === 'online' ? row.original.stats : undefined;
           if (!stats) return <span className="text-xs font-metric text-muted-foreground/30">—</span>;
           const val = stats.cpu.usage;
           return (
@@ -583,14 +615,14 @@ export function NodeTable({ nodes }: NodeTableProps) {
     ),
 
     columnHelper.accessor(
-      row => row.stats ? (row.stats.ram.used / row.stats.ram.total) * 100 : 0,
+      row => row.status === 'online' && row.stats ? (row.stats.ram.used / row.stats.ram.total) * 100 : 0,
       {
         id: 'ram',
         header: t('label.ram'),
         size: 120,
         enableSorting: true,
         cell: ({ row }) => {
-          const stats = row.original.stats;
+          const stats = row.original.status === 'online' ? row.original.stats : undefined;
           if (!stats) return <span className="text-xs font-metric text-muted-foreground/30">—</span>;
           const val = (stats.ram.used / stats.ram.total) * 100;
           return <UsageCell value={val} status={getUsageStatus(val, { warning: 70, critical: 85 }) as GaugeStatus} channel="ram" sub={formatBytes(stats.ram.total)} />;
@@ -599,14 +631,14 @@ export function NodeTable({ nodes }: NodeTableProps) {
     ),
 
     columnHelper.accessor(
-      row => row.stats ? (row.stats.disk.used / row.stats.disk.total) * 100 : 0,
+      row => row.status === 'online' && row.stats ? (row.stats.disk.used / row.stats.disk.total) * 100 : 0,
       {
         id: 'disk',
         header: t('label.disk'),
         size: 120,
         enableSorting: true,
         cell: ({ row }) => {
-          const stats = row.original.stats;
+          const stats = row.original.status === 'online' ? row.original.stats : undefined;
           if (!stats) return <span className="text-xs font-metric text-muted-foreground/30">—</span>;
           const val = (stats.disk.used / stats.disk.total) * 100;
           return <UsageCell value={val} status={getUsageStatus(val, { warning: 75, critical: 90 }) as GaugeStatus} channel="disk" sub={formatBytes(stats.disk.total)} />;
@@ -615,14 +647,14 @@ export function NodeTable({ nodes }: NodeTableProps) {
     ),
 
     columnHelper.accessor(
-      row => row.stats?.load?.load1 ?? 0,
+      row => row.status === 'online' ? row.stats?.load?.load1 ?? 0 : 0,
       {
         id: 'load',
         header: t('label.load'),
         size: 90,
         enableSorting: true,
         cell: ({ row }) => {
-          const stats = row.original.stats;
+          const stats = row.original.status === 'online' ? row.original.stats : undefined;
           if (!stats) return <span className="text-xs font-metric text-muted-foreground/30">—</span>;
           const cores = row.original.cpu_cores || 1;
           const ratio = stats.load.load1 / cores;
@@ -638,7 +670,7 @@ export function NodeTable({ nodes }: NodeTableProps) {
 
     columnHelper.accessor(
       row => {
-        const stats = row.stats;
+        const stats = row.status === 'online' ? row.stats : undefined;
         if (!stats) return 0;
         return stats.network.up + stats.network.down;
       },
@@ -652,14 +684,14 @@ export function NodeTable({ nodes }: NodeTableProps) {
     ),
 
     columnHelper.accessor(
-      row => row.stats?.uptime ?? 0,
+      row => row.status === 'online' ? row.stats?.uptime ?? 0 : 0,
       {
         id: 'uptime',
         header: t('label.uptime'),
-        size: 90,
+        size: 110,
         enableSorting: true,
         cell: ({ row }) => {
-          const stats = row.original.stats;
+          const stats = row.original.status === 'online' ? row.original.stats : undefined;
           if (!stats) return <span className="text-xs font-metric text-muted-foreground/30">—</span>;
           return (
             <span className="text-xs font-metric tabular-nums whitespace-nowrap">

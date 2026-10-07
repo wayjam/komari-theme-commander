@@ -117,7 +117,13 @@
     "waiting": "正在等待即時指標…",
     "nodeOffline": "節點離線 — 暫無即時資料",
     "nodeOfflineShort": "節點離線 — 無資料",
-    "noData": "暫無指標資料"
+    "noData": "暫無指標資料",
+    "noLiveMetrics": "暫無即時指標",
+    "signalLost": "無訊號",
+    "lastSnapshot": "最近快照",
+    "lastSeen": "最後上報",
+    "neverReported": "暫無上報記錄",
+    "staticCapacity": "靜態配置"
   },
   "chart": {
     "cpuUsage": "CPU 使用率",
@@ -293,6 +299,7 @@
     "flow": "流量",
     "avgCpu": "均CPU",
     "regions": "區域",
+    "unmapped": "未定位",
     "alert": "告警",
     "nominal": "全部正常",
     "sector": "扇區",
